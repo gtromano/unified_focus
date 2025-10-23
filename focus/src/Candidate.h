@@ -40,7 +40,11 @@ struct Candidate {
     }
 
     bool has_theta0() const {
-        return !theta0.empty() && !std::isnan(theta0[0]);
+        // print "Checking if candidate has theta0" for debugging
+        std::cout << "Checking if candidate has theta0" << std::endl;
+        // print theta0 size for debugging
+        std::cout << "theta0 size: " << theta0.size() << std::endl;
+        return theta0.size() > 0;// && !std::isnan(theta0[0]);
     }
 };
 

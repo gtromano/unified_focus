@@ -53,13 +53,21 @@ public:
 
             const std::vector<double>& st_vec = c.st;
             if (st_vec.size() != target_dim) {
-                throw std::runtime_error("Candidate st dimension mismatch.");
-            }
-
-            for (size_t j = 0; j < st_vec.size(); ++j) {
-                points[i][1 + j] = st_vec[j];
+                // if they mismatch, adjust the size by padding with zeros
+                std::vector<double> adjusted_st = st_vec;
+                adjusted_st.resize(target_dim, 0.0);
+                for (size_t j = 0; j < adjusted_st.size(); ++j) {
+                    points[i][1 + j] = adjusted_st[j];
+                }
+                // Alternatively, could throw an error
+                //throw std::runtime_error("Candidate st dimension mismatch.");
+            } else {
+                for (size_t j = 0; j < st_vec.size(); ++j) {
+                    points[i][1 + j] = st_vec[j];
+                }
             }
         }
+
 
         std::set<int> hull_indices;
 
@@ -71,7 +79,13 @@ public:
                 for (const auto& row : points) {
                     flat_points.insert(flat_points.end(), row.begin(), row.end());
                 }
+
+                std::cout << "Checkpoint: CHULL" << std::endl;
+
                 qhull.runQhull("", 1 + target_dim, K, flat_points.data(), "");
+                
+                std::cout << "Checkpoint: after chull" << std::endl;
+
 
                 for (const auto& vertex : qhull.vertexList()) {
                     hull_indices.insert(vertex.point().id());

@@ -31,6 +31,9 @@ public:
     }
 
     virtual void update(const std::vector<double>& y) {
+        // print "updating Info" for debugging
+        std::cout << "updating Info" << std::endl;
+
         n_++;
         if (sn_.size() != y.size()) {
             // adjust the size of sn_ if necessary
@@ -170,7 +173,7 @@ public:
             neg_y[i] = -y[i];
         }
         left_->update(neg_y);
-        
+
         // Keep top-level consistent
         n_ = right_->n();
         sn_ = right_->sn();
@@ -193,7 +196,7 @@ public:
         std::vector<Candidate> combined;
         combined.insert(combined.end(), pr_right.begin(), pr_right.end());
         combined.insert(combined.end(), pr_left.begin(), pr_left.end());
-        
+
         std::sort(combined.begin(), combined.end(),
                  [](const Candidate& a, const Candidate& b) {
                      return a.tau < b.tau || (a.tau == b.tau && a.side < b.side);
