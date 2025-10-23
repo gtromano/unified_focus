@@ -1,0 +1,3 @@
+CXX_STD = CXX17
+PKG_CPPFLAGS = -I/usr/include/libqhullcpp
+PKG_LIBS = -lqhullcpp -lqhull_r
