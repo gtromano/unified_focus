@@ -32,7 +32,7 @@ public:
 
     virtual void update(const std::vector<double>& y) {
         // print "updating Info" for debugging
-        std::cout << "updating Info" << std::endl;
+        // std::cout << "updating Info" << std::endl;
 
         n_++;
         if (sn_.size() != y.size()) {

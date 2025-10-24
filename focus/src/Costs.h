@@ -17,23 +17,23 @@ using CostFunction = std::function<std::vector<double>(const std::vector<Candida
 inline std::vector<double> compute_costs_gaussian(const std::vector<Candidate>& candidates, const Info& cs) {
 
     // print number of candidates and n for debugging
-    std::cout << "Number of candidates: " << candidates.size() << ", n: " << cs.n() << std::endl;
+    // std::cout << "Number of candidates: " << candidates.size() << ", n: " << cs.n() << std::endl;
 
-    // print all candidates 
-        for (size_t idx = 0; idx < candidates.size(); ++idx) {
-            const auto& c = candidates[idx];
-            std::cout << "Candidate " << idx << ": tau=" << c.tau << ", st=[";
-            for (size_t j = 0; j < c.st.size(); ++j) {
-                std::cout << c.st[j];
-                if (j < c.st.size() - 1) std::cout << ", ";
-            }
-            std::cout << "], theta0=[";
-            for (size_t j = 0; j < c.theta0.size(); ++j) {
-                std::cout << c.theta0[j];
-                if (j < c.theta0.size() - 1) std::cout << ", ";
-            }
-            std::cout << "], side=" << c.side << std::endl;
-        }
+    // print all candidates
+        // for (size_t idx = 0; idx < candidates.size(); ++idx) {
+        //     const auto& c = candidates[idx];
+        //     std::cout << "Candidate " << idx << ": tau=" << c.tau << ", st=[";
+        //     for (size_t j = 0; j < c.st.size(); ++j) {
+        //         std::cout << c.st[j];
+        //         if (j < c.st.size() - 1) std::cout << ", ";
+        //     }
+        //     std::cout << "], theta0=[";
+        //     for (size_t j = 0; j < c.theta0.size(); ++j) {
+        //         std::cout << c.theta0[j];
+        //         if (j < c.theta0.size() - 1) std::cout << ", ";
+        //     }
+        //     std::cout << "], side=" << c.side << std::endl;
+        // }
 
     int K = candidates.size();
     std::vector<double> costs(K, -1e300);
@@ -50,8 +50,8 @@ inline std::vector<double> compute_costs_gaussian(const std::vector<Candidate>& 
     for (int i = 0; i < K; ++i) {
 
         // print candidate index and candidates for debugging
-        std::cout << "Processing candidate index: " << i << std::endl;
-        std::cout << "Candidate tau: " << candidates[i].tau << std::endl;
+        // std::cout << "Processing candidate index: " << i << std::endl;
+        // std::cout << "Candidate tau: " << candidates[i].tau << std::endl;
 
 
         const auto& c = candidates[i];
@@ -64,24 +64,24 @@ inline std::vector<double> compute_costs_gaussian(const std::vector<Candidate>& 
             continue;
         }
         // print checkpoint
-        std::cout << "Checkpoint 1" << std::endl;
+        // std::cout << "Checkpoint 1" << std::endl;
         double cost;
         if (!c.has_theta0()) {
-            std::cout << "Checkpoint 2" << std::endl;
+            // std::cout << "Checkpoint 2" << std::endl;
             double term1 = 0.0;
             for (double val : S_i) {
                 // print S_i values for debugging
-                std::cout << "S_i value: " << val << std::endl;
+                // std::cout << "S_i value: " << val << std::endl;
                 term1 += val * val;
             }
             // print checkpoint
-            std::cout << "Checkpoint 3" << std::endl;
+            // std::cout << "Checkpoint 3" << std::endl;
             term1 /= static_cast<double>(tau);
 
             double term2 = 0.0;
             for (size_t j = 0; j < S_n.size(); ++j) {
                 // print S_n and S_i values for debugging
-                std::cout << "S_n[" << j << "]: " << S_n[j] << ", S_i[" << j << "]: " << S_i[j] << std::endl;
+                // std::cout << "S_n[" << j << "]: " << S_n[j] << ", S_i[" << j << "]: " << S_i[j] << std::endl;
                 double diff = S_n[j] - S_i[j];
                 term2 += diff * diff;
             }
@@ -89,7 +89,7 @@ inline std::vector<double> compute_costs_gaussian(const std::vector<Candidate>& 
 
             cost = term1 + term2 - term3;
             // print cost for debugging
-            std::cout << "Cost (no theta0): " << cost << std::endl;
+            // std::cout << "Cost (no theta0): " << cost << std::endl;
         } else {
             const std::vector<double>& theta0_vec = c.theta0;
             double shifted_sum = 0.0;

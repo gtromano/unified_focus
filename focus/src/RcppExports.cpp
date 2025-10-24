@@ -11,14 +11,19 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // detector_create
-SEXP detector_create(std::string family, std::string info);
-RcppExport SEXP _focus_detector_create(SEXP familySEXP, SEXP infoSEXP) {
+SEXP detector_create(std::string family, std::string info, Nullable<NumericVector> theta0, Nullable<List> dim_indexes, int pruning_mult, int pruning_offset, std::string side);
+RcppExport SEXP _focus_detector_create(SEXP familySEXP, SEXP infoSEXP, SEXP theta0SEXP, SEXP dim_indexesSEXP, SEXP pruning_multSEXP, SEXP pruning_offsetSEXP, SEXP sideSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::string >::type family(familySEXP);
     Rcpp::traits::input_parameter< std::string >::type info(infoSEXP);
-    rcpp_result_gen = Rcpp::wrap(detector_create(family, info));
+    Rcpp::traits::input_parameter< Nullable<NumericVector> >::type theta0(theta0SEXP);
+    Rcpp::traits::input_parameter< Nullable<List> >::type dim_indexes(dim_indexesSEXP);
+    Rcpp::traits::input_parameter< int >::type pruning_mult(pruning_multSEXP);
+    Rcpp::traits::input_parameter< int >::type pruning_offset(pruning_offsetSEXP);
+    Rcpp::traits::input_parameter< std::string >::type side(sideSEXP);
+    rcpp_result_gen = Rcpp::wrap(detector_create(family, info, theta0, dim_indexes, pruning_mult, pruning_offset, side));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -88,6 +93,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// detector_candidates
+List detector_candidates(SEXP detector_ptr);
+RcppExport SEXP _focus_detector_candidates(SEXP detector_ptrSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type detector_ptr(detector_ptrSEXP);
+    rcpp_result_gen = Rcpp::wrap(detector_candidates(detector_ptr));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rcpp_hello_world
 List rcpp_hello_world();
 RcppExport SEXP _focus_rcpp_hello_world() {
@@ -100,13 +116,14 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_focus_detector_create", (DL_FUNC) &_focus_detector_create, 2},
+    {"_focus_detector_create", (DL_FUNC) &_focus_detector_create, 7},
     {"_focus_detector_update", (DL_FUNC) &_focus_detector_update, 2},
     {"_focus_detector_statistic", (DL_FUNC) &_focus_detector_statistic, 1},
     {"_focus_detector_changepoint", (DL_FUNC) &_focus_detector_changepoint, 1},
     {"_focus_detector_pieces_len", (DL_FUNC) &_focus_detector_pieces_len, 1},
     {"_focus_detector_info_n", (DL_FUNC) &_focus_detector_info_n, 1},
     {"_focus_detector_info_sn", (DL_FUNC) &_focus_detector_info_sn, 1},
+    {"_focus_detector_candidates", (DL_FUNC) &_focus_detector_candidates, 1},
     {"_focus_rcpp_hello_world", (DL_FUNC) &_focus_rcpp_hello_world, 0},
     {NULL, NULL, 0}
 };
