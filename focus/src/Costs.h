@@ -108,65 +108,102 @@ inline std::vector<double> compute_costs_gaussian(const std::vector<Candidate>& 
 
 // Poisson cost function
 inline std::vector<double> compute_costs_poisson(const std::vector<Candidate>& candidates, const Info& cs) {
-    int K = candidates.size();
-    std::vector<double> costs(K, -1e300);
+  int K = static_cast<int>(candidates.size());
+  std::vector<double> costs(K, -1e300);
 
-    const std::vector<double>& S_n = cs.sn();
-    int n = cs.n();
+  const std::vector<double>& S_n = cs.sn();
+  int n = cs.n();
 
-    auto max_l = [](const std::vector<double>& st, int tau) -> double {
-        double result = 0.0;
-        for (double val : st) {
-            if (val > 0 && tau > 0) {
-                result += -val + val * std::log(val / tau);
-            }
-        }
-        return result;
-    };
+  // NOTE: This version deliberately computes the elementwise expression
+  // -val + val * log(val / tau) for every val, including val == 0,
+  // thereby matching numpy's behavior (which may produce NaN).
+  auto max_l = [](const std::vector<double>& st, int tau) -> double {
+    if (tau <= 0) return 0.0;                 // both implementations had tau check
+    double result = 0.0;
+    bool any_nan = false;
+    for (double val : st) {
+      // compute exactly: -val + val * log(val / tau)
+      double contrib;
+      // compute ratio and log; log(0) -> -inf, then val * log -> NaN if val==0
+      double ratio = val / static_cast<double>(tau);
+      double log_ratio = std::log(ratio);   // may be -inf or NaN
+      double term2 = val * log_ratio;       // may be NaN
+      contrib = -val + term2;               // may be NaN
 
-    double term3 = max_l(S_n, n);
+      if (std::isnan(contrib)) {
+        any_nan = true;
+      } else {
+        result += contrib;
+      }
+    }
+    return any_nan ? std::numeric_limits<double>::quiet_NaN() : result;
+  };
 
-    for (int i = 0; i < K; ++i) {
-        const auto& c = candidates[i];
-        int tau = c.tau;
-        const std::vector<double>& S_i = c.st;
-        int right_len = n - tau;
+  double term3 = max_l(S_n, n);
 
-        if (right_len <= 0) {
-            costs[i] = 0.0;
-            continue;
-        }
+  for (int i = 0; i < K; ++i) {
+    const auto& c = candidates[i];
+    int tau = c.tau;
+    const std::vector<double>& S_i = c.st;
+    int right_len = n - tau;
 
-        double cost;
-        if (!c.has_theta0()) {
-            double term1 = max_l(S_i, tau);
-            std::vector<double> diff(S_n.size());
-            for (size_t j = 0; j < S_n.size(); ++j) {
-                diff[j] = S_n[j] - S_i[j];
-            }
-            double term2 = max_l(diff, right_len);
-            cost = term1 + term2 - term3;
-        } else {
-            std::vector<double> diff(S_n.size());
-            for (size_t j = 0; j < S_n.size(); ++j) {
-                diff[j] = S_n[j] - S_i[j];
-            }
-            double term2 = max_l(diff, right_len);
-            const std::vector<double>& theta0_vec = c.theta0;
-            double null_val = 0.0;
-            for (size_t j = 0; j < S_n.size(); ++j) {
-                if (theta0_vec[j] > 0) {
-                    null_val += -right_len * theta0_vec[j] + diff[j] * std::log(theta0_vec[j]);
-                }
-            }
-            cost = term2 - null_val;
-        }
-
-        costs[i] = std::isnan(cost) ? 0.0 : cost;
+    if (right_len <= 0) {
+      costs[i] = 0.0;
+      continue;
     }
 
-    return costs;
+    double cost = 0.0;
+    if (!c.has_theta0()) {
+      // no theta0: term1 + term2 - term3
+      double term1 = max_l(S_i, tau);
+
+      // compute diff = S_n - S_i
+      std::vector<double> diff(S_n.size());
+      for (size_t j = 0; j < S_n.size(); ++j) diff[j] = S_n[j] - S_i[j];
+
+      double term2 = max_l(diff, right_len);
+
+      // If any of term1, term2, term3 is NaN, cost becomes NaN (to match Python)
+      if (std::isnan(term1) || std::isnan(term2) || std::isnan(term3)) {
+        cost = std::numeric_limits<double>::quiet_NaN();
+      } else {
+        cost = term1 + term2 - term3;
+      }
+    } else {
+      // theta0 provided: compute term2 and null_val *without* skipping any theta0 components
+      std::vector<double> diff(S_n.size());
+      for (size_t j = 0; j < S_n.size(); ++j) diff[j] = S_n[j] - S_i[j];
+
+      double term2 = max_l(diff, right_len);
+
+      // compute null_val exactly as Python would: -right_len*theta0 + diff*log(theta0)
+      const std::vector<double>& theta0_vec = c.theta0;
+      bool any_nan = false;
+      double null_val = 0.0;
+      for (size_t j = 0; j < S_n.size(); ++j) {
+        double th = (j < theta0_vec.size()) ? theta0_vec[j] : std::numeric_limits<double>::quiet_NaN();
+        double log_th = std::log(th); // log of nonpositive -> -inf or NaN
+        double contrib = - static_cast<double>(right_len) * th + diff[j] * log_th; // may be NaN
+        if (std::isnan(contrib)) {
+          any_nan = true;
+        } else {
+          null_val += contrib;
+        }
+      }
+
+      if (std::isnan(term2) || any_nan) {
+        cost = std::numeric_limits<double>::quiet_NaN();
+      } else {
+        cost = term2 - null_val;
+      }
+    }
+
+    costs[i] = std::isnan(cost) ? 0.0 : cost;
+  }
+
+  return costs;
 }
+
 
 // Two-sided cost wrapper
 inline CostFunction make_two_sided_cost_fn(const CostFunction& base_cost_fn) {
