@@ -223,10 +223,10 @@ inline CostFunction make_two_sided_cost_fn(const CostFunction& base_cost_fn) {
 
             if (c.side == "left") {
                 std::vector<double> single_cost = base_cost_fn(single, *uni_cs->left());
-                costs[i] = !single_cost.empty() ? single_cost[0] : -1e300;
+                costs[i] = single_cost[0];
             } else {
                 std::vector<double> single_cost = base_cost_fn(single, *uni_cs->right());
-                costs[i] = !single_cost.empty() ? single_cost[0] : -1e300;
+                costs[i] = single_cost[0];
             }
         }
 

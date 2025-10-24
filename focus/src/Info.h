@@ -93,7 +93,7 @@ public:
         while (i > 1) {
             const auto& c1 = side_candidates[i - 1];
             const auto& c0 = side_candidates[i - 2];
-            
+
             int tau1 = c1.tau;
             int tau0 = c0.tau;
             int denom1 = n_ - tau1;
@@ -105,7 +105,9 @@ public:
             double ratio1 = (denom1 > 0) ? (num1 / denom1) : std::numeric_limits<double>::infinity();
             double ratio0 = (denom0 > 0) ? (num0 / denom0) : std::numeric_limits<double>::infinity();
 
-            if (ratio1 <= ratio0) {
+            bool cond = (c1.side == "right") ? (ratio1 <= ratio0) : (ratio1 >= ratio0);
+
+            if (cond) {
                 i--;
                 if (i == 1) break;
             } else {
@@ -148,11 +150,11 @@ public:
     UnivariateInfo(double theta0 = std::numeric_limits<double>::quiet_NaN(),
                    double sn = 0.0, int n = 0)
         : Info({sn}, n, std::isnan(theta0) ? std::vector<double>() : std::vector<double>({theta0})) {
-        
-        double left_theta0 = std::isnan(theta0) ? std::numeric_limits<double>::quiet_NaN() : -theta0;
-        
+
+        //double left_theta0 = std::isnan(theta0) ? std::numeric_limits<double>::quiet_NaN() : -theta0;
+
         right_ = std::make_unique<OneSideUnivariateInfo>(theta0, sn, n, "right");
-        left_ = std::make_unique<OneSideUnivariateInfo>(left_theta0, sn, n, "left");
+        left_ = std::make_unique<OneSideUnivariateInfo>(theta0, sn, n, "left");
     }
 
     std::vector<Candidate> new_candidate() const override {
@@ -168,11 +170,11 @@ public:
         // Update right with y
         right_->update(y);
         // Update left with -y
-        std::vector<double> neg_y(y.size());
-        for (size_t i = 0; i < y.size(); ++i) {
-            neg_y[i] = -y[i];
-        }
-        left_->update(neg_y);
+        // std::vector<double> neg_y(y.size());
+        // for (size_t i = 0; i < y.size(); ++i) {
+        //     neg_y[i] = -y[i];
+        // }
+        left_->update(y);
 
         // Keep top-level consistent
         n_ = right_->n();
