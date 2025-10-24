@@ -138,7 +138,7 @@ inline std::vector<double> compute_costs_poisson(const std::vector<Candidate>& c
         }
 
         double cost;
-        if (c.has_theta0()) {
+        if (!c.has_theta0()) {
             double term1 = max_l(S_i, tau);
             std::vector<double> diff(S_n.size());
             for (size_t j = 0; j < S_n.size(); ++j) {
