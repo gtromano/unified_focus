@@ -11,96 +11,86 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // detector_create
-SEXP detector_create(std::string family, std::string info, Nullable<NumericVector> theta0, Nullable<List> dim_indexes, int pruning_mult, int pruning_offset, std::string side);
-RcppExport SEXP _focus_detector_create(SEXP familySEXP, SEXP infoSEXP, SEXP theta0SEXP, SEXP dim_indexesSEXP, SEXP pruning_multSEXP, SEXP pruning_offsetSEXP, SEXP sideSEXP) {
+SEXP detector_create(std::string info, Nullable<NumericVector> theta0, Nullable<List> dim_indexes, int pruning_mult, int pruning_offset, std::string side);
+RcppExport SEXP _focus_detector_create(SEXP infoSEXP, SEXP theta0SEXP, SEXP dim_indexesSEXP, SEXP pruning_multSEXP, SEXP pruning_offsetSEXP, SEXP sideSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< std::string >::type family(familySEXP);
     Rcpp::traits::input_parameter< std::string >::type info(infoSEXP);
     Rcpp::traits::input_parameter< Nullable<NumericVector> >::type theta0(theta0SEXP);
     Rcpp::traits::input_parameter< Nullable<List> >::type dim_indexes(dim_indexesSEXP);
     Rcpp::traits::input_parameter< int >::type pruning_mult(pruning_multSEXP);
     Rcpp::traits::input_parameter< int >::type pruning_offset(pruning_offsetSEXP);
     Rcpp::traits::input_parameter< std::string >::type side(sideSEXP);
-    rcpp_result_gen = Rcpp::wrap(detector_create(family, info, theta0, dim_indexes, pruning_mult, pruning_offset, side));
+    rcpp_result_gen = Rcpp::wrap(detector_create(info, theta0, dim_indexes, pruning_mult, pruning_offset, side));
     return rcpp_result_gen;
 END_RCPP
 }
 // detector_update
-void detector_update(SEXP detector_ptr, NumericVector y);
-RcppExport SEXP _focus_detector_update(SEXP detector_ptrSEXP, SEXP ySEXP) {
+void detector_update(SEXP info_ptr, NumericVector y);
+RcppExport SEXP _focus_detector_update(SEXP info_ptrSEXP, SEXP ySEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type detector_ptr(detector_ptrSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type info_ptr(info_ptrSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
-    detector_update(detector_ptr, y);
+    detector_update(info_ptr, y);
     return R_NilValue;
 END_RCPP
 }
-// detector_statistic
-double detector_statistic(SEXP detector_ptr);
-RcppExport SEXP _focus_detector_statistic(SEXP detector_ptrSEXP) {
+// get_statistics
+List get_statistics(SEXP info_ptr, std::string family, Nullable<NumericVector> theta0);
+RcppExport SEXP _focus_get_statistics(SEXP info_ptrSEXP, SEXP familySEXP, SEXP theta0SEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type detector_ptr(detector_ptrSEXP);
-    rcpp_result_gen = Rcpp::wrap(detector_statistic(detector_ptr));
-    return rcpp_result_gen;
-END_RCPP
-}
-// detector_changepoint
-List detector_changepoint(SEXP detector_ptr);
-RcppExport SEXP _focus_detector_changepoint(SEXP detector_ptrSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type detector_ptr(detector_ptrSEXP);
-    rcpp_result_gen = Rcpp::wrap(detector_changepoint(detector_ptr));
+    Rcpp::traits::input_parameter< SEXP >::type info_ptr(info_ptrSEXP);
+    Rcpp::traits::input_parameter< std::string >::type family(familySEXP);
+    Rcpp::traits::input_parameter< Nullable<NumericVector> >::type theta0(theta0SEXP);
+    rcpp_result_gen = Rcpp::wrap(get_statistics(info_ptr, family, theta0));
     return rcpp_result_gen;
 END_RCPP
 }
 // detector_pieces_len
-int detector_pieces_len(SEXP detector_ptr);
-RcppExport SEXP _focus_detector_pieces_len(SEXP detector_ptrSEXP) {
+int detector_pieces_len(SEXP info_ptr);
+RcppExport SEXP _focus_detector_pieces_len(SEXP info_ptrSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type detector_ptr(detector_ptrSEXP);
-    rcpp_result_gen = Rcpp::wrap(detector_pieces_len(detector_ptr));
+    Rcpp::traits::input_parameter< SEXP >::type info_ptr(info_ptrSEXP);
+    rcpp_result_gen = Rcpp::wrap(detector_pieces_len(info_ptr));
     return rcpp_result_gen;
 END_RCPP
 }
 // detector_info_n
-int detector_info_n(SEXP detector_ptr);
-RcppExport SEXP _focus_detector_info_n(SEXP detector_ptrSEXP) {
+int detector_info_n(SEXP info_ptr);
+RcppExport SEXP _focus_detector_info_n(SEXP info_ptrSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type detector_ptr(detector_ptrSEXP);
-    rcpp_result_gen = Rcpp::wrap(detector_info_n(detector_ptr));
+    Rcpp::traits::input_parameter< SEXP >::type info_ptr(info_ptrSEXP);
+    rcpp_result_gen = Rcpp::wrap(detector_info_n(info_ptr));
     return rcpp_result_gen;
 END_RCPP
 }
 // detector_info_sn
-std::vector<double> detector_info_sn(SEXP detector_ptr);
-RcppExport SEXP _focus_detector_info_sn(SEXP detector_ptrSEXP) {
+std::vector<double> detector_info_sn(SEXP info_ptr);
+RcppExport SEXP _focus_detector_info_sn(SEXP info_ptrSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type detector_ptr(detector_ptrSEXP);
-    rcpp_result_gen = Rcpp::wrap(detector_info_sn(detector_ptr));
+    Rcpp::traits::input_parameter< SEXP >::type info_ptr(info_ptrSEXP);
+    rcpp_result_gen = Rcpp::wrap(detector_info_sn(info_ptr));
     return rcpp_result_gen;
 END_RCPP
 }
 // detector_candidates
-List detector_candidates(SEXP detector_ptr);
-RcppExport SEXP _focus_detector_candidates(SEXP detector_ptrSEXP) {
+List detector_candidates(SEXP info_ptr);
+RcppExport SEXP _focus_detector_candidates(SEXP info_ptrSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type detector_ptr(detector_ptrSEXP);
-    rcpp_result_gen = Rcpp::wrap(detector_candidates(detector_ptr));
+    Rcpp::traits::input_parameter< SEXP >::type info_ptr(info_ptrSEXP);
+    rcpp_result_gen = Rcpp::wrap(detector_candidates(info_ptr));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -116,10 +106,9 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_focus_detector_create", (DL_FUNC) &_focus_detector_create, 7},
+    {"_focus_detector_create", (DL_FUNC) &_focus_detector_create, 6},
     {"_focus_detector_update", (DL_FUNC) &_focus_detector_update, 2},
-    {"_focus_detector_statistic", (DL_FUNC) &_focus_detector_statistic, 1},
-    {"_focus_detector_changepoint", (DL_FUNC) &_focus_detector_changepoint, 1},
+    {"_focus_get_statistics", (DL_FUNC) &_focus_get_statistics, 3},
     {"_focus_detector_pieces_len", (DL_FUNC) &_focus_detector_pieces_len, 1},
     {"_focus_detector_info_n", (DL_FUNC) &_focus_detector_info_n, 1},
     {"_focus_detector_info_sn", (DL_FUNC) &_focus_detector_info_sn, 1},
