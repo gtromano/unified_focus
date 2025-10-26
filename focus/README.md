@@ -538,10 +538,12 @@ abline(v = 500, col = "green", lty = 3, lwd = 2)
 par(mfrow = c(1, 1))
 ```
 
-This flexibility allows you to: - Test different statistical models on
-the same data - Use the same detector infrastructure across different
-distributions - Implement your own functions! The optimal change
-candidates are always accessible via:
+This flexibility allows you to:
+
+- Test different statistical models on the same data
+- Use the same detector infrastructure across different distributions
+- Implement your own functions! The optimal change candidates are always
+  accessible via:
 
 ``` r
 head(detector_candidates(det2))
@@ -581,7 +583,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.505   0.000   0.505 
+      0.501   0.001   0.503 
 
 ``` r
 # Benchmark online mode
@@ -605,7 +607,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.739   0.000   0.740 
+      0.753   0.000   0.754 
 
 ``` r
 # Verify both produce identical results
@@ -627,10 +629,11 @@ cat("Offline mode is", round(speedup, 1), "x faster\n")
 
 If you wish to use the library entirely in C++ (for maximum speed or
 integration into other C++ projects), you can do so by following the
-patterns in the source code. The key classes are: - `Info` and derived
-classes (`UnivariateInfo`, `MultivariateInfo`) - Cost functions
-(`compute_costs_gaussian`, `compute_costs_poisson`) -
-`ChangepointResult` structure
+patterns in the source code. The key classes are:
+
+- `Info` and derived classes (`UnivariateInfo`, `MultivariateInfo`)
+- Cost functions (`compute_costs_gaussian`, `compute_costs_poisson`)
+- `ChangepointResult` structure
 
 Example C++ usage:
 
@@ -654,7 +657,7 @@ for (const auto& y : data) {
 
 ## References
 
-- Romano, G., Eckley, I. A., Fearnhead, P., & Rigaill, G. (2022). Fast
+- Romano, G., Eckley, I. A., Fearnhead, P., & Rigaill, G. (2023). Fast
   online changepoint detection via functional pruning CUSUM statistics.
   *Journal of Machine Learning Research*, 23(145), 1-36.
 

@@ -255,7 +255,6 @@ List focus_offline(SEXP Y,
                    std::string side = "right") {
 
   // ---- Parse input data Y ----
-  // Y can be a numeric vector (univariate) or matrix (multivariate)
   NumericMatrix Y_mat;
   NumericVector Y_vec;
   bool is_matrix = false;
@@ -274,7 +273,7 @@ List focus_offline(SEXP Y,
     is_matrix = false;
   }
 
-  // ---- Validate type against data dimensions ----
+  // ---- Validate type against data dimensions (unchanged) ----
   if (type == "multivariate" && p_dim == 1) {
     warning("type='multivariate' specified but Y is univariate (vector or single column). Consider using type='univariate' or 'univariate_one_sided'.");
   }
@@ -287,50 +286,51 @@ List focus_offline(SEXP Y,
   SEXP detector_ptr = detector_create(type, theta0, dim_indexes, pruning_mult, pruning_offset, side);
   XPtr<std::shared_ptr<Info>> ptr(detector_ptr);
   if (!ptr || !(*ptr)) stop("Failed to create detector");
-
   std::shared_ptr<Info>& info = *ptr;
 
   // ---- Prepare theta0 for cost function ----
   std::vector<double> theta0_vec;
-
   if (!theta0.isNull()) {
     NumericVector th(theta0.get());
-    if (th.size() >= 1) {
-      theta0_vec = as<std::vector<double>>(th);
-    }
+    if (th.size() >= 1) theta0_vec = as<std::vector<double>>(th); // single copy
   }
-
-  // If theta0 not provided, use the one from Info (if available)
   if (theta0_vec.empty() && info->has_theta0()) {
-    theta0_vec = info->theta0();
+    theta0_vec = info->theta0(); // copy from Info if present
   }
 
   // ---- Select cost function ----
   CostFunction cost_fn;
+  const auto* maybe_uni = dynamic_cast<const UnivariateInfo*>(info.get());
+  bool is_univariate_info = (maybe_uni != nullptr);
 
   if (family == "gaussian") {
-    const auto* uni_cs = dynamic_cast<const UnivariateInfo*>(info.get());
-    if (uni_cs) {
-      cost_fn = make_two_sided_gaussian();
-    } else {
-      cost_fn = compute_costs_gaussian;
-    }
+    if (is_univariate_info) cost_fn = make_two_sided_gaussian();
+    else cost_fn = compute_costs_gaussian;
   } else if (family == "poisson") {
-    const auto* uni_cs = dynamic_cast<const UnivariateInfo*>(info.get());
-    if (uni_cs) {
-      cost_fn = make_two_sided_poisson();
-    } else {
-      cost_fn = compute_costs_poisson;
-    }
+    if (is_univariate_info) cost_fn = make_two_sided_poisson();
+    else cost_fn = compute_costs_poisson;
   } else {
     stop("Unknown family: must be 'gaussian' or 'poisson'");
   }
 
-  // ---- Prepare output vectors ----
-  NumericVector stat_vec(n_obs);
-  IntegerVector changepoint_vec(n_obs);
+  // ---- Prepare reusable containers ----
+  std::vector<double> stats;
+  std::vector<int> changepoints;
+  stats.reserve(n_obs);
+  changepoints.reserve(n_obs);
 
-  std::fill(changepoint_vec.begin(), changepoint_vec.end(), NA_INTEGER);
+  // Reusable observation vector for updates (avoid per-iteration alloc)
+  std::vector<double> y_t;
+  y_t.resize(static_cast<size_t>(p_dim));
+
+  // For matrix input: precompute column base pointers for faster indexing
+  std::vector<const double*> col_ptrs;
+  if (is_matrix) {
+    col_ptrs.resize(static_cast<size_t>(p_dim));
+    for (int j = 0; j < p_dim; ++j) {
+      col_ptrs[static_cast<size_t>(j)] = &Y_mat(0, j); // pointer to column j
+    }
+  }
 
   int detection_time = NA_INTEGER;
   int detected_changepoint = NA_INTEGER;
@@ -338,46 +338,44 @@ List focus_offline(SEXP Y,
 
   // ---- Run online detection ----
   for (int t = 0; t < n_obs; ++t) {
-    // Extract observation at time t
-    std::vector<double> y_t;
+    // Fill y_t in-place (no allocation)
     if (is_matrix) {
-      y_t.resize(p_dim);
+      // column-major: accessing by column pointer + t is cache-friendly for per-row extraction
       for (int j = 0; j < p_dim; ++j) {
-        y_t[j] = Y_mat(t, j);
+        y_t[static_cast<size_t>(j)] = col_ptrs[static_cast<size_t>(j)][t];
       }
     } else {
-      y_t = {Y_vec[t]};
+      y_t[0] = Y_vec[t];
     }
 
-    // Update detector directly
+    // Update detector
     info->update(y_t);
 
-    // Get statistics directly
+    // Compute statistics once
     ChangepointResult result = cost_fn(*info, theta0_vec);
 
-    stat_vec[t] = result.stat.has_value() ? result.stat.value() : 0.0;
+    // extract stat (use 0.0 if no stat)
+    double stat_val = result.stat.has_value() ? result.stat.value() : 0.0;
+    stats.push_back(stat_val);
 
     if (result.changepoint.has_value()) {
-      changepoint_vec[t] = result.changepoint.value();
+      changepoints.push_back(result.changepoint.value());
+    } else {
+      changepoints.push_back(NA_INTEGER);
     }
 
     actual_length = t + 1;
 
-    // Check threshold and stop at detection
-    double stat_val = result.stat.has_value() ? result.stat.value() : 0.0;
     if (stat_val > threshold) {
-      detection_time = t + 1;  // R uses 1-based indexing
-      if (result.changepoint.has_value()) {
-        detected_changepoint = result.changepoint.value();
-      }
-      // Stop at detection
+      detection_time = t + 1; // 1-based for R
+      if (result.changepoint.has_value()) detected_changepoint = result.changepoint.value();
       break;
     }
   }
 
-  // Truncate output vectors to actual length
-  stat_vec = stat_vec[Range(0, actual_length - 1)];
-  changepoint_vec = changepoint_vec[Range(0, actual_length - 1)];
+  // ---- Convert to R vectors once ----
+  NumericVector stat_vec = wrap(stats);
+  IntegerVector changepoint_vec = wrap(changepoints);
 
   // ---- Return results ----
   return List::create(
@@ -391,3 +389,4 @@ List focus_offline(SEXP Y,
     Named("family") = family
   );
 }
+
