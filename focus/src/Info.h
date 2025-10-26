@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include <limits>
-#include <cmath> // For std::isnan
+#include <cmath>
 
 namespace changepoint {
 
@@ -16,6 +16,7 @@ protected:
     std::vector<double> sn_;                    // Cumulative sum
     int n_;                                     // Number of observations
     std::vector<double> theta0_;                // Null hypothesis parameter (empty or NaN if missing)
+    std::vector<Candidate> candidates_;         // Candidate changepoints
 
 public:
     Info(const std::vector<double>& sn = {0.0},
@@ -27,21 +28,31 @@ public:
 
     // Create new candidate(s) representing current state
     virtual std::vector<Candidate> new_candidate() const {
-        return {Candidate(sn_, n_, theta0_, "right")};
+        return {Candidate(sn_, n_, "right")};
     }
 
-    virtual void update(const std::vector<double>& y) {
-        // print "updating Info" for debugging
-        // std::cout << "updating Info" << std::endl;
-
+    // Add new observation point (renamed from old update)
+    virtual void add_new_point(const std::vector<double>& y) {
         n_++;
         if (sn_.size() != y.size()) {
-            // adjust the size of sn_ if necessary
             sn_.resize(y.size(), 0.0);
         }
         for (size_t i = 0; i < sn_.size(); ++i) {
             sn_[i] += y[i];
         }
+    }
+
+    // New update method that replaces Detector.update()
+    virtual void update(const std::vector<double>& y) {
+        // Update cumulative state
+        add_new_point(y);
+        
+        // Prune candidates
+        candidates_ = prune(candidates_);
+        
+        // Append new candidate(s) for current time
+        auto new_cands = new_candidate();
+        candidates_.insert(candidates_.end(), new_cands.begin(), new_cands.end());
     }
 
     virtual std::vector<Candidate> prune(const std::vector<Candidate>& candidates) const {
@@ -52,6 +63,7 @@ public:
     int n() const { return n_; }
     const std::vector<double>& theta0() const { return theta0_; }
     bool has_theta0() const { return !theta0_.empty() && !std::isnan(theta0_[0]); }
+    const std::vector<Candidate>& candidates() const { return candidates_; }
 };
 
 // One-sided univariate Info with monotone pruning
@@ -68,10 +80,14 @@ public:
         if (side != "right" && side != "left") {
             throw std::invalid_argument("side must be 'right' or 'left'");
         }
+        
+        // Initialize with first candidate
+        auto initial = new_candidate();
+        candidates_.insert(candidates_.end(), initial.begin(), initial.end());
     }
 
     std::vector<Candidate> new_candidate() const override {
-        return {Candidate(sn_, n_, theta0_, side_)};
+        return {Candidate(sn_, n_, side_)};
     }
 
     std::vector<Candidate> prune(const std::vector<Candidate>& candidates) const override {
@@ -151,10 +167,14 @@ public:
                    double sn = 0.0, int n = 0)
         : Info({sn}, n, std::isnan(theta0) ? std::vector<double>() : std::vector<double>({theta0})) {
 
-        //double left_theta0 = std::isnan(theta0) ? std::numeric_limits<double>::quiet_NaN() : -theta0;
-
         right_ = std::make_unique<OneSideUnivariateInfo>(theta0, sn, n, "right");
         left_ = std::make_unique<OneSideUnivariateInfo>(theta0, sn, n, "left");
+        
+        // Initialize candidates from both sides
+        auto right_cand = right_->new_candidate();
+        auto left_cand = left_->new_candidate();
+        candidates_.insert(candidates_.end(), right_cand.begin(), right_cand.end());
+        candidates_.insert(candidates_.end(), left_cand.begin(), left_cand.end());
     }
 
     std::vector<Candidate> new_candidate() const override {
@@ -166,19 +186,37 @@ public:
         return result;
     }
 
-    void update(const std::vector<double>& y) override {
+    void add_new_point(const std::vector<double>& y) override {
         // Update right with y
+        right_->add_new_point(y);
+        // Update left with y
+        left_->add_new_point(y);
+
+        // Keep top-level consistent
+        n_ = right_->n();
+        sn_ = right_->sn();
+    }
+
+    void update(const std::vector<double>& y) override {
+        // Update both sides
         right_->update(y);
-        // Update left with -y
-        // std::vector<double> neg_y(y.size());
-        // for (size_t i = 0; i < y.size(); ++i) {
-        //     neg_y[i] = -y[i];
-        // }
         left_->update(y);
 
         // Keep top-level consistent
         n_ = right_->n();
         sn_ = right_->sn();
+        
+        // Combine candidates from both sides
+        candidates_.clear();
+        const auto& right_cands = right_->candidates();
+        const auto& left_cands = left_->candidates();
+        candidates_.insert(candidates_.end(), right_cands.begin(), right_cands.end());
+        candidates_.insert(candidates_.end(), left_cands.begin(), left_cands.end());
+        
+        std::sort(candidates_.begin(), candidates_.end(),
+                 [](const Candidate& a, const Candidate& b) {
+                     return a.tau < b.tau || (a.tau == b.tau && a.side < b.side);
+                 });
     }
 
     std::vector<Candidate> prune(const std::vector<Candidate>& candidates) const override {

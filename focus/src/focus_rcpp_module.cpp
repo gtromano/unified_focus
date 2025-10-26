@@ -12,10 +12,8 @@ using namespace changepoint;
 // Factories & wrappers
 // ------------------------
 
-
 // [[Rcpp::export]]
-SEXP detector_create(std::string family,
-                     std::string info,
+SEXP detector_create(std::string type,
                      Nullable<NumericVector> theta0 = R_NilValue,
                      Nullable<List> dim_indexes = R_NilValue,
                      int pruning_mult = 2,
@@ -24,16 +22,6 @@ SEXP detector_create(std::string family,
   using namespace changepoint;
 
   std::shared_ptr<Info> cs;
-  CostFunction cost_fn;
-
-  // ---- Select cost function ----
-  if (family == "gaussian") {
-    cost_fn = compute_costs_gaussian;
-  } else if (family == "poisson") {
-    cost_fn = compute_costs_poisson;
-  } else {
-    stop("Unknown family: must be 'gaussian' or 'poisson'");
-  }
 
   // ---- Prepare theta0 ----
   std::vector<double> theta0_vec;
@@ -51,7 +39,7 @@ SEXP detector_create(std::string family,
   }
 
   // ---- Build Info object ----
-  if (info == "multivariate") {
+  if (type == "multivariate") {
     // Parse dim_indexes if provided
     std::vector<std::pair<int,int>> dim_idx;
     if (!dim_indexes.isNull()) {
@@ -74,19 +62,15 @@ SEXP detector_create(std::string family,
       pruning_offset
     );
 
-  } else if (info == "univariate") {
+  } else if (type == "univariate") {
     // two-sided
-
-    // make the cost function two sided with make_two_sided_cost_fn
-    cost_fn = make_two_sided_cost_fn(cost_fn);
-
     cs = std::make_shared<UnivariateInfo>(
       theta0_scalar,  // defaults to NaN if not provided
       0.0,            // sn
       0               // n
     );
 
-  } else if (info == "univariate_one_sided") {
+  } else if (type == "univariate_one_sided") {
     // one-sided
     if (side != "right" && side != "left")
       stop("side must be 'right' or 'left'");
@@ -98,40 +82,78 @@ SEXP detector_create(std::string family,
     );
 
   } else {
-    stop("info must be one of: 'multivariate', 'univariate', 'univariate_one_sided'");
+    stop("type must be one of: 'multivariate', 'univariate', 'univariate_one_sided'");
   }
 
-  // ---- Construct Detector ----
-  auto detector = std::make_shared<Detector>(cs, cost_fn);
-  XPtr<std::shared_ptr<Detector>> ptr(new std::shared_ptr<Detector>(detector), true);
+  // ---- Return Info pointer ----
+  XPtr<std::shared_ptr<Info>> ptr(new std::shared_ptr<Info>(cs), true);
   return ptr;
 }
 
 
 // Update detector with new observation vector y
 // [[Rcpp::export]]
-void detector_update(SEXP detector_ptr, NumericVector y) {
-  XPtr<std::shared_ptr<Detector>> ptr(detector_ptr);
-  if (!ptr || !(*ptr)) stop("Invalid detector pointer");
+void detector_update(SEXP info_ptr, NumericVector y) {
+  XPtr<std::shared_ptr<Info>> ptr(info_ptr);
+  if (!ptr || !(*ptr)) stop("Invalid info pointer");
   (*ptr)->update(as<std::vector<double>>(y));
 }
 
-// Get statistic (double)
+// Get statistics (changepoint result) by computing costs
 // [[Rcpp::export]]
-double detector_statistic(SEXP detector_ptr) {
-  XPtr<std::shared_ptr<Detector>> ptr(detector_ptr);
-  if (!ptr || !(*ptr)) stop("Invalid detector pointer");
-  return (*ptr)->statistic();
-}
+List get_statistics(SEXP info_ptr,
+                    std::string family,
+                    Nullable<NumericVector> theta0 = R_NilValue) {
+  XPtr<std::shared_ptr<Info>> ptr(info_ptr);
+  if (!ptr || !(*ptr)) stop("Invalid info pointer");
 
-// Get changepoint result as an R list with NULL or scalar values.
-// [[Rcpp::export]]
-List detector_changepoint(SEXP detector_ptr) {
-  XPtr<std::shared_ptr<Detector>> ptr(detector_ptr);
-  if (!ptr || !(*ptr)) stop("Invalid detector pointer");
+  const Info& cs = **ptr;
 
-  auto result = (*ptr)->changepoint();
+  // ---- Prepare theta0 for cost function ----
+  std::vector<double> theta0_vec;
 
+  if (!theta0.isNull()) {
+    NumericVector th(theta0.get());
+    if (th.size() >= 1) {
+      theta0_vec = as<std::vector<double>>(th);
+    }
+  }
+
+  // If theta0 not provided, use the one from Info (if available)
+  if (theta0_vec.empty() && cs.has_theta0()) {
+    theta0_vec = cs.theta0();
+  }
+
+  // ---- Select and apply cost function ----
+  ChangepointResult result;
+
+  if (family == "gaussian") {
+    // Check if we need two-sided version
+    const auto* uni_cs = dynamic_cast<const UnivariateInfo*>(&cs);
+    if (uni_cs) {
+      // Two-sided univariate
+      auto cost_fn = make_two_sided_gaussian();
+      result = cost_fn(cs, theta0_vec);
+    } else {
+      // One-sided or multivariate
+      result = compute_costs_gaussian(cs, theta0_vec);
+    }
+  } else if (family == "poisson") {
+    // Check if we need two-sided version
+    const auto* uni_cs = dynamic_cast<const UnivariateInfo*>(&cs);
+    if (uni_cs) {
+      // Two-sided univariate
+      auto cost_fn = make_two_sided_poisson();
+      result = cost_fn(cs, theta0_vec);
+    } else {
+      // One-sided or multivariate
+      result = compute_costs_poisson(cs, theta0_vec);
+    }
+  } else {
+    stop("Unknown family: must be 'gaussian' or 'poisson'");
+  }
+
+  // ---- Convert to R list ----
   RObject cp = R_NilValue;
   RObject st = R_NilValue;
 
@@ -149,44 +171,42 @@ List detector_changepoint(SEXP detector_ptr) {
   );
 }
 
-// Optional helper: extract number of pieces (size_t -> integer) for inspection.
-// returns integer scalar
+// Get number of candidates for inspection
 // [[Rcpp::export]]
-int detector_pieces_len(SEXP detector_ptr) {
-  XPtr<std::shared_ptr<Detector>> ptr(detector_ptr);
-  if (!ptr || !(*ptr)) stop("Invalid detector pointer");
-  return static_cast<int>((*ptr)->pieces().size());
+int detector_pieces_len(SEXP info_ptr) {
+  XPtr<std::shared_ptr<Info>> ptr(info_ptr);
+  if (!ptr || !(*ptr)) stop("Invalid info pointer");
+  return static_cast<int>((*ptr)->candidates().size());
 }
 
-// Optional helper: get info.n() from detector (delegates to Info::n())
+// Get info.n()
 // [[Rcpp::export]]
-int detector_info_n(SEXP detector_ptr) {
-  XPtr<std::shared_ptr<Detector>> ptr(detector_ptr);
-  if (!ptr || !(*ptr)) stop("Invalid detector pointer");
-  return (*ptr)->info().n();
+int detector_info_n(SEXP info_ptr) {
+  XPtr<std::shared_ptr<Info>> ptr(info_ptr);
+  if (!ptr || !(*ptr)) stop("Invalid info pointer");
+  return (*ptr)->n();
 }
 
+// Get info.sn()
 // [[Rcpp::export]]
-std::vector<double> detector_info_sn(SEXP detector_ptr) {
-  XPtr<std::shared_ptr<Detector>> ptr(detector_ptr);
-  if (!ptr || !(*ptr)) stop("Invalid detector pointer");
-  return (*ptr)->info().sn();
+std::vector<double> detector_info_sn(SEXP info_ptr) {
+  XPtr<std::shared_ptr<Info>> ptr(info_ptr);
+  if (!ptr || !(*ptr)) stop("Invalid info pointer");
+  return (*ptr)->sn();
 }
 
-
+// Get all candidates as a data frame
 // [[Rcpp::export]]
-List detector_candidates(SEXP detector_ptr) {
-  XPtr<std::shared_ptr<Detector>> ptr(detector_ptr);
-  if (!ptr || !(*ptr)) stop("Invalid detector pointer");
+List detector_candidates(SEXP info_ptr) {
+  XPtr<std::shared_ptr<Info>> ptr(info_ptr);
+  if (!ptr || !(*ptr)) stop("Invalid info pointer");
 
-  // Assume Detector::pieces() returns std::vector<Candidate>
-  const auto& candidates = (*ptr)->pieces();
+  const auto& candidates = (*ptr)->candidates();
   const size_t K = candidates.size();
 
   IntegerVector tau(K);
   CharacterVector side(K);
   List st_list(K);      // each element: NumericVector for candidate.st
-  List theta0_list(K);  // each element: NumericVector for candidate.theta0 or R_NilValue if empty
 
   for (size_t i = 0; i < K; ++i) {
     const Candidate& c = candidates[i];
@@ -204,28 +224,169 @@ List detector_candidates(SEXP detector_ptr) {
       // defensive: empty st -> NULL
       st_list[i] = R_NilValue;
     }
-
-    // theta0 - return NULL if empty
-    if (c.has_theta0()) {
-      theta0_list[i] = NumericVector(c.theta0.begin(), c.theta0.end());
-    } else {
-      theta0_list[i] = R_NilValue;
-    }
   }
 
-  // Construct a data-frame-like list (list-columns are allowed)
+  // Construct a data-frame-like list (no theta0 column anymore)
   List out = List::create(
     Named("tau") = tau,
     Named("st")  = st_list,
-    Named("theta0") = theta0_list,
     Named("side") = side
   );
 
-  // Optionally give it class "data.frame" and set rownames if you want a proper data.frame:
-  out.attr("class") = CharacterVector::create("tbl_df", "tbl", "data.frame"); // optional: tibble-like
-  // set rownames
+  // Optionally give it class "data.frame" and set rownames
+  out.attr("class") = CharacterVector::create("tbl_df", "tbl", "data.frame");
   IntegerVector rn = seq(1, static_cast<int>(K));
   out.attr("row.names") = rn;
 
   return out;
 }
+
+
+// Run complete offline detection in C++ for efficiency
+// [[Rcpp::export]]
+List focus_offline(SEXP Y,
+                   double threshold,
+                   std::string type,
+                   std::string family,
+                   Nullable<NumericVector> theta0 = R_NilValue,
+                   Nullable<List> dim_indexes = R_NilValue,
+                   int pruning_mult = 2,
+                   int pruning_offset = 1,
+                   std::string side = "right") {
+
+  // ---- Parse input data Y ----
+  NumericMatrix Y_mat;
+  NumericVector Y_vec;
+  bool is_matrix = false;
+  int n_obs = 0;
+  int p_dim = 1;
+
+  if (Rf_isMatrix(Y)) {
+    Y_mat = as<NumericMatrix>(Y);
+    n_obs = Y_mat.nrow();
+    p_dim = Y_mat.ncol();
+    is_matrix = true;
+  } else {
+    Y_vec = as<NumericVector>(Y);
+    n_obs = Y_vec.size();
+    p_dim = 1;
+    is_matrix = false;
+  }
+
+  // ---- Validate type against data dimensions (unchanged) ----
+  if (type == "multivariate" && p_dim == 1) {
+    warning("type='multivariate' specified but Y is univariate (vector or single column). Consider using type='univariate' or 'univariate_one_sided'.");
+  }
+  if ((type == "univariate" || type == "univariate_one_sided") && p_dim > 1) {
+    warning("type='%s' specified but Y is multivariate (%d columns). Consider using type='multivariate'.",
+            type.c_str(), p_dim);
+  }
+
+  // ---- Create detector (Info object) ----
+  SEXP detector_ptr = detector_create(type, theta0, dim_indexes, pruning_mult, pruning_offset, side);
+  XPtr<std::shared_ptr<Info>> ptr(detector_ptr);
+  if (!ptr || !(*ptr)) stop("Failed to create detector");
+  std::shared_ptr<Info>& info = *ptr;
+
+  // ---- Prepare theta0 for cost function ----
+  std::vector<double> theta0_vec;
+  if (!theta0.isNull()) {
+    NumericVector th(theta0.get());
+    if (th.size() >= 1) theta0_vec = as<std::vector<double>>(th); // single copy
+  }
+  if (theta0_vec.empty() && info->has_theta0()) {
+    theta0_vec = info->theta0(); // copy from Info if present
+  }
+
+  // ---- Select cost function ----
+  CostFunction cost_fn;
+  const auto* maybe_uni = dynamic_cast<const UnivariateInfo*>(info.get());
+  bool is_univariate_info = (maybe_uni != nullptr);
+
+  if (family == "gaussian") {
+    if (is_univariate_info) cost_fn = make_two_sided_gaussian();
+    else cost_fn = compute_costs_gaussian;
+  } else if (family == "poisson") {
+    if (is_univariate_info) cost_fn = make_two_sided_poisson();
+    else cost_fn = compute_costs_poisson;
+  } else {
+    stop("Unknown family: must be 'gaussian' or 'poisson'");
+  }
+
+  // ---- Prepare reusable containers ----
+  std::vector<double> stats;
+  std::vector<int> changepoints;
+  stats.reserve(n_obs);
+  changepoints.reserve(n_obs);
+
+  // Reusable observation vector for updates (avoid per-iteration alloc)
+  std::vector<double> y_t;
+  y_t.resize(static_cast<size_t>(p_dim));
+
+  // For matrix input: precompute column base pointers for faster indexing
+  std::vector<const double*> col_ptrs;
+  if (is_matrix) {
+    col_ptrs.resize(static_cast<size_t>(p_dim));
+    for (int j = 0; j < p_dim; ++j) {
+      col_ptrs[static_cast<size_t>(j)] = &Y_mat(0, j); // pointer to column j
+    }
+  }
+
+  int detection_time = NA_INTEGER;
+  int detected_changepoint = NA_INTEGER;
+  int actual_length = 0;
+
+  // ---- Run online detection ----
+  for (int t = 0; t < n_obs; ++t) {
+    // Fill y_t in-place (no allocation)
+    if (is_matrix) {
+      // column-major: accessing by column pointer + t is cache-friendly for per-row extraction
+      for (int j = 0; j < p_dim; ++j) {
+        y_t[static_cast<size_t>(j)] = col_ptrs[static_cast<size_t>(j)][t];
+      }
+    } else {
+      y_t[0] = Y_vec[t];
+    }
+
+    // Update detector
+    info->update(y_t);
+
+    // Compute statistics once
+    ChangepointResult result = cost_fn(*info, theta0_vec);
+
+    // extract stat (use 0.0 if no stat)
+    double stat_val = result.stat.has_value() ? result.stat.value() : 0.0;
+    stats.push_back(stat_val);
+
+    if (result.changepoint.has_value()) {
+      changepoints.push_back(result.changepoint.value());
+    } else {
+      changepoints.push_back(NA_INTEGER);
+    }
+
+    actual_length = t + 1;
+
+    if (stat_val > threshold) {
+      detection_time = t + 1; // 1-based for R
+      if (result.changepoint.has_value()) detected_changepoint = result.changepoint.value();
+      break;
+    }
+  }
+
+  // ---- Convert to R vectors once ----
+  NumericVector stat_vec = wrap(stats);
+  IntegerVector changepoint_vec = wrap(changepoints);
+
+  // ---- Return results ----
+  return List::create(
+    Named("stat") = stat_vec,
+    Named("changepoint") = changepoint_vec,
+    Named("detection_time") = detection_time == NA_INTEGER ? R_NilValue : wrap(detection_time),
+    Named("detected_changepoint") = detected_changepoint == NA_INTEGER ? R_NilValue : wrap(detected_changepoint),
+    Named("threshold") = threshold,
+    Named("n") = actual_length,
+    Named("type") = type,
+    Named("family") = family
+  );
+}
+

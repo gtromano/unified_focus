@@ -30,6 +30,10 @@ public:
           pruning_in_(5) {
         pruning_params_[0] = pruning_mult;
         pruning_params_[1] = pruning_offset;
+        
+        // Initialize with first candidate
+        auto initial = new_candidate();
+        candidates_.insert(candidates_.end(), initial.begin(), initial.end());
     }
 
   std::vector<Candidate> prune(const std::vector<Candidate>& candidates) const override {
