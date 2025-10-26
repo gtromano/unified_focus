@@ -289,13 +289,13 @@ cat("Estimated changepoint:", res_pois$detected_changepoint, "\n")
 
 # Plot
 plot(res_pois$stat, type = "l", main = "FOCuS: Poisson Rate Change",
-     xlab = "Time", ylab = "Statistic", lwd = 2, col = "darkgreen")
+     xlab = "Time", ylab = "Statistic", lwd = 2)
 abline(h = res_pois$threshold, col = "red", lty = 2, lwd = 2)
 abline(v = res_pois$detection_time, col = "blue", lty = 2, lwd = 2)
 abline(v = 800, col = "orange", lty = 3, lwd = 2)
 legend("topleft", 
-       legend = c("Statistic", "Threshold", "Detection", "True changepoint"),
-       col = c("darkgreen", "red", "blue", "orange"), 
+       legend = c("Threshold", "Detection", "True changepoint"),
+       col = c("red", "blue", "orange"), 
        lty = c(1, 2, 2, 3), lwd = 2)
 ```
 ```{r}
@@ -398,7 +398,7 @@ Here's a direct runtime comparison between offline and online modes on the same 
 ```{r}
 # Generate larger dataset for benchmarking
 set.seed(999)
-n <- 10000
+n <- 100000
 Y_bench <- c(rnorm(n/2, mean = 0), rnorm(n/2, mean = 1))
 
 # Benchmark offline mode

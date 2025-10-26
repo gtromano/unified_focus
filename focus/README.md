@@ -388,13 +388,13 @@ cat("Estimated changepoint:", res_pois$detected_changepoint, "\n")
 ``` r
 # Plot
 plot(res_pois$stat, type = "l", main = "FOCuS: Poisson Rate Change",
-     xlab = "Time", ylab = "Statistic", lwd = 2, col = "darkgreen")
+     xlab = "Time", ylab = "Statistic", lwd = 2)
 abline(h = res_pois$threshold, col = "red", lty = 2, lwd = 2)
 abline(v = res_pois$detection_time, col = "blue", lty = 2, lwd = 2)
 abline(v = 800, col = "orange", lty = 3, lwd = 2)
 legend("topleft", 
-       legend = c("Statistic", "Threshold", "Detection", "True changepoint"),
-       col = c("darkgreen", "red", "blue", "orange"), 
+       legend = c("Threshold", "Detection", "True changepoint"),
+       col = c("red", "blue", "orange"), 
        lty = c(1, 2, 2, 3), lwd = 2)
 ```
 
@@ -563,7 +563,7 @@ the same data:
 ``` r
 # Generate larger dataset for benchmarking
 set.seed(999)
-n <- 10000
+n <- 100000
 Y_bench <- c(rnorm(n/2, mean = 0), rnorm(n/2, mean = 1))
 
 # Benchmark offline mode
@@ -581,7 +581,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.056   0.000   0.056 
+      0.505   0.000   0.505 
 
 ``` r
 # Benchmark online mode
@@ -605,7 +605,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.074   0.000   0.074 
+      0.739   0.000   0.740 
 
 ``` r
 # Verify both produce identical results
@@ -621,7 +621,7 @@ speedup <- time_online["elapsed"] / time_offline["elapsed"]
 cat("Offline mode is", round(speedup, 1), "x faster\n")
 ```
 
-    Offline mode is 1.3 x faster
+    Offline mode is 1.5 x faster
 
 ## C++ Integration
 

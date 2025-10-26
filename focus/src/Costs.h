@@ -18,41 +18,6 @@ namespace changepoint {
 using CostFunction = std::function<ChangepointResult(const Info&, const std::vector<double>&)>;
 
 ////////////////////////////////////////////////////////////////////////////////
-// prepare_considered: factor out repeated Info-level bookkeeping
-// Returns true when an early-return condition happened and `result` is already
-// populated with an "empty" ChangepointResult (no changepoint). Otherwise
-// returns false and `considered` contains the candidates to evaluate.
-inline bool prepare_considered(const Info& cs,
-                               std::vector<Candidate>& considered,
-                               ChangepointResult& result) {
-  result.stopping_time = cs.n();
-
-  const auto& candidates = cs.candidates();
-  if (candidates.size() <= 1) {
-    result.changepoint = std::nullopt;
-    result.stat = std::nullopt;
-    return true;
-  }
-
-  auto last_cands = cs.new_candidate();
-  int exclude_count = static_cast<int>(last_cands.size());
-  if (candidates.size() <= static_cast<size_t>(exclude_count)) {
-    result.changepoint = std::nullopt;
-    result.stat = std::nullopt;
-    return true;
-  }
-
-  considered.assign(candidates.begin(), candidates.end() - exclude_count);
-  if (considered.empty()) {
-    result.changepoint = std::nullopt;
-    result.stat = std::nullopt;
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // Generic helper to construct a ChangepointResult from a helper that computes
 // per-candidate costs. 'HelperFn' must have signature:
 //   std::vector<double> helper(const std::vector<Candidate>&, const std::vector<double>& S_n, int n, const std::vector<double>& theta0)
@@ -61,19 +26,31 @@ inline ChangepointResult compute_from_helper(const Info& cs,
                                              const std::vector<double>& theta0,
                                              HelperFn helper) {
   ChangepointResult result;
-  std::vector<Candidate> considered;
-  if (prepare_considered(cs, considered, result)) return result;
+  result.stopping_time = cs.n();
 
-  const std::vector<double> vals = helper(considered, cs.sn(), cs.n(), theta0);
+  const auto& candidates = cs.candidates();
+  if (candidates.empty()) {
+    result.changepoint = std::nullopt;
+    result.stat = std::nullopt;
+    return result;
+  }
 
-  // Find maximum (ties broken by first occurrence)
+  const std::vector<double> vals = helper(candidates, cs.sn(), cs.n(), theta0);
+
+  if (vals.empty()) {
+    result.changepoint = std::nullopt;
+    result.stat = std::nullopt;
+    return result;
+  }
+
   auto max_it = std::max_element(vals.begin(), vals.end());
   int max_idx = static_cast<int>(std::distance(vals.begin(), max_it));
 
-  result.changepoint = considered[max_idx].tau;
+  result.changepoint = candidates[max_idx].tau;
   result.stat = *max_it;
   return result;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Gaussian per-candidate cost helper (keeps math localized)
@@ -243,20 +220,24 @@ inline CostFunction make_two_sided_cost_fn(
 
   return [base_cost_helper](const Info& cs, const std::vector<double>& theta0) -> ChangepointResult {
     ChangepointResult result;
-    std::vector<Candidate> considered;
-    if (prepare_considered(cs, considered, result)) return result;
+    result.stopping_time = cs.n();
 
-    // Need UnivariateInfo to access left/right partitions
+    const auto& candidates = cs.candidates();
+    if (candidates.empty()) {
+      result.changepoint = std::nullopt;
+      result.stat = std::nullopt;
+      return result;
+    }
+
     const auto* uni_cs = dynamic_cast<const UnivariateInfo*>(&cs);
     if (!uni_cs) {
       throw std::runtime_error("make_two_sided_cost_fn requires UnivariateInfo");
     }
 
-    int K = static_cast<int>(considered.size());
-    std::vector<double> costs(K, -1e300);
+    std::vector<double> costs(candidates.size(), -1e300);
 
-    for (int i = 0; i < K; ++i) {
-      const auto& c = considered[i];
+    for (size_t i = 0; i < candidates.size(); ++i) {
+      const auto& c = candidates[i];
       std::vector<Candidate> single = { c };
 
       if (c.side == "left") {
@@ -271,12 +252,12 @@ inline CostFunction make_two_sided_cost_fn(
     auto max_it = std::max_element(costs.begin(), costs.end());
     int max_idx = static_cast<int>(std::distance(costs.begin(), max_it));
 
-    result.stopping_time = cs.n();
-    result.changepoint = considered[max_idx].tau;
+    result.changepoint = candidates[max_idx].tau;
     result.stat = *max_it;
     return result;
   };
 }
+
 
 inline CostFunction make_two_sided_gaussian() {
   return make_two_sided_cost_fn(compute_costs_gaussian_helper);
