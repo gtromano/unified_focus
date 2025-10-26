@@ -13,7 +13,7 @@ using namespace changepoint;
 // ------------------------
 
 // [[Rcpp::export]]
-SEXP detector_create(std::string info,
+SEXP detector_create(std::string type,
                      Nullable<NumericVector> theta0 = R_NilValue,
                      Nullable<List> dim_indexes = R_NilValue,
                      int pruning_mult = 2,
@@ -39,7 +39,7 @@ SEXP detector_create(std::string info,
   }
 
   // ---- Build Info object ----
-  if (info == "multivariate") {
+  if (type == "multivariate") {
     // Parse dim_indexes if provided
     std::vector<std::pair<int,int>> dim_idx;
     if (!dim_indexes.isNull()) {
@@ -62,7 +62,7 @@ SEXP detector_create(std::string info,
       pruning_offset
     );
 
-  } else if (info == "univariate") {
+  } else if (type == "univariate") {
     // two-sided
     cs = std::make_shared<UnivariateInfo>(
       theta0_scalar,  // defaults to NaN if not provided
@@ -70,7 +70,7 @@ SEXP detector_create(std::string info,
       0               // n
     );
 
-  } else if (info == "univariate_one_sided") {
+  } else if (type == "univariate_one_sided") {
     // one-sided
     if (side != "right" && side != "left")
       stop("side must be 'right' or 'left'");
@@ -82,7 +82,7 @@ SEXP detector_create(std::string info,
     );
 
   } else {
-    stop("info must be one of: 'multivariate', 'univariate', 'univariate_one_sided'");
+    stop("type must be one of: 'multivariate', 'univariate', 'univariate_one_sided'");
   }
 
   // ---- Return Info pointer ----
@@ -239,4 +239,155 @@ List detector_candidates(SEXP info_ptr) {
   out.attr("row.names") = rn;
 
   return out;
+}
+
+
+// Run complete offline detection in C++ for efficiency
+// [[Rcpp::export]]
+List focus_offline(SEXP Y,
+                   double threshold,
+                   std::string type,
+                   std::string family,
+                   Nullable<NumericVector> theta0 = R_NilValue,
+                   Nullable<List> dim_indexes = R_NilValue,
+                   int pruning_mult = 2,
+                   int pruning_offset = 1,
+                   std::string side = "right") {
+
+  // ---- Parse input data Y ----
+  // Y can be a numeric vector (univariate) or matrix (multivariate)
+  NumericMatrix Y_mat;
+  NumericVector Y_vec;
+  bool is_matrix = false;
+  int n_obs = 0;
+  int p_dim = 1;
+
+  if (Rf_isMatrix(Y)) {
+    Y_mat = as<NumericMatrix>(Y);
+    n_obs = Y_mat.nrow();
+    p_dim = Y_mat.ncol();
+    is_matrix = true;
+  } else {
+    Y_vec = as<NumericVector>(Y);
+    n_obs = Y_vec.size();
+    p_dim = 1;
+    is_matrix = false;
+  }
+
+  // ---- Validate type against data dimensions ----
+  if (type == "multivariate" && p_dim == 1) {
+    warning("type='multivariate' specified but Y is univariate (vector or single column). Consider using type='univariate' or 'univariate_one_sided'.");
+  }
+  if ((type == "univariate" || type == "univariate_one_sided") && p_dim > 1) {
+    warning("type='%s' specified but Y is multivariate (%d columns). Consider using type='multivariate'.",
+            type.c_str(), p_dim);
+  }
+
+  // ---- Create detector (Info object) ----
+  SEXP detector_ptr = detector_create(type, theta0, dim_indexes, pruning_mult, pruning_offset, side);
+  XPtr<std::shared_ptr<Info>> ptr(detector_ptr);
+  if (!ptr || !(*ptr)) stop("Failed to create detector");
+
+  std::shared_ptr<Info>& info = *ptr;
+
+  // ---- Prepare theta0 for cost function ----
+  std::vector<double> theta0_vec;
+
+  if (!theta0.isNull()) {
+    NumericVector th(theta0.get());
+    if (th.size() >= 1) {
+      theta0_vec = as<std::vector<double>>(th);
+    }
+  }
+
+  // If theta0 not provided, use the one from Info (if available)
+  if (theta0_vec.empty() && info->has_theta0()) {
+    theta0_vec = info->theta0();
+  }
+
+  // ---- Select cost function ----
+  CostFunction cost_fn;
+
+  if (family == "gaussian") {
+    const auto* uni_cs = dynamic_cast<const UnivariateInfo*>(info.get());
+    if (uni_cs) {
+      cost_fn = make_two_sided_gaussian();
+    } else {
+      cost_fn = compute_costs_gaussian;
+    }
+  } else if (family == "poisson") {
+    const auto* uni_cs = dynamic_cast<const UnivariateInfo*>(info.get());
+    if (uni_cs) {
+      cost_fn = make_two_sided_poisson();
+    } else {
+      cost_fn = compute_costs_poisson;
+    }
+  } else {
+    stop("Unknown family: must be 'gaussian' or 'poisson'");
+  }
+
+  // ---- Prepare output vectors ----
+  NumericVector stat_vec(n_obs);
+  IntegerVector changepoint_vec(n_obs);
+
+  std::fill(changepoint_vec.begin(), changepoint_vec.end(), NA_INTEGER);
+
+  int detection_time = NA_INTEGER;
+  int detected_changepoint = NA_INTEGER;
+  int actual_length = 0;
+
+  // ---- Run online detection ----
+  for (int t = 0; t < n_obs; ++t) {
+    // Extract observation at time t
+    std::vector<double> y_t;
+    if (is_matrix) {
+      y_t.resize(p_dim);
+      for (int j = 0; j < p_dim; ++j) {
+        y_t[j] = Y_mat(t, j);
+      }
+    } else {
+      y_t = {Y_vec[t]};
+    }
+
+    // Update detector directly
+    info->update(y_t);
+
+    // Get statistics directly
+    ChangepointResult result = cost_fn(*info, theta0_vec);
+
+    stat_vec[t] = result.stat.has_value() ? result.stat.value() : 0.0;
+
+    if (result.changepoint.has_value()) {
+      changepoint_vec[t] = result.changepoint.value();
+    }
+
+    actual_length = t + 1;
+
+    // Check threshold and stop at detection
+    double stat_val = result.stat.has_value() ? result.stat.value() : 0.0;
+    if (stat_val > threshold) {
+      detection_time = t + 1;  // R uses 1-based indexing
+      if (result.changepoint.has_value()) {
+        detected_changepoint = result.changepoint.value();
+      }
+      // Stop at detection
+      break;
+    }
+  }
+
+  // Truncate output vectors to actual length
+  stat_vec = stat_vec[Range(0, actual_length - 1)];
+  changepoint_vec = changepoint_vec[Range(0, actual_length - 1)];
+
+  // ---- Return results ----
+  return List::create(
+    Named("stat") = stat_vec,
+    Named("changepoint") = changepoint_vec,
+    Named("detection_time") = detection_time == NA_INTEGER ? R_NilValue : wrap(detection_time),
+    Named("detected_changepoint") = detected_changepoint == NA_INTEGER ? R_NilValue : wrap(detected_changepoint),
+    Named("threshold") = threshold,
+    Named("n") = actual_length,
+    Named("type") = type,
+    Named("family") = family
+  );
 }
