@@ -1,33 +1,29 @@
+# focus
 
 
-- [focus.rcpp](#focusrcpp)
-  - [Features](#features)
-  - [Installation](#installation)
-  - [Quick Start: Offline vs Online
-    Usage](#quick-start-offline-vs-online-usage)
-    - [Offline Mode (`focus_offline`)](#offline-mode-focus_offline)
-    - [Online Mode (Sequential
-      Updates)](#online-mode-sequential-updates)
-  - [Available Functions](#available-functions)
-    - [Core Detection Functions](#core-detection-functions)
-    - [Online/Sequential Interface](#onlinesequential-interface)
-    - [Inspection Functions](#inspection-functions)
-  - [Usage Examples](#usage-examples)
-    - [Gaussian Univariate Detection](#gaussian-univariate-detection)
-    - [One-sided Detection](#one-sided-detection)
-    - [Gaussian Multivariate
-      Detection](#gaussian-multivariate-detection)
-    - [Poisson change-in-rate
-      Detection](#poisson-change-in-rate-detection)
-    - [Flexibility: Statistics Independent of Detector
-      Type](#flexibility-statistics-independent-of-detector-type)
-  - [Performance Comparison: Offline vs
-    Online](#performance-comparison-offline-vs-online)
-  - [C++ Integration](#c-integration)
-  - [References](#references)
-  - [License](#license)
-
-# focus.rcpp
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start: Offline vs Online
+  Usage](#quick-start-offline-vs-online-usage)
+  - [Offline Mode (`focus_offline`)](#offline-mode-focus_offline)
+  - [Online Mode (Sequential Updates)](#online-mode-sequential-updates)
+- [Available Functions](#available-functions)
+  - [Core Detection Functions](#core-detection-functions)
+  - [Online/Sequential Interface](#onlinesequential-interface)
+  - [Inspection Functions](#inspection-functions)
+- [Usage Examples](#usage-examples)
+  - [Gaussian Univariate Detection](#gaussian-univariate-detection)
+  - [One-sided Detection](#one-sided-detection)
+  - [Gaussian Multivariate Detection](#gaussian-multivariate-detection)
+  - [Poisson change-in-rate
+    Detection](#poisson-change-in-rate-detection)
+  - [Flexibility: Statistics Independent of Detector
+    Type](#flexibility-statistics-independent-of-detector-type)
+- [Performance Comparison: Offline vs
+  Online](#performance-comparison-offline-vs-online)
+- [C++ Integration](#c-integration)
+- [References](#references)
+- [License](#license)
 
 **focus** is a high-performance R package for online changepoint
 detection in univariate and multivariate data streams. The package
@@ -40,18 +36,16 @@ analysis.
 - **Multiple distributions**: Gaussian and Poisson families
 - **Univariate and multivariate**: Detect changes in scalar or
   vector-valued sequences
-- **One-sided and two-sided detection**: Monitor for increases,
-  decreases, or both
-- **Known or unknown pre-change parameters**: Flexible modeling of null
-  hypothesis
-- **Efficient pruning**: Maintains computational efficiency for long
-  sequences
-- **Pure C++ core**: Maximum performance for offline batch processing
+- **One-sided and two-sided detection**: (Univariate only) Detects only
+  increases, decreases, or both
+- **Known or unknown pre-change parameters**: Flexible modeling of both
+  the LR test (pre-change parameter unknown) and the Page-CUSUM
+  (pre-change parameter known)
+- **C++ backend**
 
 ## Installation
 
-You can install the development version of **focus.rcpp** from source
-with:
+You can install the development version of **focus** from source with:
 
 ``` r
 # If you have devtools installed:
@@ -72,14 +66,17 @@ results but different performance characteristics:
 ### Offline Mode (`focus_offline`)
 
 All cycles and updates are handled internally in C++ for maximum
-efficiency. This approach is ideal for: - Benchmarking and performance
-testing - Batch processing of complete datasets - Computing full
-statistic trajectories
+efficiency. This approach is ideal for:
 
-**Key behaviors:** - By default, stops immediately when threshold is
-exceeded - Use `threshold = Inf` to compute statistics for all
-observations (useful for visualization) - Returns truncated vectors when
-detection occurs
+- Benchmarking and performance testing
+- Batch processing of complete datasets
+- Computing full statistic trajectories
+
+**Key behaviors:**
+
+- By default, stops immediately when threshold is exceeded
+- Use `threshold = Inf` to compute statistics for all observations
+  (useful for visualization)
 
 ``` r
 # Generate data with a changepoint
@@ -108,8 +105,12 @@ if (!is.null(res$detection_time)) {
 An **online implementation** is also available—allowing you to update
 the detector sequentially from R. This will be inherently slower, since
 each update involves a call from R into C++. The online interface is
-useful for: - Real-time or streaming scenarios - Integration with other
-R workflows - Custom stopping rules or adaptive thresholds
+useful for:
+
+- Real-time or streaming scenarios
+- Integration with other R workflows
+- Custom stopping rules (adaptive thresholds)
+- Implementation of your own costs function
 
 ``` r
 # Create detector
@@ -583,7 +584,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.501   0.001   0.503 
+      0.486   0.000   0.486 
 
 ``` r
 # Benchmark online mode
@@ -607,7 +608,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.753   0.000   0.754 
+      0.737   0.000   0.737 
 
 ``` r
 # Verify both produce identical results

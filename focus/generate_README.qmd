@@ -1,4 +1,5 @@
 ---
+title: focus
 format: gfm
 execute:
   warning: false
@@ -10,22 +11,19 @@ toc: true
 library(focus)
 ```
 
-# focus.rcpp
-
 **focus** is a high-performance R package for online changepoint detection in univariate and multivariate data streams. The package provides efficient C++ implementations of the **focus** and **md-focus** algorithms with R interfaces for real-time monitoring and offline analysis.
 
 ## Features
 
 - **Multiple distributions**: Gaussian and Poisson families
 - **Univariate and multivariate**: Detect changes in scalar or vector-valued sequences
-- **One-sided and two-sided detection**: Monitor for increases, decreases, or both
-- **Known or unknown pre-change parameters**: Flexible modeling of null hypothesis
-- **Efficient pruning**: Maintains computational efficiency for long sequences
-- **Pure C++ core**: Maximum performance for offline batch processing
+- **One-sided and two-sided detection**: (Univariate only) Detects only increases, decreases, or both
+- **Known or unknown pre-change parameters**: Flexible modeling of both the LR test (pre-change parameter unknown) and the Page-CUSUM (pre-change parameter known)
+- **C++ backend**
 
 ## Installation
 
-You can install the development version of **focus.rcpp** from source with:
+You can install the development version of **focus** from source with:
 
 ```r
 # If you have devtools installed:
@@ -45,14 +43,15 @@ The package provides two modes of operation with identical statistical results b
 ### Offline Mode (`focus_offline`)
 
 All cycles and updates are handled internally in C++ for maximum efficiency. This approach is ideal for:
+
 - Benchmarking and performance testing
 - Batch processing of complete datasets
 - Computing full statistic trajectories
 
 **Key behaviors:**
+
 - By default, stops immediately when threshold is exceeded
 - Use `threshold = Inf` to compute statistics for all observations (useful for visualization)
-- Returns truncated vectors when detection occurs
 
 ```{r}
 # Generate data with a changepoint
@@ -77,9 +76,11 @@ if (!is.null(res$detection_time)) {
 ### Online Mode (Sequential Updates)
 
 An **online implementation** is also available—allowing you to update the detector sequentially from R. This will be inherently slower, since each update involves a call from R into C++. The online interface is useful for:
+
 - Real-time or streaming scenarios
 - Integration with other R workflows
-- Custom stopping rules or adaptive thresholds
+- Custom stopping rules (adaptive thresholds)
+- Implementation of your own costs function
 
 ```{r}
 # Create detector
