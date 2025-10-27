@@ -551,12 +551,12 @@ head(detector_candidates(det2))
 ```
 
       tau   st  side
-    1   0    0  left
-    2   0    0 right
-    3   1   13  left
-    4 437 4263 right
-    5 459 4481 right
-    6 461 4502 right
+    1   0    0 right
+    2 437 4263 right
+    3 459 4481 right
+    4 461 4502 right
+    5 500 4916 right
+    6 521 5210 right
 
 ## Performance Comparison: Offline vs Online
 
@@ -584,7 +584,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.486   0.000   0.486 
+      0.314   0.000   0.315 
 
 ``` r
 # Benchmark online mode
@@ -608,7 +608,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.737   0.000   0.737 
+      0.505   0.000   0.506 
 
 ``` r
 # Verify both produce identical results
@@ -624,7 +624,7 @@ speedup <- time_online["elapsed"] / time_offline["elapsed"]
 cat("Offline mode is", round(speedup, 1), "x faster\n")
 ```
 
-    Offline mode is 1.5 x faster
+    Offline mode is 1.6 x faster
 
 ## C++ Integration
 

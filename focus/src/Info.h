@@ -46,19 +46,20 @@ public:
     }
   }
 
-  // New update method that replaces Detector.update()
+  // Add one observation
   virtual void update(const std::vector<double>& y) {
     // Update cumulative state
     add_new_point(y);
 
     // Prune candidates (in-place)
-    prune_inplace();
+    candidates_ = prune(candidates_);
 
     // Append new candidate(s) for current time
     append_new_candidate();
   }
 
   virtual void prune_inplace() {
+    std::cout << "Running prune in place" << std::endl;
     // Default: no pruning
   }
 
@@ -143,6 +144,17 @@ public:
     return {Candidate(sn_, n_, side_)};
   }
 
+  void update(const std::vector<double>& y) override {
+    // Update cumulative state
+    add_new_point(y);
+
+    // Prune candidates (in-place)
+    prune_inplace();
+
+    // Append new candidate(s) for current time
+    append_new_candidate();
+  }
+
   void prune_inplace() override {
     if (k_ <= 1) {
       return;
@@ -189,65 +201,6 @@ public:
     invalidate_cache();
   }
 
-  std::vector<Candidate> prune(const std::vector<Candidate>& candidates) const override {
-    // Filter candidates for this side
-    std::vector<Candidate> side_candidates;
-    for (const auto& c : candidates) {
-      if (c.side == side_) {
-        side_candidates.push_back(c);
-      }
-    }
-
-    int K = static_cast<int>(side_candidates.size());
-    if (K <= 1) {
-      return candidates;
-    }
-
-    // Monotone pruning
-    int i = K;
-    while (i > 1) {
-      const auto& c1 = side_candidates[i - 1];
-      const auto& c0 = side_candidates[i - 2];
-
-      int tau1 = c1.tau;
-      int tau0 = c0.tau;
-      int denom1 = n_ - tau1;
-      int denom0 = n_ - tau0;
-
-      double num1 = sn_[0] - c1.scalar_st();
-      double num0 = sn_[0] - c0.scalar_st();
-
-      double ratio1 = (denom1 > 0) ? (num1 / denom1) : std::numeric_limits<double>::infinity();
-      double ratio0 = (denom0 > 0) ? (num0 / denom0) : std::numeric_limits<double>::infinity();
-
-      bool cond = (c1.side == "right") ? (ratio1 <= ratio0) : (ratio1 >= ratio0);
-
-      if (cond) {
-        i--;
-        if (i == 1) break;
-      } else {
-        break;
-      }
-    }
-
-    // Return pruned list
-    std::vector<Candidate> pruned(side_candidates.begin(), side_candidates.begin() + i);
-
-    if (side_candidates.size() == candidates.size()) {
-      return pruned;
-    } else {
-      // Rebuild with non-side candidates
-      std::vector<Candidate> result;
-      for (const auto& c : candidates) {
-        if (c.side != side_) {
-          result.push_back(c);
-        }
-      }
-      result.insert(result.end(), pruned.begin(), pruned.end());
-      return result;
-    }
-  }
-
   // Override to return only active candidates (first k_ elements)
   const std::vector<Candidate>& candidates() const override {
     if (!cache_valid_) {
@@ -265,6 +218,12 @@ private:
   std::unique_ptr<OneSideUnivariateInfo> right_;
   std::unique_ptr<OneSideUnivariateInfo> left_;
 
+  // -----------------------------
+  // Combined cache for active candidates
+  // -----------------------------
+  mutable std::vector<Candidate> combined_cache_;  // holds concatenated right+left active candidates
+  mutable bool cache_valid_ = false;              // true if combined_cache_ is up-to-date
+
 public:
   UnivariateInfo(double theta0 = std::numeric_limits<double>::quiet_NaN(),
                  double sn = 0.0, int n = 0)
@@ -273,9 +232,6 @@ public:
     right_ = std::make_unique<OneSideUnivariateInfo>(theta0, sn, n, "right");
     left_ = std::make_unique<OneSideUnivariateInfo>(theta0, sn, n, "left");
 
-    // Pre-allocate for combined candidates
-    candidates_.reserve(100);
-    k_ = right_->active_candidate_count() + left_->active_candidate_count();
   }
 
   std::vector<Candidate> new_candidate() const override {
@@ -307,57 +263,25 @@ public:
     n_ = right_->n();
     sn_ = right_->sn();
 
-    // Update k_ to reflect combined active candidates
-    k_ = right_->active_candidate_count() + left_->active_candidate_count();
-  }
-
-  std::vector<Candidate> prune(const std::vector<Candidate>& candidates) const override {
-    // Split by side
-    std::vector<Candidate> right_cands, left_cands;
-    for (const auto& c : candidates) {
-      if (c.side == "right") {
-        right_cands.push_back(c);
-      } else {
-        left_cands.push_back(c);
-      }
-    }
-
-    auto pr_right = right_->prune(right_cands);
-    auto pr_left = left_->prune(left_cands);
-
-    std::vector<Candidate> combined;
-    combined.insert(combined.end(), pr_right.begin(), pr_right.end());
-    combined.insert(combined.end(), pr_left.begin(), pr_left.end());
-
-    return combined;
+    // Invalidate cache since active candidates changed
+    cache_valid_ = false;
   }
 
   const std::vector<Candidate>& candidates() const override {
-    // This is a bit tricky - we need to return a reference to a combined view
-    // We'll need to maintain a combined candidates_ vector
-    // For now, rebuild it (can be optimized further if this is called frequently)
-    const_cast<UnivariateInfo*>(this)->rebuild_candidates_cache();
-    return candidates_;
+    if (!cache_valid_) {
+      combined_cache_.clear();
+      const auto& right_cands = right_->candidates();
+      const auto& left_cands  = left_->candidates();
+      combined_cache_.reserve(right_cands.size() + left_cands.size());
+      combined_cache_.insert(combined_cache_.end(), right_cands.begin(), right_cands.end());
+      combined_cache_.insert(combined_cache_.end(), left_cands.begin(),  left_cands.end());
+      cache_valid_ = true;
+    }
+    return combined_cache_;
   }
 
   const OneSideUnivariateInfo* right() const { return right_.get(); }
   const OneSideUnivariateInfo* left() const { return left_.get(); }
-
-private:
-  void rebuild_candidates_cache() {
-  // Rebuild candidates_ from right and left active candidates (both already return only active entries)
-  candidates_.clear();
-
-  const auto& right_cands = right_->candidates();
-  const auto& left_cands  = left_->candidates();
-
-  // Append full ranges (no per-element loop)
-  candidates_.insert(candidates_.end(), right_cands.begin(), right_cands.end());
-  candidates_.insert(candidates_.end(), left_cands.begin(),  left_cands.end());
-
-  // Update k_ to reflect combined active candidate count
-  k_ = candidates_.size();
-  }
 };
 
 } // namespace changepoint
