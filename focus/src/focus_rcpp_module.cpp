@@ -129,26 +129,9 @@ List get_statistics(SEXP info_ptr,
 
   if (family == "gaussian") {
     // Check if we need two-sided version
-    const auto* uni_cs = dynamic_cast<const UnivariateInfo*>(&cs);
-    if (uni_cs) {
-      // Two-sided univariate
-      auto cost_fn = make_two_sided_gaussian();
-      result = cost_fn(cs, theta0_vec);
-    } else {
-      // One-sided or multivariate
-      result = compute_costs_gaussian(cs, theta0_vec);
-    }
+    result = compute_costs_gaussian(cs, theta0_vec);
   } else if (family == "poisson") {
-    // Check if we need two-sided version
-    const auto* uni_cs = dynamic_cast<const UnivariateInfo*>(&cs);
-    if (uni_cs) {
-      // Two-sided univariate
-      auto cost_fn = make_two_sided_poisson();
-      result = cost_fn(cs, theta0_vec);
-    } else {
-      // One-sided or multivariate
-      result = compute_costs_poisson(cs, theta0_vec);
-    }
+    result = compute_costs_poisson(cs, theta0_vec);
   } else {
     stop("Unknown family: must be 'gaussian' or 'poisson'");
   }
@@ -304,11 +287,9 @@ List focus_offline(SEXP Y,
   bool is_univariate_info = (maybe_uni != nullptr);
 
   if (family == "gaussian") {
-    if (is_univariate_info) cost_fn = make_two_sided_gaussian();
-    else cost_fn = compute_costs_gaussian;
+    cost_fn = compute_costs_gaussian;
   } else if (family == "poisson") {
-    if (is_univariate_info) cost_fn = make_two_sided_poisson();
-    else cost_fn = compute_costs_poisson;
+    cost_fn = compute_costs_poisson;
   } else {
     stop("Unknown family: must be 'gaussian' or 'poisson'");
   }
