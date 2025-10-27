@@ -81,8 +81,9 @@ public:
   const std::vector<double>& theta0() const { return theta0_; }
   bool has_theta0() const { return !theta0_.empty() && !std::isnan(theta0_[0]); }
 
+  // Default: return the internal vector (may include inactive pre-allocated slots).
+  // Derived classes (e.g. OneSideUnivariateInfo) can override to return only active entries.
   virtual const std::vector<Candidate>& candidates() const {
-    // Return only active candidates
     return candidates_;
   }
 
@@ -93,6 +94,26 @@ public:
 class OneSideUnivariateInfo : public Info {
 private:
   std::string side_;
+
+  // Cache to return only active candidates from candidates_ (first k_ elements).
+  // Mutable so it can be updated in const candidates() method.
+  mutable std::vector<Candidate> active_cache_;
+  mutable bool cache_valid_ = false;
+
+  // Helper to invalidate cache whenever active set changes
+  void invalidate_cache() {
+    cache_valid_ = false;
+  }
+
+  // Helper to rebuild active_cache_ from candidates_ and k_
+  void rebuild_active_cache() const {
+    active_cache_.clear();
+    active_cache_.reserve(k_);
+    for (size_t i = 0; i < k_; ++i) {
+      active_cache_.push_back(candidates_[i]);
+    }
+    cache_valid_ = true;
+  }
 
 public:
   OneSideUnivariateInfo(double theta0 = std::numeric_limits<double>::quiet_NaN(),
@@ -105,14 +126,17 @@ public:
     }
 
     // Pre-allocate candidate storage
-    candidates_.reserve(50);
-    for (int i = 0; i < 50; i++) {
+    candidates_.reserve(30);
+    for (int i = 0; i < 30; i++) {
       candidates_.push_back(Candidate({0.0}, 0, side_));
     }
 
     // Initialize with first candidate
     candidates_[0] = Candidate(sn_, n_, side_);
     k_ = 1;
+
+    // Initialize cache
+    invalidate_cache();
   }
 
   std::vector<Candidate> new_candidate() const override {
@@ -144,6 +168,7 @@ public:
 
       if (cond) {
         k_--;
+        invalidate_cache();
         if (k_ == 1) break;
       } else {
         break;
@@ -161,6 +186,7 @@ public:
       candidates_.push_back(Candidate(sn_, n_, side_));
     }
     k_++;
+    invalidate_cache();
   }
 
   std::vector<Candidate> prune(const std::vector<Candidate>& candidates) const override {
@@ -172,7 +198,7 @@ public:
       }
     }
 
-    int K = side_candidates.size();
+    int K = static_cast<int>(side_candidates.size());
     if (K <= 1) {
       return candidates;
     }
@@ -220,6 +246,14 @@ public:
       result.insert(result.end(), pruned.begin(), pruned.end());
       return result;
     }
+  }
+
+  // Override to return only active candidates (first k_ elements)
+  const std::vector<Candidate>& candidates() const override {
+    if (!cache_valid_) {
+      rebuild_active_cache();
+    }
+    return active_cache_;
   }
 
   const std::string& side() const { return side_; }
@@ -311,21 +345,18 @@ public:
 
 private:
   void rebuild_candidates_cache() {
-    // Rebuild candidates_ from right and left active candidates
-    candidates_.clear();
+  // Rebuild candidates_ from right and left active candidates (both already return only active entries)
+  candidates_.clear();
 
-    const auto& right_cands = right_->candidates();
-    const auto& left_cands = left_->candidates();
+  const auto& right_cands = right_->candidates();
+  const auto& left_cands  = left_->candidates();
 
-    size_t right_k = right_->active_candidate_count();
-    size_t left_k = left_->active_candidate_count();
+  // Append full ranges (no per-element loop)
+  candidates_.insert(candidates_.end(), right_cands.begin(), right_cands.end());
+  candidates_.insert(candidates_.end(), left_cands.begin(),  left_cands.end());
 
-    for (size_t i = 0; i < right_k; i++) {
-      candidates_.push_back(right_cands[i]);
-    }
-    for (size_t i = 0; i < left_k; i++) {
-      candidates_.push_back(left_cands[i]);
-    }
+  // Update k_ to reflect combined active candidate count
+  k_ = candidates_.size();
   }
 };
 
