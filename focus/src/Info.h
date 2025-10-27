@@ -25,7 +25,7 @@ public:
        const std::vector<double>& theta0 = {})
     : sn_(sn), n_(n), theta0_(theta0), k_(0) {
     // Pre-allocate candidate storage
-    candidates_.reserve(50);
+    candidates_.reserve(30);
   }
 
   virtual ~Info() = default;
@@ -56,6 +56,7 @@ public:
 
     // Append new candidate(s) for current time
     append_new_candidate();
+    // std::cout << k_ << std::endl;
   }
 
   virtual void prune_inplace() {
@@ -64,13 +65,7 @@ public:
   }
 
   virtual void append_new_candidate() {
-    // Reuse existing slots or expand if needed
-    if (k_ < candidates_.size()) {
-      candidates_[k_] = Candidate(sn_, n_, "right");
-    } else {
-      candidates_.push_back(Candidate(sn_, n_, "right"));
-    }
-    k_++;
+    candidates_.push_back(Candidate(sn_, n_, "right"));
   }
 
   virtual std::vector<Candidate> prune(const std::vector<Candidate>& candidates) const {
