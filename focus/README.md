@@ -584,7 +584,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.314   0.000   0.315 
+      0.154   0.000   0.154 
 
 ``` r
 # Benchmark online mode
@@ -608,7 +608,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.505   0.000   0.506 
+      0.331   0.000   0.331 
 
 ``` r
 # Verify both produce identical results
@@ -624,7 +624,7 @@ speedup <- time_online["elapsed"] / time_offline["elapsed"]
 cat("Offline mode is", round(speedup, 1), "x faster\n")
 ```
 
-    Offline mode is 1.6 x faster
+    Offline mode is 2.1 x faster
 
 ## C++ Integration
 
