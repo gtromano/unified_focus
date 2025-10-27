@@ -10,32 +10,26 @@
 
 namespace changepoint {
 
-// Abstract base class for Info (cumulative state with behavior)
+// Minimal base class for Info types
 class Info {
 protected:
-  std::vector<double> sn_;                    // Cumulative sum
-  int n_;                                     // Number of observations
-  std::vector<double> theta0_;                // Null hypothesis parameter (empty or NaN if missing)
-  std::vector<Candidate> candidates_;         // Candidate changepoints (pre-allocated)
-  size_t k_;                                  // Active candidate count (index-based)
+  std::vector<double> sn_;      // Cumulative sum
+  int n_;                       // Number of observations
+  std::vector<double> theta0_;  // Null hypothesis parameter (empty or NaN if missing)
 
 public:
   Info(const std::vector<double>& sn = {0.0},
        int n = 0,
        const std::vector<double>& theta0 = {})
-    : sn_(sn), n_(n), theta0_(theta0), k_(0) {
-    // Pre-allocate candidate storage
-    candidates_.reserve(30);
-  }
+    : sn_(sn), n_(n), theta0_(theta0) {}
 
   virtual ~Info() = default;
 
-  // Create new candidate(s) representing current state
+  // Core interface methods
   virtual std::vector<Candidate> new_candidate() const {
     return {Candidate(sn_, n_, "right")};
   }
 
-  // Add new observation point (renamed from old update)
   virtual void add_new_point(const std::vector<double>& y) {
     n_++;
     if (sn_.size() != y.size()) {
@@ -46,62 +40,69 @@ public:
     }
   }
 
-  // Add one observation
-  virtual void update(const std::vector<double>& y) {
-    // Update cumulative state
-    add_new_point(y);
+  virtual void update(const std::vector<double>& y) = 0;
+  virtual const std::vector<Candidate>& candidates() const = 0;
 
-    // Prune candidates (in-place)
-    candidates_ = prune(candidates_);
+  // Accessors for common state
+  const std::vector<double>& sn() const { return sn_; }
+  int n() const { return n_; }
+  const std::vector<double>& theta0() const { return theta0_; }
+  bool has_theta0() const { return !theta0_.empty() && !std::isnan(theta0_[0]); }
+};
 
-    // Append new candidate(s) for current time
-    append_new_candidate();
-    // std::cout << k_ << std::endl;
+// ---------------------------------------------------------------------------
+// Base class for Info types that maintain a candidate list
+// ---------------------------------------------------------------------------
+class CandidateListInfo : public Info {
+protected:
+  std::vector<Candidate> candidates_;
+
+public:
+  CandidateListInfo(const std::vector<double>& sn = {0.0},
+                    int n = 0,
+                    const std::vector<double>& theta0 = {})
+    : Info(sn, n, theta0) {
+    candidates_.reserve(30);
   }
 
-  virtual void prune_inplace() {
-    std::cout << "Running prune in place" << std::endl;
-    // Default: no pruning
-  }
+  virtual ~CandidateListInfo() = default;
 
-  virtual void append_new_candidate() {
-    candidates_.push_back(Candidate(sn_, n_, "right"));
+  const std::vector<Candidate>& candidates() const override {
+    return candidates_;
   }
 
   virtual std::vector<Candidate> prune(const std::vector<Candidate>& candidates) const {
     return candidates;
   }
 
-  const std::vector<double>& sn() const { return sn_; }
-  int n() const { return n_; }
-  const std::vector<double>& theta0() const { return theta0_; }
-  bool has_theta0() const { return !theta0_.empty() && !std::isnan(theta0_[0]); }
-
-  // Default: return the internal vector (may include inactive pre-allocated slots).
-  // Derived classes (e.g. OneSideUnivariateInfo) can override to return only active entries.
-  virtual const std::vector<Candidate>& candidates() const {
-    return candidates_;
+  void update(const std::vector<double>& y) override {
+    add_new_point(y);
+    candidates_ = prune(candidates_);
+    append_new_candidate();
   }
 
-  size_t active_candidate_count() const { return k_; }
+protected:
+  virtual void append_new_candidate() {
+    candidates_.push_back(Candidate(sn_, n_, "right"));
+  }
 };
 
-// One-sided univariate Info with monotone pruning
+// ---------------------------------------------------------------------------
+// One-sided univariate Info with in-place pruning and index-based management
+// ---------------------------------------------------------------------------
 class OneSideUnivariateInfo : public Info {
 private:
   std::string side_;
+  std::vector<Candidate> candidates_;  // Pre-allocated storage
+  size_t k_;                          // Active candidate count
 
-  // Cache to return only active candidates from candidates_ (first k_ elements).
-  // Mutable so it can be updated in const candidates() method.
   mutable std::vector<Candidate> active_cache_;
-  mutable bool cache_valid_ = false;
+  mutable bool cache_valid_;
 
-  // Helper to invalidate cache whenever active set changes
   void invalidate_cache() {
     cache_valid_ = false;
   }
 
-  // Helper to rebuild active_cache_ from candidates_ and k_
   void rebuild_active_cache() const {
     active_cache_.clear();
     active_cache_.reserve(k_);
@@ -116,7 +117,8 @@ public:
                         double sn = 0.0, int n = 0,
                         const std::string& side = "right")
     : Info({sn}, n, std::isnan(theta0) ? std::vector<double>() : std::vector<double>({theta0})),
-      side_(side) {
+      side_(side), k_(0), cache_valid_(false) {
+    
     if (side != "right" && side != "left") {
       throw std::invalid_argument("side must be 'right' or 'left'");
     }
@@ -130,9 +132,6 @@ public:
     // Initialize with first candidate
     candidates_[0] = Candidate(sn_, n_, side_);
     k_ = 1;
-
-    // Initialize cache
-    invalidate_cache();
   }
 
   std::vector<Candidate> new_candidate() const override {
@@ -140,22 +139,27 @@ public:
   }
 
   void update(const std::vector<double>& y) override {
-    // Update cumulative state
     add_new_point(y);
-
-    // Prune candidates (in-place)
     prune_inplace();
-
-    // Append new candidate(s) for current time
     append_new_candidate();
   }
 
-  void prune_inplace() override {
+  const std::vector<Candidate>& candidates() const override {
+    if (!cache_valid_) {
+      rebuild_active_cache();
+    }
+    return active_cache_;
+  }
+
+  const std::string& side() const { return side_; }
+  size_t active_candidate_count() const { return k_; }
+
+private:
+  void prune_inplace() {
     if (k_ <= 1) {
       return;
     }
 
-    // Monotone pruning - work backwards from end
     while (k_ > 1) {
       const auto& c1 = candidates_[k_ - 1];
       const auto& c0 = candidates_[k_ - 2];
@@ -183,8 +187,7 @@ public:
     }
   }
 
-  void append_new_candidate() override {
-    // Reuse existing slots or expand if needed
+  void append_new_candidate() {
     if (k_ < candidates_.size()) {
       candidates_[k_].st = sn_;
       candidates_[k_].tau = n_;
@@ -195,38 +198,27 @@ public:
     k_++;
     invalidate_cache();
   }
-
-  // Override to return only active candidates (first k_ elements)
-  const std::vector<Candidate>& candidates() const override {
-    if (!cache_valid_) {
-      rebuild_active_cache();
-    }
-    return active_cache_;
-  }
-
-  const std::string& side() const { return side_; }
 };
 
+// ---------------------------------------------------------------------------
 // Two-sided univariate Info
+// ---------------------------------------------------------------------------
 class UnivariateInfo : public Info {
 private:
   std::unique_ptr<OneSideUnivariateInfo> right_;
   std::unique_ptr<OneSideUnivariateInfo> left_;
 
-  // -----------------------------
-  // Combined cache for active candidates
-  // -----------------------------
-  mutable std::vector<Candidate> combined_cache_;  // holds concatenated right+left active candidates
-  mutable bool cache_valid_ = false;              // true if combined_cache_ is up-to-date
+  mutable std::vector<Candidate> combined_cache_;
+  mutable bool cache_valid_;
 
 public:
   UnivariateInfo(double theta0 = std::numeric_limits<double>::quiet_NaN(),
                  double sn = 0.0, int n = 0)
-    : Info({sn}, n, std::isnan(theta0) ? std::vector<double>() : std::vector<double>({theta0})) {
+    : Info({sn}, n, std::isnan(theta0) ? std::vector<double>() : std::vector<double>({theta0})),
+      cache_valid_(false) {
 
     right_ = std::make_unique<OneSideUnivariateInfo>(theta0, sn, n, "right");
     left_ = std::make_unique<OneSideUnivariateInfo>(theta0, sn, n, "left");
-
   }
 
   std::vector<Candidate> new_candidate() const override {
@@ -239,26 +231,17 @@ public:
   }
 
   void add_new_point(const std::vector<double>& y) override {
-    // Update right with y
     right_->add_new_point(y);
-    // Update left with y
     left_->add_new_point(y);
-
-    // Keep top-level consistent
     n_ = right_->n();
     sn_ = right_->sn();
   }
 
   void update(const std::vector<double>& y) override {
-    // Update both sides
     right_->update(y);
     left_->update(y);
-
-    // Keep top-level consistent
     n_ = right_->n();
     sn_ = right_->sn();
-
-    // Invalidate cache since active candidates changed
     cache_valid_ = false;
   }
 

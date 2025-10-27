@@ -12,7 +12,7 @@
 
 namespace changepoint {
 
-class MultivariateInfo : public Info {
+class MultivariateInfo : public CandidateListInfo {
 private:
     std::vector<std::pair<int, int>> dim_indexes_;  // Pairs of dimension indices for 2D projections
     int pruning_params_[2];  // (multiplier, offset)
@@ -25,12 +25,12 @@ public:
                      const std::vector<std::pair<int, int>>& dim_indexes = {},
                      int pruning_mult = 2,
                      int pruning_offset = 1)
-        : Info(sn, n, theta0),
+        : CandidateListInfo(sn, n, theta0),
           dim_indexes_(dim_indexes),
           pruning_in_(5) {
         pruning_params_[0] = pruning_mult;
         pruning_params_[1] = pruning_offset;
-        
+
         // Initialize with first candidate
         auto initial = new_candidate();
         candidates_.insert(candidates_.end(), initial.begin(), initial.end());
