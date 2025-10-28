@@ -12,29 +12,95 @@
 
 namespace changepoint {
 
+// data: K x m (row-major) matrix (data[r*m + c])
+static std::vector<int> find_independent_columns_mgs(const double* data, int K, int m, double tol = 1e-12) {
+  if (K <= 0 || m <= 0) return {};
+  // precompute column 2-norms and scale
+  std::vector<double> col_norm(m, 0.0);
+  double max_col_norm = 0.0;
+  for (int c = 0; c < m; ++c) {
+    double s = 0.0;
+    const double* cp = data + c;
+    for (int r = 0; r < K; ++r) { double v = *(cp + static_cast<size_t>(r) * m); s += v*v; }
+    col_norm[c] = std::sqrt(s);
+    if (col_norm[c] > max_col_norm) max_col_norm = col_norm[c];
+  }
+  if (max_col_norm == 0.0) return {}; // all-zero matrix
+
+  double scaled_tol = tol * max_col_norm;
+
+  std::vector<std::vector<double>> Q; // orthonormal basis columns
+  std::vector<int> keep;
+  Q.reserve(m);
+
+  for (int c = 0; c < m; ++c) {
+    // copy column c
+    std::vector<double> v(K);
+    const double* cp = data + c;
+    for (int r = 0; r < K; ++r) v[r] = *(cp + static_cast<size_t>(r) * m);
+
+    // subtract projection on existing Q
+    for (const auto& qcol : Q) {
+      double dot = 0.0;
+      for (int r = 0; r < K; ++r) dot += qcol[r] * v[r];
+      for (int r = 0; r < K; ++r) v[r] -= dot * qcol[r];
+    }
+    // residual norm
+    double n2 = 0.0;
+    for (int r = 0; r < K; ++r) n2 += v[r]*v[r];
+    double n = std::sqrt(n2);
+    if (n > scaled_tol) {
+      // accept basis vector
+      for (int r = 0; r < K; ++r) v[r] /= n;
+      Q.push_back(std::move(v));
+      keep.push_back(c);
+    }
+  }
+  return keep;
+}
+
+std::vector<std::vector<int>> generate_combinations(int D, int p) {
+  std::vector<std::vector<int>> out;
+  if (p <= 0 || p > D) return out;
+  std::vector<int> comb(p);
+  for (int i = 0; i < p; ++i) comb[i] = i;
+  while (true) {
+    out.push_back(comb);
+    int i;
+    for (i = p - 1; i >= 0; --i) {
+      if (comb[i] != i + D - p) break;
+    }
+    if (i < 0) break;
+    ++comb[i];
+    for (int j = i + 1; j < p; ++j) comb[j] = comb[j - 1] + 1;
+  }
+  return out;
+}
+
+
 class MultivariateInfo : public CandidateListInfo {
 private:
   std::vector<std::vector<int>> dim_indexes_;  // Projections of arbitrary p size
   int pruning_params_[2];  // (multiplier, offset)
-    mutable int pruning_in_;          // Counter for pruning frequency
+  mutable int pruning_in_;          // Counter for pruning frequency
 
 public:
-    MultivariateInfo(const std::vector<double>& theta0 = {},
-                     const std::vector<double>& sn = {0.0},
-                     int n = 0,
-                     const std::vector<std::vector<int>>& dim_indexes = {},
-                     int pruning_mult = 2,
-                     int pruning_offset = 1)
-        : CandidateListInfo(sn, n, theta0),
-          dim_indexes_(dim_indexes),
-          pruning_in_(5) {
-        pruning_params_[0] = pruning_mult;
-        pruning_params_[1] = pruning_offset;
+  MultivariateInfo(const std::vector<double>& theta0 = {},
+                   const std::vector<double>& sn = {0.0},
+                   int n = 0,
+                   const std::vector<std::vector<int>>& dim_indexes = {},
+                   int pruning_mult = 2,
+                   int pruning_offset = 1)
+    : CandidateListInfo(sn, n, theta0),
+      dim_indexes_(dim_indexes),
+      pruning_in_(5) {
+    pruning_params_[0] = pruning_mult;
+    pruning_params_[1] = pruning_offset;
 
-        // Initialize with first candidate
-        auto initial = new_candidate();
-        candidates_.insert(candidates_.end(), initial.begin(), initial.end());
-    }
+    // Initialize with first candidate
+    auto initial = new_candidate();
+    candidates_.insert(candidates_.end(), initial.begin(), initial.end());
+  }
 
   std::vector<Candidate> prune(const std::vector<Candidate>& candidates) const override {
     int K = static_cast<int>(candidates.size());
@@ -70,7 +136,7 @@ public:
         double minv = std::numeric_limits<double>::infinity();
         double maxv = -std::numeric_limits<double>::infinity();
         for (int r = 0; r < rows; ++r) {
-          double v = data[r * dims + d];
+          double v = data[static_cast<size_t>(r) * dims + d];
           if (v < minv) minv = v;
           if (v > maxv) maxv = v;
         }
@@ -78,7 +144,10 @@ public:
       }
     };
 
-    // --- Full-dimensional hull via Qhull, guarded for degeneracy ---
+    // tolerance used by MGS independence test (tune if needed)
+    const double mgs_tol = 1e-12;
+
+    // --- Full-dimensional hull via Qhull, guarded for degeneracy & numeric rank ---
     if (dim_indexes_.empty()) {
       // compute spans for all coords (tau + st_i)
       std::vector<double> spans;
@@ -89,41 +158,66 @@ public:
       for (int d = 0; d < point_dim; ++d) {
         epss[d] = std::max(1e-12, 1e-12 * (1.0 + spans[d]));
       }
-      int varying = 0;
-      for (int d = 0; d < point_dim; ++d) if (spans[d] > epss[d]) ++varying;
 
-      if (varying <= 1) {
-        // effectively 1D: only one coordinate varies (likely only tau). Qhull would fail. Retain all.
+      // select columns that appear to vary
+      std::vector<int> varying_cols;
+      for (int d = 0; d < point_dim; ++d) if (spans[d] > epss[d]) varying_cols.push_back(d);
+
+      if (static_cast<int>(varying_cols.size()) <= 1) {
+        // effectively 1D: keep all candidates (conservative)
         for (int i = 0; i < K; ++i) hull_indices.insert(i);
-      } else if (varying == 2) {
-        // compress to 2D and run 2D Qhull (find the two varying dims)
-        int d0 = -1, d1 = -1;
-        for (int d = 0; d < point_dim; ++d) {
-          if (spans[d] > epss[d]) {
-            if (d0 == -1) d0 = d; else d1 = d;
+      } else {
+        // build K x m matrix with only the varying columns, row-major
+        const int m = static_cast<int>(varying_cols.size());
+        std::vector<double> flat_eff;
+        flat_eff.reserve(static_cast<size_t>(K * m));
+        for (int r = 0; r < K; ++r) {
+          size_t base = static_cast<size_t>(r) * point_dim;
+          for (int cidx = 0; cidx < m; ++cidx) {
+            int col = varying_cols[cidx];
+            flat_eff.push_back(flat_points[base + col]);
           }
         }
-        std::vector<double> flat2;
-        flat2.reserve(static_cast<size_t>(K * 2));
-        for (int i = 0; i < K; ++i) {
-          flat2.push_back(flat_points[i * point_dim + d0]);
-          flat2.push_back(flat_points[i * point_dim + d1]);
-        }
-        try {
-          orgQhull::Qhull qhull;
-          qhull.runQhull("", 2, K, flat2.data(), "");
-          for (const auto& vertex : qhull.vertexList()) hull_indices.insert(vertex.point().id());
-        } catch (...) {
+
+        // numeric independence test (select independent columns from flat_eff)
+        std::vector<int> kept = find_independent_columns_mgs(flat_eff.data(), K, m, mgs_tol);
+
+        if (kept.empty() || static_cast<int>(kept.size()) <= 1) {
+          // numerically rank <= 1 -> degenerate: keep all
           for (int i = 0; i < K; ++i) hull_indices.insert(i);
-        }
-      } else {
-        // full or >=3 effective dims -> call Qhull in the full dimension
-        try {
-          orgQhull::Qhull qhull;
-          qhull.runQhull("", point_dim, K, flat_points.data(), "");
-          for (const auto& vertex : qhull.vertexList()) hull_indices.insert(vertex.point().id());
-        } catch (...) {
-          for (int i = 0; i < K; ++i) hull_indices.insert(i);
+        } else if (static_cast<int>(kept.size()) == 2) {
+          // run Qhull in 2D on the two independent columns
+          std::vector<double> flat2;
+          flat2.reserve(static_cast<size_t>(K * 2));
+          for (int r = 0; r < K; ++r) {
+            flat2.push_back(flat_eff[static_cast<size_t>(r) * m + kept[0]]);
+            flat2.push_back(flat_eff[static_cast<size_t>(r) * m + kept[1]]);
+          }
+          try {
+            orgQhull::Qhull qhull;
+            qhull.runQhull("", 2, K, flat2.data(), "");
+            for (const auto& vertex : qhull.vertexList()) hull_indices.insert(vertex.point().id());
+          } catch (...) {
+            for (int i = 0; i < K; ++i) hull_indices.insert(i);
+          }
+        } else {
+          // rank >= 3: build compact data with only the independent columns and call Qhull
+          const int eff_rank = static_cast<int>(kept.size());
+          std::vector<double> flat_rank;
+          flat_rank.reserve(static_cast<size_t>(K * eff_rank));
+          for (int r = 0; r < K; ++r) {
+            for (int j = 0; j < eff_rank; ++j) {
+              int col = kept[j];
+              flat_rank.push_back(flat_eff[static_cast<size_t>(r) * m + col]);
+            }
+          }
+          try {
+            orgQhull::Qhull qhull;
+            qhull.runQhull("", eff_rank, K, flat_rank.data(), "");
+            for (const auto& vertex : qhull.vertexList()) hull_indices.insert(vertex.point().id());
+          } catch (...) {
+            for (int i = 0; i < K; ++i) hull_indices.insert(i);
+          }
         }
       }
     } else {
@@ -139,7 +233,7 @@ public:
         // Build projected points (preserve order => Qhull vertex ids map to candidate indices)
         for (int i = 0; i < K; ++i) {
           const auto& st_vec = candidates[i].st;
-          flat_proj.push_back(flat_points[i * point_dim + 0]); // tau
+          flat_proj.push_back(flat_points[static_cast<size_t>(i) * point_dim + 0]); // tau
           for (int pi = 0; pi < p; ++pi) {
             int st_index = pr[pi];
             double v = (st_index >= 0 && st_index < static_cast<int>(st_vec.size())) ? st_vec[st_index] : 0.0;
@@ -159,41 +253,64 @@ public:
         for (int d = 0; d < proj_cols; ++d) if (spans_proj[d] > eps_proj[d]) varying_dims.push_back(d);
 
         if (static_cast<int>(varying_dims.size()) <= 1) {
-          // effectively 1D -> Qhull not meaningful here; include all
+          // effectively 1D -> include all
           for (int i = 0; i < K; ++i) hull_indices.insert(i);
           continue;
         }
 
-        try {
-          if (static_cast<int>(varying_dims.size()) == 2) {
-            // run 2D Qhull on the two varying dims
-            std::vector<double> flat2;
-            flat2.reserve(static_cast<size_t>(K * 2));
-            int a = varying_dims[0], b = varying_dims[1];
-            for (int i = 0; i < K; ++i) {
-              flat2.push_back(flat_proj[i * proj_cols + a]);
-              flat2.push_back(flat_proj[i * proj_cols + b]);
-            }
+        // Build K x m_effective array with only the varying columns (row-major)
+        const int m_eff = static_cast<int>(varying_dims.size());
+        std::vector<double> flat_eff;
+        flat_eff.reserve(static_cast<size_t>(K * m_eff));
+        for (int r = 0; r < K; ++r) {
+          for (int vd = 0; vd < m_eff; ++vd) {
+            int col = varying_dims[vd];
+            flat_eff.push_back(flat_proj[static_cast<size_t>(r) * proj_cols + col]);
+          }
+        }
+
+        // numeric independence selection
+        std::vector<int> kept = find_independent_columns_mgs(flat_eff.data(), K, m_eff, mgs_tol);
+
+        if (kept.empty() || static_cast<int>(kept.size()) <= 1) {
+          // degenerate -> include all
+          for (int i = 0; i < K; ++i) hull_indices.insert(i);
+          continue;
+        }
+
+        if (static_cast<int>(kept.size()) == 2) {
+          // run Qhull in 2D on the two independent columns
+          std::vector<double> flat2;
+          flat2.reserve(static_cast<size_t>(K * 2));
+          for (int r = 0; r < K; ++r) {
+            flat2.push_back(flat_eff[static_cast<size_t>(r) * m_eff + kept[0]]);
+            flat2.push_back(flat_eff[static_cast<size_t>(r) * m_eff + kept[1]]);
+          }
+          try {
             orgQhull::Qhull qhull;
             qhull.runQhull("", 2, K, flat2.data(), "");
             for (const auto& vertex : qhull.vertexList()) hull_indices.insert(vertex.point().id());
-          } else {
-            // >= 3 varying dims: build compact array of only varying columns and run Qhull in eff_dim
-            const int eff_dim = static_cast<int>(varying_dims.size());
-            std::vector<double> flat_eff;
-            flat_eff.reserve(static_cast<size_t>(K * eff_dim));
-            for (int i = 0; i < K; ++i) {
-              for (int vd : varying_dims) {
-                flat_eff.push_back(flat_proj[i * proj_cols + vd]);
-              }
-            }
-            orgQhull::Qhull qhull;
-            qhull.runQhull("", eff_dim, K, flat_eff.data(), "");
-            for (const auto& vertex : qhull.vertexList()) hull_indices.insert(vertex.point().id());
+          } catch (...) {
+            for (int i = 0; i < K; ++i) hull_indices.insert(i);
           }
-        } catch (...) {
-          // conservative fallback: include all points for this projection
-          for (int i = 0; i < K; ++i) hull_indices.insert(i);
+        } else {
+          // higher rank -> Qhull with reduced basis
+          const int eff_rank = static_cast<int>(kept.size());
+          std::vector<double> flat_rank;
+          flat_rank.reserve(static_cast<size_t>(K * eff_rank));
+          for (int r = 0; r < K; ++r) {
+            for (int j = 0; j < eff_rank; ++j) {
+              int col = kept[j];
+              flat_rank.push_back(flat_eff[static_cast<size_t>(r) * m_eff + col]);
+            }
+          }
+          try {
+            orgQhull::Qhull qhull;
+            qhull.runQhull("", eff_rank, K, flat_rank.data(), "");
+            for (const auto& vertex : qhull.vertexList()) hull_indices.insert(vertex.point().id());
+          } catch (...) {
+            for (int i = 0; i < K; ++i) hull_indices.insert(i);
+          }
         }
       } // end projection loop
     }
