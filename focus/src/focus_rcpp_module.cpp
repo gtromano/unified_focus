@@ -234,6 +234,11 @@ List detector_candidates(SEXP info_ptr) {
   return out;
 }
 
+// [[Rcpp::export]]
+std::vector<std::vector<int>> generate_projection_indexes(int D, int p) {
+  std::vector<std::vector<int>> combs = generate_circular_combinations(D, p);
+  return combs;
+}
 
 // Run complete offline detection in C++ for efficiency
 // [[Rcpp::export]]
@@ -389,6 +394,7 @@ List focus_offline(SEXP Y,
     Named("changepoint") = changepoint_vec,
     Named("detection_time") = detection_time == NA_INTEGER ? R_NilValue : wrap(detection_time),
     Named("detected_changepoint") = detected_changepoint == NA_INTEGER ? R_NilValue : wrap(detected_changepoint),
+    Named("candidates") = detector_candidates(detector_ptr),
     Named("threshold") = threshold,
     Named("n") = actual_length,
     Named("type") = type,

@@ -270,6 +270,38 @@ legend("topleft",
        legend = c("Threshold", "Detection", "True changepoint"),
        col = c("red", "blue", "green"), lty = c(2, 2, 3), lwd = 2)
 ```
+**Note:** When you have more than 5 dimensions, computing the convex hull can become quite slow and you may not prune many points. A practical approach is to use a low-dimensional approximation of the hull, which often gives very similar results at a fraction of the computation time.
+
+Here’s an example comparing full vs low-dimensional hull computation:
+
+```{r}
+set.seed(42)
+n <- 1000
+p <- 6
+
+# Create data: changepoint at t=1000
+Y_multi <- rbind(
+  matrix(rnorm(5000 * p, mean = -1, 1), ncol = p),
+  matrix(rnorm(500 * p, mean = 1.2), ncol = p)
+)
+
+# Full multivariate detection
+system.time(
+  res_multi <- focus_offline(Y_multi, threshold = Inf,
+                             type = "multivariate", family = "gaussian")
+)
+
+# Low-dimensional projection approximation
+dim_indexes <- generate_projection_indexes(6, 2)
+system.time(
+  res_multi_approx <- focus_offline(Y_multi, threshold = Inf,
+                                    type = "multivariate", family = "gaussian",
+                                    dim_indexes = dim_indexes)
+)
+
+# Verify similarity
+all.equal(res_multi$stat, res_multi_approx$stat)
+```
 
 ### Poisson change-in-rate Detection
 

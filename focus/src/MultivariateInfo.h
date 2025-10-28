@@ -59,23 +59,21 @@ static std::vector<int> find_independent_columns_mgs(const double* data, int K, 
   return keep;
 }
 
-std::vector<std::vector<int>> generate_combinations(int D, int p) {
-  std::vector<std::vector<int>> out;
-  if (p <= 0 || p > D) return out;
-  std::vector<int> comb(p);
-  for (int i = 0; i < p; ++i) comb[i] = i;
-  while (true) {
-    out.push_back(comb);
-    int i;
-    for (i = p - 1; i >= 0; --i) {
-      if (comb[i] != i + D - p) break;
+std::vector<std::vector<int>> generate_circular_combinations(int D, int p) {
+    std::vector<std::vector<int>> out;
+    if (p <= 0 || p > D) return out;
+
+    for (int start = 0; start < D; ++start) {
+        std::vector<int> comb(p);
+        for (int i = 0; i < p; ++i) {
+            comb[i] = (start + i) % D;  // wrap around
+        }
+        out.push_back(comb);
     }
-    if (i < 0) break;
-    ++comb[i];
-    for (int j = i + 1; j < p; ++j) comb[j] = comb[j - 1] + 1;
-  }
-  return out;
+
+    return out;
 }
+
 
 
 class MultivariateInfo : public CandidateListInfo {
