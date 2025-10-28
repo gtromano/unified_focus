@@ -361,6 +361,55 @@ legend("topleft",
 
 ![](generate_README_files/figure-commonmark/unnamed-chunk-7-1.png)
 
+**Note:** When you have more than 5 dimensions, computing the convex
+hull can become quite slow and you may not prune many points. A
+practical approach is to use a low-dimensional approximation of the
+hull, which often gives very similar results at a fraction of the
+computation time.
+
+Here’s an example comparing full vs low-dimensional hull computation:
+
+``` r
+set.seed(42)
+n <- 1000
+p <- 6
+
+# Create data: changepoint at t=1000
+Y_multi <- rbind(
+  matrix(rnorm(5000 * p, mean = -1, 1), ncol = p),
+  matrix(rnorm(500 * p, mean = 1.2), ncol = p)
+)
+
+# Full multivariate detection
+system.time(
+  res_multi <- focus_offline(Y_multi, threshold = Inf,
+                             type = "multivariate", family = "gaussian")
+)
+```
+
+       user  system elapsed 
+      8.776   0.118   8.895 
+
+``` r
+# Low-dimensional projection approximation
+dim_indexes <- generate_projection_indexes(6, 2)
+system.time(
+  res_multi_approx <- focus_offline(Y_multi, threshold = Inf,
+                                    type = "multivariate", family = "gaussian",
+                                    dim_indexes = dim_indexes)
+)
+```
+
+       user  system elapsed 
+       0.13    0.00    0.13 
+
+``` r
+# Verify similarity
+all.equal(res_multi$stat, res_multi_approx$stat)
+```
+
+    [1] "Mean relative difference: 0.003782673"
+
 ### Poisson change-in-rate Detection
 
 For count data:
@@ -399,7 +448,7 @@ legend("topleft",
        lty = c(1, 2, 2, 3), lwd = 2)
 ```
 
-![](generate_README_files/figure-commonmark/unnamed-chunk-8-1.png)
+![](generate_README_files/figure-commonmark/unnamed-chunk-9-1.png)
 
 ``` r
 set.seed(42)
@@ -445,7 +494,7 @@ legend("topleft",
        col = c("red", "blue", "green"), lty = c(2, 2, 3), lwd = 2)
 ```
 
-![](generate_README_files/figure-commonmark/unnamed-chunk-9-1.png)
+![](generate_README_files/figure-commonmark/unnamed-chunk-10-1.png)
 
 ### Flexibility: Statistics Independent of Detector Type
 
@@ -533,7 +582,7 @@ plot(stat_poisson, type = "l", main = "Poisson Statistic on Poisson Data",
 abline(v = 500, col = "green", lty = 3, lwd = 2)
 ```
 
-![](generate_README_files/figure-commonmark/unnamed-chunk-10-1.png)
+![](generate_README_files/figure-commonmark/unnamed-chunk-11-1.png)
 
 ``` r
 par(mfrow = c(1, 1))
@@ -584,7 +633,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.154   0.000   0.154 
+      0.152   0.000   0.152 
 
 ``` r
 # Benchmark online mode
@@ -608,7 +657,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.331   0.000   0.331 
+      0.322   0.000   0.322 
 
 ``` r
 # Verify both produce identical results

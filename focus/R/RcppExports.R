@@ -29,6 +29,10 @@ detector_candidates <- function(info_ptr) {
     .Call(`_focus_detector_candidates`, info_ptr)
 }
 
+generate_projection_indexes <- function(D, p) {
+    .Call(`_focus_generate_projection_indexes`, D, p)
+}
+
 focus_offline <- function(Y, threshold, type, family, theta0 = NULL, dim_indexes = NULL, pruning_mult = 2L, pruning_offset = 1L, side = "right") {
     .Call(`_focus_focus_offline`, Y, threshold, type, family, theta0, dim_indexes, pruning_mult, pruning_offset, side)
 }

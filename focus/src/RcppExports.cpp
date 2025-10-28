@@ -94,6 +94,18 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// generate_projection_indexes
+std::vector<std::vector<int>> generate_projection_indexes(int D, int p);
+RcppExport SEXP _focus_generate_projection_indexes(SEXP DSEXP, SEXP pSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type D(DSEXP);
+    Rcpp::traits::input_parameter< int >::type p(pSEXP);
+    rcpp_result_gen = Rcpp::wrap(generate_projection_indexes(D, p));
+    return rcpp_result_gen;
+END_RCPP
+}
 // focus_offline
 List focus_offline(SEXP Y, double threshold, std::string type, std::string family, Nullable<NumericVector> theta0, Nullable<List> dim_indexes, int pruning_mult, int pruning_offset, std::string side);
 RcppExport SEXP _focus_focus_offline(SEXP YSEXP, SEXP thresholdSEXP, SEXP typeSEXP, SEXP familySEXP, SEXP theta0SEXP, SEXP dim_indexesSEXP, SEXP pruning_multSEXP, SEXP pruning_offsetSEXP, SEXP sideSEXP) {
@@ -132,6 +144,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_focus_detector_info_n", (DL_FUNC) &_focus_detector_info_n, 1},
     {"_focus_detector_info_sn", (DL_FUNC) &_focus_detector_info_sn, 1},
     {"_focus_detector_candidates", (DL_FUNC) &_focus_detector_candidates, 1},
+    {"_focus_generate_projection_indexes", (DL_FUNC) &_focus_generate_projection_indexes, 2},
     {"_focus_focus_offline", (DL_FUNC) &_focus_focus_offline, 9},
     {"_focus_rcpp_hello_world", (DL_FUNC) &_focus_rcpp_hello_world, 0},
     {NULL, NULL, 0}
