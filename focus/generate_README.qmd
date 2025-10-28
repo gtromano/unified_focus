@@ -303,62 +303,76 @@ system.time(
 all.equal(res_multi$stat, res_multi_approx$stat)
 ```
 
-### Poisson change-in-rate Detection
+### Exponential family models
 
-For count data:
+This section collects examples for the exponential-family models implemented in `focus`: **Poisson**, **Bernoulli**, and **Gamma**. All three examples show how to run an offline detection using `focus::focus_offline()` -- but the online, sequential iplementation would work as well (see below for an example).
+
+#### Bernoulli (change in success probability)
+
+Univariate and multivariate Bernoulli examples. Here each observation is a 0/1 draw and the success probability changes at the halfway point.
 
 ```{r}
+# univariate bernoulli example
 set.seed(123)
-# Generate Poisson data: rate changes from 5 to 8
-Y_pois <- c(rpois(800, lambda = 5), rpois(400, lambda = 8))
+n <- 2000
+Y_bern <- c(rbinom(n/2, size = 1, prob = 0.2), rbinom(n/2, size = 1, prob = 0.5))
 
-# Known pre-change rate
-res_pois <- focus_offline(Y_pois, threshold = 15, 
-                         type = "univariate", family = "poisson", 
-                         theta0 = 5)
+system.time({
+  res_bern <- focus::focus_offline(Y_bern, threshold = Inf, type = "univariate", family = "bernoulli")
+})
 
-cat("Detection time:", res_pois$detection_time, "\n")
-cat("Estimated changepoint:", res_pois$detected_changepoint, "\n")
+plot(res_bern$stat, main = "Bernoulli (univariate): change in success probability")
 
-# Plot
-plot(res_pois$stat, type = "l", main = "FOCuS: Poisson Rate Change",
-     xlab = "Time", ylab = "Statistic", lwd = 2)
-abline(h = res_pois$threshold, col = "red", lty = 2, lwd = 2)
-abline(v = res_pois$detection_time, col = "blue", lty = 2, lwd = 2)
-abline(v = 800, col = "orange", lty = 3, lwd = 2)
-legend("topleft", 
-       legend = c("Threshold", "Detection", "True changepoint"),
-       col = c("red", "blue", "orange"), 
-       lty = c(1, 2, 2, 3), lwd = 2)
-```
-```{r}
-set.seed(42)
-n <- 1500
-p <- 3
-
-# Create data: changepoint at t=1000
-Y_multi <- rbind(
-  matrix(rpois(1000 * p, lambda = 2), ncol = p),
-  matrix(rpois(500 * p, lambda = 1), ncol = p)
+# multivariate bernoulli example (two binary streams)
+Y_bern_multi <- cbind(
+  c(rbinom(n/2, size = 1, prob = 0.2), rbinom(n/2, size = 1, prob = 0.5)),
+  c(rbinom(n/2, size = 1, prob = 0.3), rbinom(n/2, size = 1, prob = 0.6))
 )
 
-# Run detection
-res_multi <- focus_offline(Y_multi, threshold = 30, 
-                           type = "multivariate", family = "poisson")
+system.time({
+  res_bern_multi <- focus::focus_offline(Y_bern_multi, threshold = Inf, type = "multivariate", family = "bernoulli")
+})
 
-cat("Detection time:", res_multi$detection_time, "\n")
-cat("Estimated changepoint:", res_multi$detected_changepoint, "\n")
-cat("True changepoint: 1000\n")
+plot(res_bern_multi$stat, main = "Bernoulli (multivariate): two streams")
+```
 
-# Plot
-plot(res_multi$stat, type = "l", main = "Multivariate poisson example",
-     xlab = "Time", ylab = "Statistic", lwd = 2)
-abline(h = res_multi$threshold, col = "red", lty = 2, lwd = 2)
-abline(v = res_multi$detection_time, col = "blue", lty = 2, lwd = 2)
-abline(v = 1000, col = "green", lty = 3, lwd = 2)
-legend("topleft", 
-       legend = c("Threshold", "Detection", "True changepoint"),
-       col = c("red", "blue", "green"), lty = c(2, 2, 3), lwd = 2)
+
+#### Poisson
+
+A simple Poisson change-in-rate example: counts switch from a low to a higher rate halfway through the sequence.
+
+```{r}
+# Poisson change in rate example
+set.seed(101)
+n <- 2000
+Y_pois <- c(rpois(n/2, lambda = 2), rpois(n/2, lambda = 6))
+
+system.time({
+  res_pois <- focus::focus_offline(Y_pois, threshold = Inf, type = "univariate", family = "poisson")
+})
+
+plot(res_pois$stat, main = "Poisson: change in rate (lambda)")
+```
+
+
+#### Gamma (change in scale / rate)
+
+The Gamma example requires specifying the `shape` parameter (positive scalar). In the `focus` API the `shape` argument is passed to the cost function; `theta0` is used as the null value for the relevant Gamma parameter (scale/rate depending on your parameterisation in the implementation). Make sure `shape > 0`.
+**Note**: the `shape` parameter is specific to the **Gamma** family. If you pass `shape` when using another family it will be ignored (hopefully).
+
+```{r}
+# gamma change in scale example
+set.seed(124)
+n <- 2000
+# shape = 2; first half scale=2, second half scale=0.5
+Y_gamma <- c(rgamma(n/2, shape = 2, scale = 2), rgamma(n/2, shape = 2, scale = 0.5))
+
+system.time({
+  # note: shape = 2 must be provided for family='gamma'
+  res_gamma <- focus::focus_offline(Y_gamma, threshold = Inf, type = "univariate", family = "gamma", shape = 2, theta0 = 2)
+})
+
+plot(res_gamma$stat, main = "Gamma: change in scale (shape = 2)")
 ```
 
 ### Flexibility: Statistics Independent of Detector Type

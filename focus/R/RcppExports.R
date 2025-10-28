@@ -9,8 +9,8 @@ detector_update <- function(info_ptr, y) {
     invisible(.Call(`_focus_detector_update`, info_ptr, y))
 }
 
-get_statistics <- function(info_ptr, family, theta0 = NULL) {
-    .Call(`_focus_get_statistics`, info_ptr, family, theta0)
+get_statistics <- function(info_ptr, family, theta0 = NULL, shape = NULL) {
+    .Call(`_focus_get_statistics`, info_ptr, family, theta0, shape)
 }
 
 detector_pieces_len <- function(info_ptr) {
@@ -33,8 +33,8 @@ generate_projection_indexes <- function(D, p) {
     .Call(`_focus_generate_projection_indexes`, D, p)
 }
 
-focus_offline <- function(Y, threshold, type, family, theta0 = NULL, dim_indexes = NULL, pruning_mult = 2L, pruning_offset = 1L, side = "right") {
-    .Call(`_focus_focus_offline`, Y, threshold, type, family, theta0, dim_indexes, pruning_mult, pruning_offset, side)
+focus_offline <- function(Y, threshold, type, family, theta0 = NULL, dim_indexes = NULL, pruning_mult = 2L, pruning_offset = 1L, side = "right", shape = NULL) {
+    .Call(`_focus_focus_offline`, Y, threshold, type, family, theta0, dim_indexes, pruning_mult, pruning_offset, side, shape)
 }
 
 rcpp_hello_world <- function() {

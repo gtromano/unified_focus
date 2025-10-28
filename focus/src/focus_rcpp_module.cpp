@@ -113,7 +113,9 @@ void detector_update(SEXP info_ptr, NumericVector y) {
 // [[Rcpp::export]]
 List get_statistics(SEXP info_ptr,
                     std::string family,
-                    Nullable<NumericVector> theta0 = R_NilValue) {
+                    Nullable<NumericVector> theta0 = R_NilValue,
+                    Nullable<NumericVector> shape = R_NilValue) {   // <-- added shape
+
   XPtr<std::shared_ptr<Info>> ptr(info_ptr);
   if (!ptr || !(*ptr)) stop("Invalid info pointer");
 
@@ -134,16 +136,42 @@ List get_statistics(SEXP info_ptr,
     theta0_vec = cs.theta0();
   }
 
+  // ---- Prepare shape (scalar) ----
+  double shape_scalar = std::numeric_limits<double>::quiet_NaN();
+  if (!shape.isNull()) {
+    NumericVector sh(shape.get());
+    if (sh.size() >= 1) shape_scalar = sh[0];
+  }
+
+  // If shape provided but family is not gamma -> warn that it will be ignored
+  if (!std::isnan(shape_scalar) && family != "gamma") {
+    warning("`shape` parameter provided but will be ignored unless family == \"gamma\".");
+  }
+
+  // If family is gamma, shape must be provided and > 0
+  if (family == "gamma") {
+    if (std::isnan(shape_scalar) || !(shape_scalar > 0.0)) {
+      stop("family == 'gamma' requires a positive scalar `shape` parameter.");
+    }
+  }
+
   // ---- Select and apply cost function ----
   ChangepointResult result;
 
   if (family == "gaussian") {
-    // Check if we need two-sided version
     result = compute_costs_gaussian(cs, theta0_vec);
   } else if (family == "poisson") {
     result = compute_costs_poisson(cs, theta0_vec);
+  } else if (family == "bernoulli") {
+    result = compute_costs_bernoulli(cs, theta0_vec);
+  } else if (family == "gamma") {
+    // bind shape into a lambda that matches CostFunction signature
+    auto gamma_fn = [shape_scalar](const Info& cs_inner, const std::vector<double>& th0) -> ChangepointResult {
+      return compute_costs_gamma(cs_inner, th0, shape_scalar);
+    };
+    result = gamma_fn(cs, theta0_vec);
   } else {
-    stop("Unknown family: must be 'gaussian' or 'poisson'");
+    stop("Unknown family: must be 'gaussian', 'poisson', 'bernoulli' or 'gamma'");
   }
 
   // ---- Convert to R list ----
@@ -163,6 +191,7 @@ List get_statistics(SEXP info_ptr,
     Named("stat")          = st
   );
 }
+
 
 // Get number of candidates for inspection
 // [[Rcpp::export]]
@@ -250,7 +279,8 @@ List focus_offline(SEXP Y,
                    Nullable<List> dim_indexes = R_NilValue,
                    int pruning_mult = 2,
                    int pruning_offset = 1,
-                   std::string side = "right") {
+                   std::string side = "right",
+                   Nullable<NumericVector> shape = R_NilValue) {   // <-- added shape
 
   // ---- Parse input data Y ----
   NumericMatrix Y_mat;
@@ -311,6 +341,25 @@ List focus_offline(SEXP Y,
     theta0_vec = info->theta0(); // copy from Info if present
   }
 
+  // ---- Prepare shape scalar ----
+  double shape_scalar = std::numeric_limits<double>::quiet_NaN();
+  if (!shape.isNull()) {
+    NumericVector sh(shape.get());
+    if (sh.size() >= 1) shape_scalar = sh[0];
+  }
+
+  // If shape provided but family is not gamma -> warn that it will be ignored
+  if (!std::isnan(shape_scalar) && family != "gamma") {
+    warning("`shape` parameter provided but will be ignored unless family == \"gamma\".");
+  }
+
+  // If family is gamma, shape must be provided and > 0
+  if (family == "gamma") {
+    if (std::isnan(shape_scalar) || !(shape_scalar > 0.0)) {
+      stop("family == 'gamma' requires a positive scalar `shape` parameter.");
+    }
+  }
+
   // ---- Select cost function ----
   CostFunction cost_fn;
   const auto* maybe_uni = dynamic_cast<const UnivariateInfo*>(info.get());
@@ -320,8 +369,15 @@ List focus_offline(SEXP Y,
     cost_fn = compute_costs_gaussian;
   } else if (family == "poisson") {
     cost_fn = compute_costs_poisson;
+  } else if (family == "bernoulli") {
+    cost_fn = compute_costs_bernoulli;
+  } else if (family == "gamma") {
+    // bind shape into a lambda matching CostFunction
+    cost_fn = [shape_scalar](const Info& cs_inner, const std::vector<double>& th0) -> ChangepointResult {
+      return compute_costs_gamma(cs_inner, th0, shape_scalar);
+    };
   } else {
-    stop("Unknown family: must be 'gaussian' or 'poisson'");
+    stop("Unknown family: must be 'gaussian', 'poisson', 'bernoulli' or 'gamma'");
   }
 
   // ---- Prepare reusable containers ----
@@ -398,7 +454,8 @@ List focus_offline(SEXP Y,
     Named("threshold") = threshold,
     Named("n") = actual_length,
     Named("type") = type,
-    Named("family") = family
+    Named("family") = family,
+    Named("shape") = (family == "gamma" ? wrap(shape_scalar) : R_NilValue)   // include shape in return for convenience
   );
 }
 
