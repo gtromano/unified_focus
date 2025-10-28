@@ -56,7 +56,6 @@ public:
     for (int i = 0; i < K; ++i) {
       const auto& c = candidates[i];
       flat_points.push_back(static_cast<double>(c.tau));
-      // write st values (padding with zeros if necessary)
       const auto& st_vec = c.st;
       for (int j = 0; j < target_dim; ++j) {
         double v = (j < static_cast<int>(st_vec.size())) ? st_vec[j] : 0.0;
@@ -64,42 +63,157 @@ public:
       }
     }
 
-    if (dim_indexes_.empty()) {
-      // Full-dimensional hull via Qhull
-      try {
-        orgQhull::Qhull qhull;
-        qhull.runQhull("", point_dim, K, flat_points.data(), "");
-        for (const auto& vertex : qhull.vertexList()) {
-          hull_indices.insert(vertex.point().id());
+    // cheap helper: count how many coordinates actually vary above `eps`
+    auto count_varying_dims = [&](const double* data, int dims, int rows, double eps) -> int {
+      for (int d = 0; d < dims; ++d) {
+        double minv = std::numeric_limits<double>::infinity();
+        double maxv = -std::numeric_limits<double>::infinity();
+        for (int r = 0; r < rows; ++r) {
+          double v = data[r * dims + d];
+          if (v < minv) minv = v;
+          if (v > maxv) maxv = v;
         }
-      } catch (...) {
+        // store min/max per dim externally if you want; here we just test
+      }
+      // We'll compute count outside because we need per-dim min/max; do the explicit version below.
+      return 0; // not used
+    };
+
+    // Use a small eps relative to the data scale to detect "constant" coordinates.
+    // For tau we expect it to vary; choose eps = 1e-12 * (1 + span)
+    auto compute_span_per_dim = [&](const double* data, int dims, int rows, std::vector<double>& spans) {
+      spans.assign(dims, 0.0);
+      for (int d = 0; d < dims; ++d) {
+        double minv = std::numeric_limits<double>::infinity();
+        double maxv = -std::numeric_limits<double>::infinity();
+        for (int r = 0; r < rows; ++r) {
+          double v = data[r * dims + d];
+          if (v < minv) minv = v;
+          if (v > maxv) maxv = v;
+        }
+        spans[d] = maxv - minv;
+      }
+    };
+
+    // --- Full-dimensional hull via Qhull, guarded for degeneracy ---
+    if (dim_indexes_.empty()) {
+      // compute spans for all coords (tau + st_i)
+      std::vector<double> spans;
+      compute_span_per_dim(flat_points.data(), point_dim, K, spans);
+
+      // set eps per-dim relative to span (tiny absolute floor too)
+      std::vector<double> epss(point_dim);
+      for (int d = 0; d < point_dim; ++d) {
+        epss[d] = std::max(1e-12, 1e-12 * (1.0 + spans[d]));
+      }
+      int varying = 0;
+      for (int d = 0; d < point_dim; ++d) if (spans[d] > epss[d]) ++varying;
+
+      if (varying <= 1) {
+        // effectively 1D: only one coordinate varies (likely only tau). Qhull would fail.
+        // Cheap and safe fallback: consider all candidates as "on the hull"
         for (int i = 0; i < K; ++i) hull_indices.insert(i);
+      } else if (varying == 2) {
+        // effectively 2D: compress to 2D and run 2D Qhull (safer)
+        // find the two dims that vary
+        int d0 = -1, d1 = -1;
+        for (int d = 0; d < point_dim; ++d) {
+          if (spans[d] > epss[d]) {
+            if (d0 == -1) d0 = d; else d1 = d;
+          }
+        }
+        std::vector<double> flat2;
+        flat2.reserve(static_cast<size_t>(K * 2));
+        for (int i = 0; i < K; ++i) {
+          flat2.push_back(flat_points[i * point_dim + d0]);
+          flat2.push_back(flat_points[i * point_dim + d1]);
+        }
+        try {
+          orgQhull::Qhull qhull;
+          qhull.runQhull("", 2, K, flat2.data(), "");
+          for (const auto& vertex : qhull.vertexList()) hull_indices.insert(vertex.point().id());
+        } catch (...) {
+          for (int i = 0; i < K; ++i) hull_indices.insert(i);
+        }
+      } else {
+        // full or >=3 effective dims -> safe to call Qhull in the full dimension
+        try {
+          orgQhull::Qhull qhull;
+          qhull.runQhull("", point_dim, K, flat_points.data(), "");
+          for (const auto& vertex : qhull.vertexList()) hull_indices.insert(vertex.point().id());
+        } catch (...) {
+          for (int i = 0; i < K; ++i) hull_indices.insert(i);
+        }
       }
     } else {
-      // For each 2D projection, build a small flat array (tau + two dims) and run Qhull
+      // For each 2D projection, build a small flat array (tau + two dims) and run Qhull, but guard degeneracy
       for (const auto& pr : dim_indexes_) {
         int d1 = pr.first;
         int d2 = pr.second;
+        // projection dims are indices into st: resulting projection dims (in flat_proj) are:
+        // col0 = tau (flat_points[base + 0])
+        // col1 = st[d1] (flat_points[base + 1 + d1])
+        // col2 = st[d2] (flat_points[base + 1 + d2])
         std::vector<double> flat_proj;
         flat_proj.reserve(static_cast<size_t>(K * 3));
         for (int i = 0; i < K; ++i) {
-          // idx into flat_points for this row = i * point_dim
           size_t base = static_cast<size_t>(i) * point_dim;
-          double tau_v = flat_points[base];                   // tau
-          double v1 = flat_points[base + 1 + d1];             // st[d1]
-          double v2 = flat_points[base + 1 + d2];             // st[d2]
+          double tau_v = flat_points[base + 0];
+          double v1 = flat_points[base + 1 + d1];
+          double v2 = flat_points[base + 1 + d2];
           flat_proj.push_back(tau_v);
           flat_proj.push_back(v1);
           flat_proj.push_back(v2);
         }
-        try {
-          orgQhull::Qhull qhull;
-          qhull.runQhull("", 3, K, flat_proj.data(), "");
-          for (const auto& vertex : qhull.vertexList()) {
-            hull_indices.insert(vertex.point().id());
+
+        // compute spans for the 3 coords
+        std::vector<double> spans3(3, 0.0);
+        for (int d = 0; d < 3; ++d) {
+          double minv = std::numeric_limits<double>::infinity();
+          double maxv = -std::numeric_limits<double>::infinity();
+          for (int r = 0; r < K; ++r) {
+            double v = flat_proj[r * 3 + d];
+            if (v < minv) minv = v;
+            if (v > maxv) maxv = v;
           }
-        } catch (...) {
+          spans3[d] = maxv - minv;
+        }
+        // eps per dim
+        std::vector<double> eps3(3);
+        for (int d = 0; d < 3; ++d) eps3[d] = std::max(1e-12, 1e-12 * (1.0 + spans3[d]));
+        int varying3 = 0;
+        for (int d = 0; d < 3; ++d) if (spans3[d] > eps3[d]) ++varying3;
+
+        if (varying3 <= 1) {
+          // effectively 1D -> skip qhull, include all
           for (int i = 0; i < K; ++i) hull_indices.insert(i);
+          continue;
+        } else if (varying3 == 2) {
+          // find which two dims vary and build a 2D array
+          int a = -1, b = -1;
+          for (int d = 0; d < 3; ++d) if (spans3[d] > eps3[d]) { if (a == -1) a = d; else b = d; }
+          std::vector<double> flat2;
+          flat2.reserve(static_cast<size_t>(K * 2));
+          for (int i = 0; i < K; ++i) {
+            flat2.push_back(flat_proj[i * 3 + a]);
+            flat2.push_back(flat_proj[i * 3 + b]);
+          }
+          try {
+            orgQhull::Qhull qhull;
+            qhull.runQhull("", 2, K, flat2.data(), "");
+            for (const auto& vertex : qhull.vertexList()) hull_indices.insert(vertex.point().id());
+          } catch (...) {
+            for (int i = 0; i < K; ++i) hull_indices.insert(i);
+          }
+        } else {
+          // full 3D projection
+          try {
+            orgQhull::Qhull qhull;
+            qhull.runQhull("", 3, K, flat_proj.data(), "");
+            for (const auto& vertex : qhull.vertexList()) hull_indices.insert(vertex.point().id());
+          } catch (...) {
+            for (int i = 0; i < K; ++i) hull_indices.insert(i);
+          }
         }
       }
     }
@@ -108,7 +222,8 @@ public:
     std::vector<Candidate> pruned;
     pruned.reserve(hull_indices.size());
     for (int idx : hull_indices) pruned.push_back(candidates[idx]);
-    std::sort(pruned.begin(), pruned.end(), [](const Candidate& a, const Candidate& b){ return a.tau < b.tau; });
+    std::sort(pruned.begin(), pruned.end(),
+              [](const Candidate& a, const Candidate& b){ return a.tau < b.tau; });
 
     int pruned_size = static_cast<int>(pruned.size());
     pruning_in_ = pruned_size * pruning_params_[0] + pruning_params_[1];
