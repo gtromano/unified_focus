@@ -41,23 +41,31 @@ SEXP detector_create(std::string type,
   // ---- Build Info object ----
   if (type == "multivariate") {
     // Parse dim_indexes if provided
-    std::vector<std::pair<int,int>> dim_idx;
+    std::vector<std::vector<int>> dim_idx; // NEW: arbitrary-length projections
     if (!dim_indexes.isNull()) {
       List l(dim_indexes);
       for (int i = 0; i < l.size(); ++i) {
-        IntegerVector pair = as<IntegerVector>(l[i]);
-        if (pair.size() != 2)
-          stop("Each dim_indexes element must be a vector of length 2");
-        // assume 0-based; adjust if you want 1-based from R
-        dim_idx.emplace_back(pair[0], pair[1]);
+        // Each element may be an integer vector of any length >= 1
+        IntegerVector iv = as<IntegerVector>(l[i]);
+        if (iv.size() == 0)
+          stop("Each dim_indexes element must be an integer vector of length >= 1");
+
+        // convert to std::vector<int>
+        std::vector<int> proj;
+        proj.reserve(iv.size());
+        for (int j = 0; j < iv.size(); ++j) {
+          proj.push_back(static_cast<int>(iv[j]));
+        }
+        // Optionally: validate indices are non-negative here or within bounds later
+        dim_idx.push_back(std::move(proj));
       }
     }
 
     cs = std::make_shared<MultivariateInfo>(
-      theta0_vec,           // may be empty or contain NaN
-      std::vector<double>{0.0}, // sn
-      0,                    // n
-      dim_idx,
+      theta0_vec,                   // may be empty or contain NaN
+      std::vector<double>{0.0},     // sn
+      0,                            // n
+      dim_idx,                      // now vector<vector<int>>
       pruning_mult,
       pruning_offset
     );
@@ -89,6 +97,8 @@ SEXP detector_create(std::string type,
   XPtr<std::shared_ptr<Info>> ptr(new std::shared_ptr<Info>(cs), true);
   return ptr;
 }
+
+
 
 
 // Update detector with new observation vector y
@@ -263,6 +273,21 @@ List focus_offline(SEXP Y,
   if ((type == "univariate" || type == "univariate_one_sided") && p_dim > 1) {
     warning("type='%s' specified but Y is multivariate (%d columns). Consider using type='multivariate'.",
             type.c_str(), p_dim);
+  }
+
+  // check to see if the projection dimension indexes are not out of range
+  if (!dim_indexes.isNull() && type == "multivariate") {
+    List l(dim_indexes);
+    for (int i = 0; i < l.size(); ++i) {
+      IntegerVector iv = as<IntegerVector>(l[i]);
+      for (int j = 0; j < iv.size(); ++j) {
+        int idx = static_cast<int>(iv[j]);
+        if (idx < 0 || idx >= p_dim) {
+          stop("dim_indexes contains index out of range [0, %d) for column count %d",
+               p_dim, p_dim);
+        }
+      }
+    }
   }
 
   // ---- Create detector (Info object) ----
