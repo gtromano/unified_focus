@@ -4,6 +4,8 @@
 #include "MultivariateInfo.h"
 #include "Detectors.h"
 #include "Costs.h"
+#include "NonparametricInfo.h"
+#include "CostsNonparametric.h"
 
 using namespace Rcpp;
 using namespace changepoint;
@@ -16,6 +18,7 @@ using namespace changepoint;
 SEXP detector_create(std::string type,
                      Nullable<NumericVector> theta0 = R_NilValue,
                      Nullable<List> dim_indexes = R_NilValue,
+                     Nullable<NumericVector> quantiles = R_NilValue,
                      int pruning_mult = 2,
                      int pruning_offset = 1,
                      std::string side = "right") {
@@ -36,6 +39,11 @@ SEXP detector_create(std::string type,
       theta0_vec = as<std::vector<double>>(th);
       theta0_scalar = th[0];
     }
+  }
+
+  // If quantiles provided but type != "npfocus" -> error
+  if (!quantiles.isNull() && type != "npfocus") {
+    warning("`quantiles` parameter provided but will be ignored unless type == \"npfocus\".");
   }
 
   // ---- Build Info object ----
@@ -89,8 +97,21 @@ SEXP detector_create(std::string type,
       side
     );
 
+  } else if (type == "npfocus") {
+    // Nonparametric NP-FOCuS: require quantiles vector
+    if (quantiles.isNull()) {
+      stop("type == 'npfocus' requires a NumericVector `quantiles` argument.");
+    }
+    NumericVector qv(quantiles.get());
+    if (qv.size() < 1) stop("`quantiles` must be a NumericVector of length >= 1");
+
+    std::vector<double> quants = as<std::vector<double>>(qv);
+
+    // pass theta0_vec (may be empty) to NonparametricInfo constructor
+    cs = std::make_shared<NonparametricInfo>(quants, theta0_vec);
+
   } else {
-    stop("type must be one of: 'multivariate', 'univariate', 'univariate_one_sided'");
+    stop("type must be one of: 'multivariate', 'univariate', 'univariate_one_sided', 'npfocus'");
   }
 
   // ---- Return Info pointer ----
@@ -170,8 +191,11 @@ List get_statistics(SEXP info_ptr,
       return compute_costs_gamma(cs_inner, th0, shape_scalar);
     };
     result = gamma_fn(cs, theta0_vec);
+  } else if (family == "npfocus") {
+    // typed npfocus wrapper will check the Info type and throw if mismatch
+    result = compute_costs_npfocus(cs, theta0_vec);
   } else {
-    stop("Unknown family: must be 'gaussian', 'poisson', 'bernoulli' or 'gamma'");
+    stop("Unknown family: must be 'gaussian', 'poisson', 'bernoulli', 'gamma' or 'npfocus'");
   }
 
   // ---- Convert to R list ----
@@ -277,6 +301,7 @@ List focus_offline(SEXP Y,
                    std::string family,
                    Nullable<NumericVector> theta0 = R_NilValue,
                    Nullable<List> dim_indexes = R_NilValue,
+                   Nullable<NumericVector> quantiles = R_NilValue,
                    int pruning_mult = 2,
                    int pruning_offset = 1,
                    std::string side = "right",
@@ -325,8 +350,13 @@ List focus_offline(SEXP Y,
     }
   }
 
+  // If quantiles provided but type != "npfocus" -> error (require npfocus)
+  if (!quantiles.isNull() && type != "npfocus") {
+    stop("`quantiles` parameter provided but will be ignored unless type == \"npfocus\".");
+  }
+
   // ---- Create detector (Info object) ----
-  SEXP detector_ptr = detector_create(type, theta0, dim_indexes, pruning_mult, pruning_offset, side);
+  SEXP detector_ptr = detector_create(type, theta0, dim_indexes, quantiles, pruning_mult, pruning_offset, side);
   XPtr<std::shared_ptr<Info>> ptr(detector_ptr);
   if (!ptr || !(*ptr)) stop("Failed to create detector");
   std::shared_ptr<Info>& info = *ptr;
@@ -376,6 +406,8 @@ List focus_offline(SEXP Y,
     cost_fn = [shape_scalar](const Info& cs_inner, const std::vector<double>& th0) -> ChangepointResult {
       return compute_costs_gamma(cs_inner, th0, shape_scalar);
     };
+  } else if (family == "npfocus") {
+    cost_fn = compute_costs_npfocus;
   } else {
     stop("Unknown family: must be 'gaussian', 'poisson', 'bernoulli' or 'gamma'");
   }
@@ -458,4 +490,3 @@ List focus_offline(SEXP Y,
     Named("shape") = (family == "gamma" ? wrap(shape_scalar) : R_NilValue)   // include shape in return for convenience
   );
 }
-
