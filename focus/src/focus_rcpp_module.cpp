@@ -16,7 +16,6 @@ using namespace changepoint;
 
 // [[Rcpp::export]]
 SEXP detector_create(std::string type,
-                     Nullable<NumericVector> theta0 = R_NilValue,
                      Nullable<List> dim_indexes = R_NilValue,
                      Nullable<NumericVector> quantiles = R_NilValue,
                      int pruning_mult = 2,
@@ -25,21 +24,6 @@ SEXP detector_create(std::string type,
   using namespace changepoint;
 
   std::shared_ptr<Info> cs;
-
-  // ---- Prepare theta0 ----
-  std::vector<double> theta0_vec;
-  double theta0_scalar = std::numeric_limits<double>::quiet_NaN();
-
-  if (!theta0.isNull()) {
-    NumericVector th(theta0.get());
-    if (th.size() == 1) {
-      theta0_scalar = th[0];
-      theta0_vec = {th[0]};
-    } else if (th.size() > 1) {
-      theta0_vec = as<std::vector<double>>(th);
-      theta0_scalar = th[0];
-    }
-  }
 
   // If quantiles provided but type != "npfocus" -> error
   if (!quantiles.isNull() && type != "npfocus") {
@@ -70,7 +54,6 @@ SEXP detector_create(std::string type,
     }
 
     cs = std::make_shared<MultivariateInfo>(
-      theta0_vec,                   // may be empty or contain NaN
       std::vector<double>{0.0},     // sn
       0,                            // n
       dim_idx,                      // now vector<vector<int>>
@@ -81,7 +64,6 @@ SEXP detector_create(std::string type,
   } else if (type == "univariate") {
     // two-sided
     cs = std::make_shared<UnivariateInfo>(
-      theta0_scalar,  // defaults to NaN if not provided
       0.0,            // sn
       0               // n
     );
@@ -91,7 +73,6 @@ SEXP detector_create(std::string type,
     if (side != "right" && side != "left")
       stop("side must be 'right' or 'left'");
     cs = std::make_shared<OneSideUnivariateInfo>(
-      theta0_scalar,
       0.0,
       0,
       side
@@ -107,8 +88,8 @@ SEXP detector_create(std::string type,
 
     std::vector<double> quants = as<std::vector<double>>(qv);
 
-    // pass theta0_vec (may be empty) to NonparametricInfo constructor
-    cs = std::make_shared<NonparametricInfo>(quants, theta0_vec);
+    // NonparametricInfo constructor
+    cs = std::make_shared<NonparametricInfo>(quants);
 
   } else {
     stop("type must be one of: 'multivariate', 'univariate', 'univariate_one_sided', 'npfocus'");
@@ -152,10 +133,6 @@ List get_statistics(SEXP info_ptr,
     }
   }
 
-  // If theta0 not provided, use the one from Info (if available)
-  if (theta0_vec.empty() && cs.has_theta0()) {
-    theta0_vec = cs.theta0();
-  }
 
   // ---- Prepare shape (scalar) ----
   double shape_scalar = std::numeric_limits<double>::quiet_NaN();
@@ -356,7 +333,7 @@ List focus_offline(SEXP Y,
   }
 
   // ---- Create detector (Info object) ----
-  SEXP detector_ptr = detector_create(type, theta0, dim_indexes, quantiles, pruning_mult, pruning_offset, side);
+  SEXP detector_ptr = detector_create(type, dim_indexes, quantiles, pruning_mult, pruning_offset, side);
   XPtr<std::shared_ptr<Info>> ptr(detector_ptr);
   if (!ptr || !(*ptr)) stop("Failed to create detector");
   std::shared_ptr<Info>& info = *ptr;
@@ -366,9 +343,6 @@ List focus_offline(SEXP Y,
   if (!theta0.isNull()) {
     NumericVector th(theta0.get());
     if (th.size() >= 1) theta0_vec = as<std::vector<double>>(th); // single copy
-  }
-  if (theta0_vec.empty() && info->has_theta0()) {
-    theta0_vec = info->theta0(); // copy from Info if present
   }
 
   // ---- Prepare shape scalar ----

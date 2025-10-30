@@ -20,34 +20,23 @@ namespace changepoint {
 */
 class NonparametricInfo : public Info {
 public:
-  // Construct from quantiles and optional per-quantile theta0 vector.
-  // If theta0_vec is empty or element is NaN -> sub-detector theta0 will be NaN.
-  explicit NonparametricInfo(const std::vector<double>& quants,
-                             const std::vector<double>& theta0_vec = {})
+  // Construct from quantiles
+  explicit NonparametricInfo(const std::vector<double>& quants)
     : Info(), quants_(quants) {
 
     if (quants_.empty()) {
       throw std::invalid_argument("NonparametricInfo requires at least one quantile");
     }
 
-    // create one UnivariateInfo per quantile
+    // create one UnivariateInfo per quantile (no theta0 parameter)
     sub_infos_.reserve(quants_.size());
     for (size_t i = 0; i < quants_.size(); ++i) {
-      double th = std::numeric_limits<double>::quiet_NaN();
-      if (i < theta0_vec.size()) th = theta0_vec[i];
-      sub_infos_.push_back(std::make_unique<UnivariateInfo>(th, 0.0, 0));
+      sub_infos_.push_back(std::make_unique<UnivariateInfo>(0.0, 0));
     }
 
     // initialize parent sn_ to zeros (one entry per quantile)
     sn_.assign(quants_.size(), 0.0);
     n_ = 0;
-    // store theta0_ vector aggregated from sub-infos (NaNs if missing)
-    theta0_.clear();
-    theta0_.reserve(quants_.size());
-    for (const auto& s : sub_infos_) {
-      if (s->has_theta0()) theta0_.push_back(s->theta0()[0]);
-      else theta0_.push_back(std::numeric_limits<double>::quiet_NaN());
-    }
 
     combined_cache_valid_ = false;
   }
@@ -128,22 +117,6 @@ public:
     }
     return out;
   }
-
-  // // aggregate helpers
-  // bool has_theta0() const override {
-  //   for (const auto& s : sub_infos_) if (s->has_theta0()) return true;
-  //   return false;
-  // }
-  //
-  // std::vector<double> theta0() const override {
-  //   std::vector<double> out;
-  //   out.reserve(sub_infos_.size());
-  //   for (const auto& s : sub_infos_) {
-  //     if (s->has_theta0()) out.push_back(s->theta0()[0]);
-  //     else out.push_back(std::numeric_limits<double>::quiet_NaN());
-  //   }
-  //   return out;
-  // }
 
   // statistic: sum of sub-detector statistics (convenience)
   double statistic() const {

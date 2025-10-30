@@ -83,13 +83,12 @@ private:
   mutable int pruning_in_;          // Counter for pruning frequency
 
 public:
-  MultivariateInfo(const std::vector<double>& theta0 = {},
-                   const std::vector<double>& sn = {0.0},
+  MultivariateInfo(const std::vector<double>& sn = {0.0},
                    int n = 0,
                    const std::vector<std::vector<int>>& dim_indexes = {},
                    int pruning_mult = 2,
                    int pruning_offset = 1)
-    : CandidateListInfo(sn, n, theta0),
+    : CandidateListInfo(sn, n),
       dim_indexes_(dim_indexes),
       pruning_in_(5) {
     pruning_params_[0] = pruning_mult;

@@ -15,13 +15,10 @@ class Info {
 protected:
   std::vector<double> sn_;      // Cumulative sum
   int n_;                       // Number of observations
-  std::vector<double> theta0_;  // Null hypothesis parameter (empty or NaN if missing)
 
 public:
-  Info(const std::vector<double>& sn = {0.0},
-       int n = 0,
-       const std::vector<double>& theta0 = {})
-    : sn_(sn), n_(n), theta0_(theta0) {}
+  Info(const std::vector<double>& sn = {0.0}, int n = 0)
+    : sn_(sn), n_(n) {}
 
   virtual ~Info() = default;
 
@@ -46,8 +43,6 @@ public:
   // Accessors for common state
   const std::vector<double>& sn() const { return sn_; }
   int n() const { return n_; }
-  const std::vector<double>& theta0() const { return theta0_; }
-  bool has_theta0() const { return !theta0_.empty() && !std::isnan(theta0_[0]); }
 };
 
 // ---------------------------------------------------------------------------
@@ -58,10 +53,8 @@ protected:
   std::vector<Candidate> candidates_;
 
 public:
-  CandidateListInfo(const std::vector<double>& sn = {0.0},
-                    int n = 0,
-                    const std::vector<double>& theta0 = {})
-    : Info(sn, n, theta0) {
+  CandidateListInfo(const std::vector<double>& sn = {0.0}, int n = 0)
+    : Info(sn, n) {
     candidates_.reserve(30);
   }
 
@@ -113,11 +106,9 @@ private:
   }
 
 public:
-  OneSideUnivariateInfo(double theta0 = std::numeric_limits<double>::quiet_NaN(),
-                        double sn = 0.0, int n = 0,
+  OneSideUnivariateInfo(double sn = 0.0, int n = 0,
                         const std::string& side = "right")
-    : Info({sn}, n, std::isnan(theta0) ? std::vector<double>() : std::vector<double>({theta0})),
-      side_(side), k_(0), cache_valid_(false) {
+    : Info({sn}, n), side_(side), k_(0), cache_valid_(false) {
     
     if (side != "right" && side != "left") {
       throw std::invalid_argument("side must be 'right' or 'left'");
@@ -212,13 +203,11 @@ private:
   mutable bool cache_valid_;
 
 public:
-  UnivariateInfo(double theta0 = std::numeric_limits<double>::quiet_NaN(),
-                 double sn = 0.0, int n = 0)
-    : Info({sn}, n, std::isnan(theta0) ? std::vector<double>() : std::vector<double>({theta0})),
-      cache_valid_(false) {
+  UnivariateInfo(double sn = 0.0, int n = 0)
+    : Info({sn}, n), cache_valid_(false) {
 
-    right_ = std::make_unique<OneSideUnivariateInfo>(theta0, sn, n, "right");
-    left_ = std::make_unique<OneSideUnivariateInfo>(theta0, sn, n, "left");
+    right_ = std::make_unique<OneSideUnivariateInfo>(sn, n, "right");
+    left_ = std::make_unique<OneSideUnivariateInfo>(sn, n, "left");
   }
 
   std::vector<Candidate> new_candidate() const override {

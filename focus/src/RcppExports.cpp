@@ -11,19 +11,18 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // detector_create
-SEXP detector_create(std::string type, Nullable<NumericVector> theta0, Nullable<List> dim_indexes, Nullable<NumericVector> quantiles, int pruning_mult, int pruning_offset, std::string side);
-RcppExport SEXP _focus_detector_create(SEXP typeSEXP, SEXP theta0SEXP, SEXP dim_indexesSEXP, SEXP quantilesSEXP, SEXP pruning_multSEXP, SEXP pruning_offsetSEXP, SEXP sideSEXP) {
+SEXP detector_create(std::string type, Nullable<List> dim_indexes, Nullable<NumericVector> quantiles, int pruning_mult, int pruning_offset, std::string side);
+RcppExport SEXP _focus_detector_create(SEXP typeSEXP, SEXP dim_indexesSEXP, SEXP quantilesSEXP, SEXP pruning_multSEXP, SEXP pruning_offsetSEXP, SEXP sideSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
-    Rcpp::traits::input_parameter< Nullable<NumericVector> >::type theta0(theta0SEXP);
     Rcpp::traits::input_parameter< Nullable<List> >::type dim_indexes(dim_indexesSEXP);
     Rcpp::traits::input_parameter< Nullable<NumericVector> >::type quantiles(quantilesSEXP);
     Rcpp::traits::input_parameter< int >::type pruning_mult(pruning_multSEXP);
     Rcpp::traits::input_parameter< int >::type pruning_offset(pruning_offsetSEXP);
     Rcpp::traits::input_parameter< std::string >::type side(sideSEXP);
-    rcpp_result_gen = Rcpp::wrap(detector_create(type, theta0, dim_indexes, quantiles, pruning_mult, pruning_offset, side));
+    rcpp_result_gen = Rcpp::wrap(detector_create(type, dim_indexes, quantiles, pruning_mult, pruning_offset, side));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -141,7 +140,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_focus_detector_create", (DL_FUNC) &_focus_detector_create, 7},
+    {"_focus_detector_create", (DL_FUNC) &_focus_detector_create, 6},
     {"_focus_detector_update", (DL_FUNC) &_focus_detector_update, 2},
     {"_focus_get_statistics", (DL_FUNC) &_focus_get_statistics, 4},
     {"_focus_detector_pieces_len", (DL_FUNC) &_focus_detector_pieces_len, 1},

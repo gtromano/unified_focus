@@ -119,10 +119,9 @@ Both approaches produce the same statistical results. See the performance compar
 
 ### Online/Sequential Interface
 
-- **`detector_create(type, theta0 = NULL, ...)`**  
+- **`detector_create(type, ...)`**  
   Create a new online detector object. Returns an Info object pointer.
   - `type`: One of `"univariate"`, `"univariate_one_sided"`, or `"multivariate"`
-  - `theta0`: Optional null hypothesis parameter(s)
 
 - **`detector_update(detector, y)`**  
   Update the detector with a new observation vector `y`.
@@ -438,6 +437,31 @@ This flexibility allows you to:
 
 ```{r}
 head(detector_candidates(det2))
+```
+
+### Non-parametric changepoint detection 
+
+Additionally, we find the NPFOCUS implementation for non-parametric changepoint detection. This requires specifying quantiles to be used in the cost function.
+Generally this quantiles can be estimated from the data or specified based on domain knowledge.
+
+```{r}
+set.seed(123)
+Y <- c(rnorm(1000), rcauchy(100))
+
+quants <- qnorm(seq(0.01, .99, length.out = 5))
+
+res <- focus_offline(
+  Y = Y,
+  threshold = 300,         # detection threshold (example)
+  type = "npfocus",         # creates a NonparametricInfo
+  family = "npfocus",       # uses compute_costs_npfocus
+  quantiles = quants,       # REQUIRED for type == "npfocus"
+)
+par(mfrow = c(2, 1))
+plot(Y)
+plot(res$stat, type = "l", main = "NPFOCuS Detection Statistic",
+     xlab = "Time", ylab = "Statistic", lwd = 2)
+par(mfrow = c(1, 1))
 ```
 
 ## Performance Comparison: Offline vs Online

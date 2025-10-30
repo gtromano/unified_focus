@@ -18,6 +18,8 @@
   - [Exponential family models](#exponential-family-models)
   - [Flexibility: Statistics Independent of Detector
     Type](#flexibility-statistics-independent-of-detector-type)
+  - [Non-parametric changepoint
+    detection](#non-parametric-changepoint-detection)
 - [Performance Comparison: Offline vs
   Online](#performance-comparison-offline-vs-online)
 - [C++ Integration](#c-integration)
@@ -157,12 +159,11 @@ performance comparison section below for runtime benchmarks.
 
 ### Online/Sequential Interface
 
-- **`detector_create(type, theta0 = NULL, ...)`**  
+- **`detector_create(type, ...)`**  
   Create a new online detector object. Returns an Info object pointer.
 
   - `type`: One of `"univariate"`, `"univariate_one_sided"`, or
     `"multivariate"`
-  - `theta0`: Optional null hypothesis parameter(s)
 
 - **`detector_update(detector, y)`**  
   Update the detector with a new observation vector `y`.
@@ -387,7 +388,7 @@ system.time(
 ```
 
        user  system elapsed 
-      8.001   0.103   8.115 
+      9.271   0.111   9.383 
 
 ``` r
 # Low-dimensional projection approximation
@@ -400,7 +401,7 @@ system.time(
 ```
 
        user  system elapsed 
-      0.129   0.000   0.128 
+      0.155   0.000   0.155 
 
 ``` r
 # Verify similarity
@@ -434,7 +435,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.002 
+      0.003   0.000   0.003 
 
 ``` r
 plot(res_bern$stat, main = "Bernoulli (univariate): change in success probability")
@@ -455,7 +456,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.019   0.000   0.019 
+      0.025   0.000   0.024 
 
 ``` r
 plot(res_bern_multi$stat, main = "Bernoulli (multivariate): two streams")
@@ -480,7 +481,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.002 
+      0.003   0.000   0.002 
 
 ``` r
 plot(res_pois$stat, main = "Poisson: change in rate (lambda)")
@@ -512,7 +513,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.003   0.000   0.003 
+      0.004   0.000   0.003 
 
 ``` r
 plot(res_gamma$stat, main = "Gamma: change in scale (shape = 2)")
@@ -631,6 +632,38 @@ head(detector_candidates(det2))
     5 500 4916 right
     6 521 5210 right
 
+### Non-parametric changepoint detection
+
+Additionally, we find the NPFOCUS implementation for non-parametric
+changepoint detection. This requires specifying quantiles to be used in
+the cost function. Generally this quantiles can be estimated from the
+data or specified based on domain knowledge.
+
+``` r
+set.seed(123)
+Y <- c(rnorm(1000), rcauchy(100))
+
+quants <- qnorm(seq(0.01, .99, length.out = 5))
+
+res <- focus_offline(
+  Y = Y,
+  threshold = 300,         # detection threshold (example)
+  type = "npfocus",         # creates a NonparametricInfo
+  family = "npfocus",       # uses compute_costs_npfocus
+  quantiles = quants,       # REQUIRED for type == "npfocus"
+)
+par(mfrow = c(2, 1))
+plot(Y)
+plot(res$stat, type = "l", main = "NPFOCuS Detection Statistic",
+     xlab = "Time", ylab = "Statistic", lwd = 2)
+```
+
+![](generate_README_files/figure-commonmark/unnamed-chunk-14-1.png)
+
+``` r
+par(mfrow = c(1, 1))
+```
+
 ## Performance Comparison: Offline vs Online
 
 Here’s a direct runtime comparison between offline and online modes on
@@ -657,7 +690,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-       0.14    0.00    0.14 
+      0.171   0.000   0.171 
 
 ``` r
 # Benchmark online mode
@@ -681,7 +714,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-       0.33    0.00    0.33 
+      0.382   0.000   0.382 
 
 ``` r
 # Verify both produce identical results
@@ -697,7 +730,7 @@ speedup <- time_online["elapsed"] / time_offline["elapsed"]
 cat("Offline mode is", round(speedup, 1), "x faster\n")
 ```
 
-    Offline mode is 2.4 x faster
+    Offline mode is 2.2 x faster
 
 ## C++ Integration
 
