@@ -108,13 +108,13 @@ BEGIN_RCPP
 END_RCPP
 }
 // focus_offline
-List focus_offline(SEXP Y, double threshold, std::string type, std::string family, Nullable<NumericVector> theta0, Nullable<List> dim_indexes, Nullable<NumericVector> quantiles, int pruning_mult, int pruning_offset, std::string side, Nullable<NumericVector> shape);
+List focus_offline(SEXP Y, SEXP threshold, std::string type, std::string family, Nullable<NumericVector> theta0, Nullable<List> dim_indexes, Nullable<NumericVector> quantiles, int pruning_mult, int pruning_offset, std::string side, Nullable<NumericVector> shape);
 RcppExport SEXP _focus_focus_offline(SEXP YSEXP, SEXP thresholdSEXP, SEXP typeSEXP, SEXP familySEXP, SEXP theta0SEXP, SEXP dim_indexesSEXP, SEXP quantilesSEXP, SEXP pruning_multSEXP, SEXP pruning_offsetSEXP, SEXP sideSEXP, SEXP shapeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type Y(YSEXP);
-    Rcpp::traits::input_parameter< double >::type threshold(thresholdSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type threshold(thresholdSEXP);
     Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
     Rcpp::traits::input_parameter< std::string >::type family(familySEXP);
     Rcpp::traits::input_parameter< Nullable<NumericVector> >::type theta0(theta0SEXP);

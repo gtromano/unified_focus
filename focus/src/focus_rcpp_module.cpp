@@ -2,7 +2,7 @@
 #include <Rcpp.h>
 #include "Info.h"
 #include "MultivariateInfo.h"
-#include "Detectors.h"
+#include "ChangepointResult.h"
 #include "Costs.h"
 #include "NonparametricInfo.h"
 #include "CostsNonparametric.h"
@@ -183,7 +183,7 @@ List get_statistics(SEXP info_ptr,
     cp = wrap(result.changepoint.value());
   }
   if (result.stat.has_value()) {
-    st = wrap(result.stat.value());
+    st = std::visit([](auto&& x) -> RObject { return wrap(x); }, *result.stat);
   }
 
   return List::create(
@@ -273,7 +273,7 @@ std::vector<std::vector<int>> generate_projection_indexes(int D, int p) {
 // Run complete offline detection in C++ for efficiency
 // [[Rcpp::export]]
 List focus_offline(SEXP Y,
-                   double threshold,
+                   SEXP threshold,
                    std::string type,
                    std::string family,
                    Nullable<NumericVector> theta0 = R_NilValue,
@@ -282,7 +282,7 @@ List focus_offline(SEXP Y,
                    int pruning_mult = 2,
                    int pruning_offset = 1,
                    std::string side = "right",
-                   Nullable<NumericVector> shape = R_NilValue) {   // <-- added shape
+                   Nullable<NumericVector> shape = R_NilValue) {
 
   // ---- Parse input data Y ----
   NumericMatrix Y_mat;
@@ -301,6 +301,18 @@ List focus_offline(SEXP Y,
     n_obs = Y_vec.size();
     p_dim = 1;
     is_matrix = false;
+  }
+
+  // ---- Parse threshold (scalar or vector) ----
+  std::vector<double> threshold_vec;
+  if (Rf_isNumeric(threshold)) {
+    NumericVector th = as<NumericVector>(threshold);
+    if (th.size() == 0) {
+      stop("threshold must be a non-empty numeric vector or scalar");
+    }
+    threshold_vec = as<std::vector<double>>(th);
+  } else {
+    stop("threshold must be numeric");
   }
 
   // ---- Validate type against data dimensions (unchanged) ----
@@ -342,7 +354,7 @@ List focus_offline(SEXP Y,
   std::vector<double> theta0_vec;
   if (!theta0.isNull()) {
     NumericVector th(theta0.get());
-    if (th.size() >= 1) theta0_vec = as<std::vector<double>>(th); // single copy
+    if (th.size() >= 1) theta0_vec = as<std::vector<double>>(th);
   }
 
   // ---- Prepare shape scalar ----
@@ -383,14 +395,18 @@ List focus_offline(SEXP Y,
   } else if (family == "npfocus") {
     cost_fn = compute_costs_npfocus;
   } else {
-    stop("Unknown family: must be 'gaussian', 'poisson', 'bernoulli' or 'gamma'");
+    stop("Unknown family: must be 'gaussian', 'poisson', 'bernoulli', 'gamma' or 'npfocus'");
   }
 
   // ---- Prepare reusable containers ----
-  std::vector<double> stats;
+  std::vector<std::vector<double>> stats_per_time;  // Each element is a vector of stats for that time
   std::vector<int> changepoints;
-  stats.reserve(n_obs);
+  stats_per_time.reserve(n_obs);
   changepoints.reserve(n_obs);
+
+  // Track the number of statistics returned (determined from first result)
+  int n_stats = -1;
+  bool threshold_warning_issued = false;
 
   // Reusable observation vector for updates (avoid per-iteration alloc)
   std::vector<double> y_t;
@@ -401,7 +417,7 @@ List focus_offline(SEXP Y,
   if (is_matrix) {
     col_ptrs.resize(static_cast<size_t>(p_dim));
     for (int j = 0; j < p_dim; ++j) {
-      col_ptrs[static_cast<size_t>(j)] = &Y_mat(0, j); // pointer to column j
+      col_ptrs[static_cast<size_t>(j)] = &Y_mat(0, j);
     }
   }
 
@@ -413,7 +429,6 @@ List focus_offline(SEXP Y,
   for (int t = 0; t < n_obs; ++t) {
     // Fill y_t in-place (no allocation)
     if (is_matrix) {
-      // column-major: accessing by column pointer + t is cache-friendly for per-row extraction
       for (int j = 0; j < p_dim; ++j) {
         y_t[static_cast<size_t>(j)] = col_ptrs[static_cast<size_t>(j)][t];
       }
@@ -424,12 +439,49 @@ List focus_offline(SEXP Y,
     // Update detector
     info->update(y_t);
 
-    // Compute statistics once
+    // Compute statistics
     ChangepointResult result = cost_fn(*info, theta0_vec);
 
-    // extract stat (use 0.0 if no stat)
-    double stat_val = result.stat.has_value() ? result.stat.value() : 0.0;
-    stats.push_back(stat_val);
+    // Extract stats as vector
+    std::vector<double> stat_vec;
+    if (result.stat.has_value()) {
+      std::visit([&stat_vec](auto&& arg) {
+        using T = std::decay_t<decltype(arg)>;
+        if constexpr (std::is_same_v<T, double>) {
+          stat_vec.push_back(arg);
+        } else if constexpr (std::is_same_v<T, std::vector<double>>) {
+          stat_vec = arg;
+        }
+      }, *result.stat);
+    }
+
+    // On first iteration, determine dimensionality and validate threshold
+    if (n_stats == -1) {
+      n_stats = stat_vec.empty() ? 1 : static_cast<int>(stat_vec.size());
+      
+      // Validate threshold dimensions
+      if (threshold_vec.size() != 1 && static_cast<int>(threshold_vec.size()) != n_stats) {
+        stop("threshold must be a scalar or a vector of length %d (matching number of statistics)", n_stats);
+      }
+      
+      // Issue warning if single threshold used for multiple statistics
+      if (threshold_vec.size() == 1 && n_stats > 1 && !threshold_warning_issued) {
+        warning("Single threshold provided for %d statistics. Using threshold = %g for all statistics.",
+                n_stats, threshold_vec[0]);
+        threshold_warning_issued = true;
+      }
+    }
+
+    // Ensure consistent dimensionality
+    if (static_cast<int>(stat_vec.size()) != n_stats) {
+      if (stat_vec.empty()) {
+        stat_vec.resize(n_stats, 0.0);
+      } else {
+        stop("Inconsistent number of statistics returned across time steps");
+      }
+    }
+
+    stats_per_time.push_back(stat_vec);
 
     if (result.changepoint.has_value()) {
       changepoints.push_back(result.changepoint.value());
@@ -439,28 +491,45 @@ List focus_offline(SEXP Y,
 
     actual_length = t + 1;
 
-    if (stat_val > threshold) {
+    // Check for detection: any statistic exceeding its threshold
+    bool detected = false;
+    for (int s = 0; s < n_stats; ++s) {
+      double thresh = (threshold_vec.size() == 1) ? threshold_vec[0] : threshold_vec[s];
+      if (stat_vec[s] > thresh) {
+        detected = true;
+        break;
+      }
+    }
+
+    if (detected) {
       detection_time = t + 1; // 1-based for R
       if (result.changepoint.has_value()) detected_changepoint = result.changepoint.value();
       break;
     }
   }
 
-  // ---- Convert to R vectors once ----
-  NumericVector stat_vec = wrap(stats);
+  // ---- Convert stats to matrix ----
+  NumericMatrix stat_mat(actual_length, n_stats);
+  for (int t = 0; t < actual_length; ++t) {
+    for (int s = 0; s < n_stats; ++s) {
+      stat_mat(t, s) = stats_per_time[t][s];
+    }
+  }
+
+  // ---- Convert changepoints to R vector ----
   IntegerVector changepoint_vec = wrap(changepoints);
 
   // ---- Return results ----
   return List::create(
-    Named("stat") = stat_vec,
+    Named("stat") = stat_mat,
     Named("changepoint") = changepoint_vec,
     Named("detection_time") = detection_time == NA_INTEGER ? R_NilValue : wrap(detection_time),
     Named("detected_changepoint") = detected_changepoint == NA_INTEGER ? R_NilValue : wrap(detected_changepoint),
     Named("candidates") = detector_candidates(detector_ptr),
-    Named("threshold") = threshold,
+    Named("threshold") = wrap(threshold_vec),
     Named("n") = actual_length,
     Named("type") = type,
     Named("family") = family,
-    Named("shape") = (family == "gamma" ? wrap(shape_scalar) : R_NilValue)   // include shape in return for convenience
+    Named("shape") = (family == "gamma" ? wrap(shape_scalar) : R_NilValue)
   );
 }

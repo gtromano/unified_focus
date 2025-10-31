@@ -388,7 +388,7 @@ system.time(
 ```
 
        user  system elapsed 
-      9.271   0.111   9.383 
+      8.056   0.092   8.148 
 
 ``` r
 # Low-dimensional projection approximation
@@ -401,7 +401,7 @@ system.time(
 ```
 
        user  system elapsed 
-      0.155   0.000   0.155 
+      0.127   0.000   0.127 
 
 ``` r
 # Verify similarity
@@ -435,7 +435,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.003   0.000   0.003 
+      0.002   0.000   0.002 
 
 ``` r
 plot(res_bern$stat, main = "Bernoulli (univariate): change in success probability")
@@ -456,7 +456,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.025   0.000   0.024 
+      0.018   0.000   0.019 
 
 ``` r
 plot(res_bern_multi$stat, main = "Bernoulli (multivariate): two streams")
@@ -481,7 +481,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.003   0.000   0.002 
+      0.002   0.000   0.003 
 
 ``` r
 plot(res_pois$stat, main = "Poisson: change in rate (lambda)")
@@ -513,7 +513,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.004   0.000   0.003 
+      0.002   0.000   0.002 
 
 ``` r
 plot(res_gamma$stat, main = "Gamma: change in scale (shape = 2)")
@@ -639,22 +639,29 @@ changepoint detection. This requires specifying quantiles to be used in
 the cost function. Generally this quantiles can be estimated from the
 data or specified based on domain knowledge.
 
+Note that NPFOCuS returns two statistics: one based on summing over
+quantiles, and one based on taking the maximum over quantiles. In the
+offline version both statistics are returned in a matrix with two
+columns.
+
 ``` r
 set.seed(123)
-Y <- c(rnorm(1000), rcauchy(100))
+Y <- c(rnorm(1000), rcauchy(200))
 
 quants <- qnorm(seq(0.01, .99, length.out = 5))
 
 res <- focus_offline(
   Y = Y,
-  threshold = 300,         # detection threshold (example)
+  threshold = c(80, 25),         # detection threshold (one for sum, one for max)
   type = "npfocus",         # creates a NonparametricInfo
   family = "npfocus",       # uses compute_costs_npfocus
   quantiles = quants,       # REQUIRED for type == "npfocus"
 )
-par(mfrow = c(2, 1))
-plot(Y)
-plot(res$stat, type = "l", main = "NPFOCuS Detection Statistic",
+par(mfrow = c(3, 1))
+plot(Y[1:nrow(res$stat)])
+plot(res$stat[, 1], type = "l", main = "NPFOCuS Detection Statistic (sum)",
+     xlab = "Time", ylab = "Statistic", lwd = 2)
+plot(res$stat[, 2], type = "l", main = "NPFOCuS Detection Statistic (max)",
      xlab = "Time", ylab = "Statistic", lwd = 2)
 ```
 
@@ -663,6 +670,31 @@ plot(res$stat, type = "l", main = "NPFOCuS Detection Statistic",
 ``` r
 par(mfrow = c(1, 1))
 ```
+
+In the online setting, the quantile vector must be provided when
+creating the detector. The statististic can be retrieved as usual,
+however it will be a vector of length 2 (sum and max statistics).
+
+``` r
+set.seed(123)
+
+det <- detector_create("npfocus", quantiles = quants)
+
+detector_update(det, Y[1])
+detector_update(det, Y[2])
+detector_update(det, Y[3])
+
+get_statistics(det, family="npfocus")
+```
+
+    $stopping_time
+    [1] 3
+
+    $changepoint
+    NULL
+
+    $stat
+    [1] 3.819085 1.909543
 
 ## Performance Comparison: Offline vs Online
 
@@ -690,7 +722,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.171   0.000   0.171 
+      0.144   0.000   0.145 
 
 ``` r
 # Benchmark online mode
@@ -714,7 +746,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.382   0.000   0.382 
+      0.334   0.001   0.335 
 
 ``` r
 # Verify both produce identical results
@@ -722,7 +754,7 @@ cat("\nResults identical:", all.equal(res_offline$stat, stat_online), "\n")
 ```
 
 
-    Results identical: TRUE 
+    Results identical: Attributes: < Modes: list, NULL > Attributes: < Lengths: 1, 0 > Attributes: < names for target but not for current > Attributes: < current is not list-like > target is matrix, current is numeric 
 
 ``` r
 # Speedup factor
@@ -730,7 +762,7 @@ speedup <- time_online["elapsed"] / time_offline["elapsed"]
 cat("Offline mode is", round(speedup, 1), "x faster\n")
 ```
 
-    Offline mode is 2.2 x faster
+    Offline mode is 2.3 x faster
 
 ## C++ Integration
 
@@ -749,7 +781,7 @@ Example C++ usage:
 #include "Costs.h"
 
 // Create detector
-auto info = std::make_shared<UnivariateInfo>(theta0);
+auto info = std::make_shared<UnivariateInfo>();
 
 // Update with data
 for (const auto& y : data) {

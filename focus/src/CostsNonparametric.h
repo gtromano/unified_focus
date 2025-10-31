@@ -25,7 +25,6 @@ namespace changepoint {
       invocation on the parent concatenated candidates (which would mix quantiles).
 */
 
-// Typed implementation: only accepts NonparametricInfo
 inline ChangepointResult compute_costs_npfocus_typed(const NonparametricInfo& npinfo,
                                                      const std::vector<double>& theta0_vec) {
   ChangepointResult out;
@@ -39,10 +38,8 @@ inline ChangepointResult compute_costs_npfocus_typed(const NonparametricInfo& np
   }
 
   double sum_stats = 0.0;
+  double max_stat = -1e300;
 
-  // theta0_vec should either be:
-  // - empty (use MLE for all sub-detectors)
-  // - length K (one theta0 per sub-detector, NaN means use MLE for that detector)
   bool use_provided_theta0 = !theta0_vec.empty();
   if (use_provided_theta0 && theta0_vec.size() != K) {
     throw std::invalid_argument("compute_costs_npfocus: theta0 vector must be empty or have length equal to n_detectors");
@@ -53,29 +50,23 @@ inline ChangepointResult compute_costs_npfocus_typed(const NonparametricInfo& np
     if (!sub) continue;
 
     std::vector<double> theta_sub;
-
-    if (use_provided_theta0) {
-      // Use the provided theta0 for this sub-detector if not NaN
-      if (!std::isnan(theta0_vec[i])) {
-        theta_sub.push_back(theta0_vec[i]);
-      }
-      // if NaN, pass empty to let bernoulli helper use MLE
-    }
-    // else: leave theta_sub empty -> MLE mode
+    if (use_provided_theta0 && !std::isnan(theta0_vec[i]))
+      theta_sub.push_back(theta0_vec[i]);
 
     // Call bernoulli cost *on the sub-detector* (uses sub->candidates(), sub->sn(), sub->n()).
     ChangepointResult r = compute_costs_bernoulli(*sub, theta_sub);
-
-    double s = 0.0;
-    if (r.stat.has_value()) s = r.stat.value();
-    // Treat missing stat as 0.0 (consistent with previous behaviour)
+    double s = r.stat.has_value() && std::holds_alternative<double>(*r.stat)
+      ? std::get<double>(*r.stat)
+        : 0.0;
     sum_stats += s;
+    max_stat = std::max(max_stat, s);
   }
 
-  out.stat = sum_stats;
-  out.changepoint = std::nullopt; // aggregated detectors — no single changepoint returned
+  out.stat = std::vector<double>{sum_stats, max_stat};
+  out.changepoint = std::nullopt;
   return out;
 }
+
 
 // Wrapper matching the generic CostFunction signature that enforces the typed input.
 // This is the function to assign into your CostFunction variable when you want NP-FOCuS,
