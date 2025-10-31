@@ -2,7 +2,7 @@
 
 #include "Info.h"
 #include "Candidate.h"
-#include "Detectors.h"
+#include "ChangepointResult.h"
 
 #include <vector>
 #include <cmath>

@@ -119,10 +119,9 @@ Both approaches produce the same statistical results. See the performance compar
 
 ### Online/Sequential Interface
 
-- **`detector_create(type, theta0 = NULL, ...)`**  
+- **`detector_create(type, ...)`**  
   Create a new online detector object. Returns an Info object pointer.
   - `type`: One of `"univariate"`, `"univariate_one_sided"`, or `"multivariate"`
-  - `theta0`: Optional null hypothesis parameter(s)
 
 - **`detector_update(detector, y)`**  
   Update the detector with a new observation vector `y`.
@@ -440,6 +439,49 @@ This flexibility allows you to:
 head(detector_candidates(det2))
 ```
 
+### Non-parametric changepoint detection 
+
+Additionally, we find the NPFOCUS implementation for non-parametric changepoint detection. This requires specifying quantiles to be used in the cost function.
+Generally this quantiles can be estimated from the data or specified based on domain knowledge.
+
+Note that NPFOCuS returns two statistics: one based on summing over quantiles, and one based on taking the maximum over quantiles. In the offline version both statistics are returned in a matrix with two columns.
+
+```{r}
+set.seed(123)
+Y <- c(rnorm(1000), rcauchy(200))
+
+quants <- qnorm(seq(0.01, .99, length.out = 5))
+
+res <- focus_offline(
+  Y = Y,
+  threshold = c(80, 25),         # detection threshold (one for sum, one for max)
+  type = "npfocus",         # creates a NonparametricInfo
+  family = "npfocus",       # uses compute_costs_npfocus
+  quantiles = quants,       # REQUIRED for type == "npfocus"
+)
+par(mfrow = c(3, 1))
+plot(Y[1:nrow(res$stat)])
+plot(res$stat[, 1], type = "l", main = "NPFOCuS Detection Statistic (sum)",
+     xlab = "Time", ylab = "Statistic", lwd = 2)
+plot(res$stat[, 2], type = "l", main = "NPFOCuS Detection Statistic (max)",
+     xlab = "Time", ylab = "Statistic", lwd = 2)
+par(mfrow = c(1, 1))
+```
+
+In the online setting, the quantile vector must be provided when creating the detector. The statististic can be retrieved as usual, however it will be a vector of length 2 (sum and max statistics).
+
+```{r}
+set.seed(123)
+
+det <- detector_create("npfocus", quantiles = quants)
+
+detector_update(det, Y[1])
+detector_update(det, Y[2])
+detector_update(det, Y[3])
+
+get_statistics(det, family="npfocus")
+```
+
 ## Performance Comparison: Offline vs Online
 
 Here's a direct runtime comparison between offline and online modes on the same data:
@@ -493,7 +535,7 @@ Example C++ usage:
 #include "Costs.h"
 
 // Create detector
-auto info = std::make_shared<UnivariateInfo>(theta0);
+auto info = std::make_shared<UnivariateInfo>();
 
 // Update with data
 for (const auto& y : data) {

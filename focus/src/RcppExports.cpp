@@ -11,18 +11,18 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // detector_create
-SEXP detector_create(std::string type, Nullable<NumericVector> theta0, Nullable<List> dim_indexes, int pruning_mult, int pruning_offset, std::string side);
-RcppExport SEXP _focus_detector_create(SEXP typeSEXP, SEXP theta0SEXP, SEXP dim_indexesSEXP, SEXP pruning_multSEXP, SEXP pruning_offsetSEXP, SEXP sideSEXP) {
+SEXP detector_create(std::string type, Nullable<List> dim_indexes, Nullable<NumericVector> quantiles, int pruning_mult, int pruning_offset, std::string side);
+RcppExport SEXP _focus_detector_create(SEXP typeSEXP, SEXP dim_indexesSEXP, SEXP quantilesSEXP, SEXP pruning_multSEXP, SEXP pruning_offsetSEXP, SEXP sideSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
-    Rcpp::traits::input_parameter< Nullable<NumericVector> >::type theta0(theta0SEXP);
     Rcpp::traits::input_parameter< Nullable<List> >::type dim_indexes(dim_indexesSEXP);
+    Rcpp::traits::input_parameter< Nullable<NumericVector> >::type quantiles(quantilesSEXP);
     Rcpp::traits::input_parameter< int >::type pruning_mult(pruning_multSEXP);
     Rcpp::traits::input_parameter< int >::type pruning_offset(pruning_offsetSEXP);
     Rcpp::traits::input_parameter< std::string >::type side(sideSEXP);
-    rcpp_result_gen = Rcpp::wrap(detector_create(type, theta0, dim_indexes, pruning_mult, pruning_offset, side));
+    rcpp_result_gen = Rcpp::wrap(detector_create(type, dim_indexes, quantiles, pruning_mult, pruning_offset, side));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -38,15 +38,16 @@ BEGIN_RCPP
 END_RCPP
 }
 // get_statistics
-List get_statistics(SEXP info_ptr, std::string family, Nullable<NumericVector> theta0);
-RcppExport SEXP _focus_get_statistics(SEXP info_ptrSEXP, SEXP familySEXP, SEXP theta0SEXP) {
+List get_statistics(SEXP info_ptr, std::string family, Nullable<NumericVector> theta0, Nullable<NumericVector> shape);
+RcppExport SEXP _focus_get_statistics(SEXP info_ptrSEXP, SEXP familySEXP, SEXP theta0SEXP, SEXP shapeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type info_ptr(info_ptrSEXP);
     Rcpp::traits::input_parameter< std::string >::type family(familySEXP);
     Rcpp::traits::input_parameter< Nullable<NumericVector> >::type theta0(theta0SEXP);
-    rcpp_result_gen = Rcpp::wrap(get_statistics(info_ptr, family, theta0));
+    Rcpp::traits::input_parameter< Nullable<NumericVector> >::type shape(shapeSEXP);
+    rcpp_result_gen = Rcpp::wrap(get_statistics(info_ptr, family, theta0, shape));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -107,21 +108,23 @@ BEGIN_RCPP
 END_RCPP
 }
 // focus_offline
-List focus_offline(SEXP Y, double threshold, std::string type, std::string family, Nullable<NumericVector> theta0, Nullable<List> dim_indexes, int pruning_mult, int pruning_offset, std::string side);
-RcppExport SEXP _focus_focus_offline(SEXP YSEXP, SEXP thresholdSEXP, SEXP typeSEXP, SEXP familySEXP, SEXP theta0SEXP, SEXP dim_indexesSEXP, SEXP pruning_multSEXP, SEXP pruning_offsetSEXP, SEXP sideSEXP) {
+List focus_offline(SEXP Y, SEXP threshold, std::string type, std::string family, Nullable<NumericVector> theta0, Nullable<List> dim_indexes, Nullable<NumericVector> quantiles, int pruning_mult, int pruning_offset, std::string side, Nullable<NumericVector> shape);
+RcppExport SEXP _focus_focus_offline(SEXP YSEXP, SEXP thresholdSEXP, SEXP typeSEXP, SEXP familySEXP, SEXP theta0SEXP, SEXP dim_indexesSEXP, SEXP quantilesSEXP, SEXP pruning_multSEXP, SEXP pruning_offsetSEXP, SEXP sideSEXP, SEXP shapeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type Y(YSEXP);
-    Rcpp::traits::input_parameter< double >::type threshold(thresholdSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type threshold(thresholdSEXP);
     Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
     Rcpp::traits::input_parameter< std::string >::type family(familySEXP);
     Rcpp::traits::input_parameter< Nullable<NumericVector> >::type theta0(theta0SEXP);
     Rcpp::traits::input_parameter< Nullable<List> >::type dim_indexes(dim_indexesSEXP);
+    Rcpp::traits::input_parameter< Nullable<NumericVector> >::type quantiles(quantilesSEXP);
     Rcpp::traits::input_parameter< int >::type pruning_mult(pruning_multSEXP);
     Rcpp::traits::input_parameter< int >::type pruning_offset(pruning_offsetSEXP);
     Rcpp::traits::input_parameter< std::string >::type side(sideSEXP);
-    rcpp_result_gen = Rcpp::wrap(focus_offline(Y, threshold, type, family, theta0, dim_indexes, pruning_mult, pruning_offset, side));
+    Rcpp::traits::input_parameter< Nullable<NumericVector> >::type shape(shapeSEXP);
+    rcpp_result_gen = Rcpp::wrap(focus_offline(Y, threshold, type, family, theta0, dim_indexes, quantiles, pruning_mult, pruning_offset, side, shape));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -139,13 +142,13 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_focus_detector_create", (DL_FUNC) &_focus_detector_create, 6},
     {"_focus_detector_update", (DL_FUNC) &_focus_detector_update, 2},
-    {"_focus_get_statistics", (DL_FUNC) &_focus_get_statistics, 3},
+    {"_focus_get_statistics", (DL_FUNC) &_focus_get_statistics, 4},
     {"_focus_detector_pieces_len", (DL_FUNC) &_focus_detector_pieces_len, 1},
     {"_focus_detector_info_n", (DL_FUNC) &_focus_detector_info_n, 1},
     {"_focus_detector_info_sn", (DL_FUNC) &_focus_detector_info_sn, 1},
     {"_focus_detector_candidates", (DL_FUNC) &_focus_detector_candidates, 1},
     {"_focus_generate_projection_indexes", (DL_FUNC) &_focus_generate_projection_indexes, 2},
-    {"_focus_focus_offline", (DL_FUNC) &_focus_focus_offline, 9},
+    {"_focus_focus_offline", (DL_FUNC) &_focus_focus_offline, 11},
     {"_focus_rcpp_hello_world", (DL_FUNC) &_focus_rcpp_hello_world, 0},
     {NULL, NULL, 0}
 };
