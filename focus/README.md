@@ -7,10 +7,10 @@
   Usage](#quick-start-offline-vs-online-usage)
   - [Offline Mode (`focus_offline`)](#offline-mode-focus_offline)
   - [Online Mode (Sequential Updates)](#online-mode-sequential-updates)
-- [Available Functions](#available-functions)
-  - [Core Detection Functions](#core-detection-functions)
+  - [Offline Mode Interface](#offline-mode-interface)
   - [Online/Sequential Interface](#onlinesequential-interface)
   - [Inspection Functions](#inspection-functions)
+- [Notes](#notes)
 - [Usage Examples](#usage-examples)
   - [Gaussian Univariate Detection](#gaussian-univariate-detection)
   - [One-sided Detection](#one-sided-detection)
@@ -34,15 +34,20 @@ analysis.
 
 ## Features
 
-- **Multiple distributions**: Gaussian and Poisson families
-- **Univariate and multivariate**: Detect changes in scalar or
-  vector-valued sequences
-- **One-sided and two-sided detection**: (Univariate only) Detects only
-  increases, decreases, or both
-- **Known or unknown pre-change parameters**: Flexible modeling of both
-  the LR test (pre-change parameter unknown) and the Page-CUSUM
-  (pre-change parameter known)
-- **C++ backend**
+- **Multiple distributions**: supports a range of models for *Gaussian
+  change-in-mean*, *Poisson change-in-rate*, *Gamma/Exponential
+  change-in-scale*, *Bernoulli change-in-probability*, as well as
+  Non-parametric detectors. New models and cost functions are easy to
+  implement!
+- **Univariate and multivariate**: detect changes in univariate or
+  multivariate sequences
+- **Known or unknown pre-change parameters**: flexible modeling of both
+  the generalised likelihood-ratio test (unknown pre-change) and the
+  Page–CUSUM test (known pre-change)
+- **One-sided and two-sided detection**: detects increases or decreases
+  in the parameters, or both
+- **C++ backend**: Language agnostic backend optimized for speed and
+  scalability
 
 ## Installation
 
@@ -146,42 +151,89 @@ abline(h = threshold, col = "red", lty = 2, lwd = 2)
 ![](generate_README_files/figure-commonmark/unnamed-chunk-3-1.png)
 
 Both approaches produce the same statistical results. See the
-performance comparison section below for runtime benchmarks.
+performance comparison section below for runtime benchmarks. \##
+Available Functions
 
-## Available Functions
-
-### Core Detection Functions
+### Offline Mode Interface
 
 - **`focus_offline(Y, threshold, type, family, ...)`**  
   Run the FOCuS detector in batch/offline mode with all cycles handled
   in C++ for maximum efficiency. Stops at detection by default; use
   `threshold = Inf` to compute statistics for all observations.
+  - `Y`: Observation data (vector or matrix)
+  - `threshold`: Detection threshold(s). Can be:
+    - Scalar: Single threshold applied to all statistics
+    - Vector: (In case of multiple values returned per statistics, see
+      Notes below)
+  - `type`: One of `"univariate"`, `"univariate_one_sided"`,
+    `"multivariate"`, or `"npfocus"`
+  - `family`: Distribution family - `"gaussian"`, `"poisson"`,
+    `"bernoulli"`, `"gamma"`, or `"npfocus"`
+  - `theta0`: (Optional) Baseline parameter vector for cost computation
+  - `shape`: (Optional) Shape parameter for `family = "gamma"` (required
+    for gamma)
+  - `dim_indexes`: (Optional) List of dimension index vectors for
+    multivariate projections
+  - `quantiles`: (Optional) Quantile vector for `type = "npfocus"`
+  - `pruning_mult`, `pruning_offset`: Pruning parameters (default: 2, 1)
+  - `side`: Pruning side - `"right"` or `"left"` (default: `"right"`)
+  - Returns: List with `stat` (matrix where each column is a statistic),
+    `changepoint`, `detection_time`, `detected_changepoint`,
+    `candidates`, `threshold`, `n`, `type`, `family`, and `shape` (if
+    gamma)
 
 ### Online/Sequential Interface
 
 - **`detector_create(type, ...)`**  
   Create a new online detector object. Returns an Info object pointer.
-
-  - `type`: One of `"univariate"`, `"univariate_one_sided"`, or
-    `"multivariate"`
-
+  - `type`: One of `"univariate"`, `"univariate_one_sided"`,
+    `"multivariate"`, or `"npfocus"`
+  - `dim_indexes`: (Optional) List of dimension index vectors for
+    multivariate projections
+  - `quantiles`: (Optional) Quantile vector for `type = "npfocus"`
+  - `pruning_mult`, `pruning_offset`: Pruning parameters (default: 2, 1)
+  - `side`: Pruning side - `"right"` or `"left"` (default: `"right"`)
 - **`detector_update(detector, y)`**  
   Update the detector with a new observation vector `y`.
-
-- **`get_statistics(detector, family, theta0 = NULL)`**  
+  - `detector`: Info object pointer from `detector_create()`
+  - `y`: Observation vector (length must match detector dimension)
+- **`get_statistics(detector, family, theta0 = NULL, shape = NULL)`**  
   Compute changepoint statistics for the current state.
-
-  - `family`: `"gaussian"` or `"poisson"`
-  - Returns a list with `stopping_time`, `changepoint`, and `stat`
+  - `detector`: Info object pointer
+  - `family`: Distribution family - `"gaussian"`, `"poisson"`,
+    `"bernoulli"`, `"gamma"`, or `"npfocus"`
+  - `theta0`: (Optional) Baseline parameter vector for cost computation
+  - `shape`: (Optional) Shape parameter for `family = "gamma"` (required
+    for gamma)
+  - Returns: List with `stopping_time`, `changepoint`, and `stat`
+    - `stat` can be a scalar (for single statistic families) or vector
+      (for multi-statistic families like npfocus)
 
 ### Inspection Functions
 
 - **`detector_info_n(detector)`** - Get number of observations processed
-- **`detector_info_sn(detector)`** - Get cumulative sum state
+- **`detector_info_sn(detector)`** - Get cumulative sum state (vector
+  for multivariate)
 - **`detector_pieces_len(detector)`** - Get number of candidate
   changepoints
 - **`detector_candidates(detector)`** - Get all candidate changepoints
   as a data frame
+  - Returns: Data frame with columns for candidate positions and their
+    sufficient statistics
+
+## Notes
+
+- **Multiple Statistics**: Some detectors (e.g., `family = "npfocus"`)
+  return multiple statistics. In `focus_offline()`, the `stat` return
+  value is a matrix where each row corresponds to a time point and each
+  column corresponds to a statistic.
+  - For single-statistic families, the matrix has one column (R treats
+    this as a vector in many contexts)
+  - For multi-statistic families, use vectorized thresholds or a single
+    threshold (with warning)
+- **Gamma Family**: When using `family = "gamma"`, you must provide a
+  positive `shape` parameter. The gamma cost function assumes this shape
+  is known.
 
 ## Usage Examples
 
@@ -388,7 +440,7 @@ system.time(
 ```
 
        user  system elapsed 
-      8.056   0.092   8.148 
+      8.159   0.090   8.250 
 
 ``` r
 # Low-dimensional projection approximation
@@ -401,7 +453,7 @@ system.time(
 ```
 
        user  system elapsed 
-      0.127   0.000   0.127 
+      0.129   0.000   0.128 
 
 ``` r
 # Verify similarity
@@ -435,7 +487,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.002 
+      0.002   0.000   0.003 
 
 ``` r
 plot(res_bern$stat, main = "Bernoulli (univariate): change in success probability")
@@ -456,7 +508,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.018   0.000   0.019 
+      0.019   0.000   0.019 
 
 ``` r
 plot(res_bern_multi$stat, main = "Bernoulli (multivariate): two streams")
@@ -722,7 +774,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.144   0.000   0.145 
+      0.159   0.001   0.160 
 
 ``` r
 # Benchmark online mode
@@ -746,7 +798,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.334   0.001   0.335 
+      0.331   0.000   0.331 
 
 ``` r
 # Verify both produce identical results
@@ -762,7 +814,7 @@ speedup <- time_online["elapsed"] / time_offline["elapsed"]
 cat("Offline mode is", round(speedup, 1), "x faster\n")
 ```
 
-    Offline mode is 2.3 x faster
+    Offline mode is 2.1 x faster
 
 ## C++ Integration
 
