@@ -1,17 +1,17 @@
 # focus
 
 **focus** is a high-performance package for **online changepoint detection** in **univariate** and **multivariate** data streams.
-It provides efficient C++ implementations of the **FOCUS** and **MD-FOCUS** algorithms, with R and Python interfaces for **real-time monitoring** and **offline analysis**.
+It provides efficient C++ implementations of the **FOCUS**, **MD-FOCUS** and **NP-FOCUS** algorithms, with R and Python interfaces for **real-time monitoring** and **offline analysis**.
 
 ---
 
 ## Features
 
-* **Multiple distributions** — supports *Gaussian* and *Poisson* families
-* **Univariate and multivariate detection** — detect changes in scalar or vector-valued sequences
-* **One-sided and two-sided tests** *(univariate only)* — detect increases, decreases, or both
+* **Multiple distributions** — supports a range of models for *Gaussian change-in-mean*, *Poisson change-in-rate*, *Gamma/Exponential change-in-scale*, *Bernoulli change-in-probability*, as well as Non-parametric detectors. New models and cost functions are easy to implement! 
+* **Univariate and multivariate detection** — detect changes in univariate or multivariate sequences
 * **Known or unknown pre-change parameters** — flexible modeling of both the likelihood-ratio test (unknown pre-change) and the Page–CUSUM test (known pre-change)
-* **High-performance C++ backend** — optimized for speed and scalability
+* **One-sided test statistics** *(univariate only)* — detects increases or decreases in the parameters, or both
+* **Easy to access C++ backend** — Language agnostic backend optimized for speed and scalability
 
 ---
 
