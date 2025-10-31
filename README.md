@@ -23,7 +23,7 @@ The same **C++ backend** is shared across both interfaces:
   → See detailed documentation in [focus/README.md](focus/README.md)
 
 * **Python interface** To be coming. Will be under → [focus_py/](focus_py)
-  → See detailed documentation in [focus_py/README](focus_py/README)
+  → See detailed documentation in [focus_py/README](focus_py/README.md)
 
 ---
 
