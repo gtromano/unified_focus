@@ -1,11 +1,11 @@
 Package: focus
 Type: Package
-Title: Concise Summary of What the Package Does
+Title: Online Changepoint Detection in Univariate and Multivariate data streams
 Version: 0.0.1
 Date: 2025-10-23
-Authors@R: person("Your", "Name", role = c("aut", "cre"), email = "your@email.com")
-Description: More about what it does (maybe more than one line).
-SystemRequirements: Qhull
-License: GPL (>= 2)
+Authors@R: person("Gaetano", "Romano", role = c("aut", "cre"), email = "g.romano@lancaster.ac.uk")
+Maintainer: Gaetano Romano <g.romano@lancaster.ac.uk>
+Description: focus is a high-performance package for online changepoint detection in univariate and multivariate data streams. It provides efficient C++ implementations of the FOCUS, MD-FOCUS and NP-FOCUS algorithms, with R and Python interfaces for real-time monitoring and offline analysis.
+License: MIT + file LICENSE
 Imports: Rcpp (>= 1.1.0)
 LinkingTo: Rcpp

@@ -440,7 +440,7 @@ system.time(
 ```
 
        user  system elapsed 
-      8.159   0.090   8.250 
+      8.854   0.104   8.959 
 
 ``` r
 # Low-dimensional projection approximation
@@ -453,7 +453,7 @@ system.time(
 ```
 
        user  system elapsed 
-      0.129   0.000   0.128 
+      0.129   0.000   0.129 
 
 ``` r
 # Verify similarity
@@ -487,7 +487,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.003 
+      0.002   0.000   0.002 
 
 ``` r
 plot(res_bern$stat, main = "Bernoulli (univariate): change in success probability")
@@ -533,7 +533,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.003 
+      0.003   0.001   0.002 
 
 ``` r
 plot(res_pois$stat, main = "Poisson: change in rate (lambda)")
@@ -774,7 +774,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.159   0.001   0.160 
+      0.144   0.002   0.146 
 
 ``` r
 # Benchmark online mode
@@ -798,7 +798,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.331   0.000   0.331 
+      0.338   0.000   0.339 
 
 ``` r
 # Verify both produce identical results
@@ -814,7 +814,7 @@ speedup <- time_online["elapsed"] / time_offline["elapsed"]
 cat("Offline mode is", round(speedup, 1), "x faster\n")
 ```
 
-    Offline mode is 2.1 x faster
+    Offline mode is 2.3 x faster
 
 ## C++ Integration
 
