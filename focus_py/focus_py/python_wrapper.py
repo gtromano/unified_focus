@@ -1,17 +1,23 @@
 """
-Python wrapper for FOCuS changepoint detection library.
+focus_py: Python bindings for the FOCuS changepoint detection library.
 
-This provides a more Pythonic interface to the C++ pybind11 extension.
+Provides a clean, Pythonic interface to the high-performance C++ implementation
+of the FOCuS and md-FOCuS algorithms for online and offline changepoint detection.
+
+Main interfaces:
+- `focus_offline`: full C++ offline detector (fast, batch mode)
+- `Detector`: online/sequential interface (step-by-step updates)
+
+See the README or documentation for detailed usage and examples.
 """
 
 import numpy as np
 from typing import Optional, Union, List, Dict, Any
 
-# Import the compiled extension module
+# Import compiled backend
 try:
     from . import _focus
 except ImportError:
-    # Fallback for development/editable installs
     import _focus
 
 
@@ -45,7 +51,7 @@ class Detector:
     ...     if res["stat"] > 20:
     ...         print("Detection:", res)
     """
-    
+
     def __init__(
         self,
         type: str,
@@ -53,48 +59,44 @@ class Detector:
         quantiles: Optional[Union[List[float], np.ndarray]] = None,
         pruning_mult: int = 2,
         pruning_offset: int = 1,
-        side: str = "right"
+        side: str = "right",
     ):
-        # Convert dim_indexes to list of numpy arrays if provided
         if dim_indexes is not None:
             dim_indexes = [np.asarray(idx, dtype=np.int32) for idx in dim_indexes]
-        
-        # Convert quantiles to numpy array if provided
         if quantiles is not None:
             quantiles = np.asarray(quantiles, dtype=np.float64)
-        
+
         self._detector = _focus.Detector(
             type=type,
             dim_indexes=dim_indexes,
             quantiles=quantiles,
             pruning_mult=pruning_mult,
             pruning_offset=pruning_offset,
-            side=side
+            side=side,
         )
         self._type = type
-    
+
     def update(self, y: Union[float, List[float], np.ndarray]) -> None:
         """
-        Update detector with new observation(s).
-        
+        Update the detector with new observation(s).
+
         Parameters
         ----------
         y : float, list, or array
-            New observation(s). For univariate detectors, can be a scalar or 1D array.
-            For multivariate detectors, should be a 1D array matching the dimension.
+            New observation(s). Must match the detector's dimensionality.
         """
         y = np.atleast_1d(np.asarray(y, dtype=np.float64))
         self._detector.update(y)
-    
+
     def get_statistics(
         self,
         family: str,
         theta0: Optional[Union[float, List[float], np.ndarray]] = None,
-        shape: Optional[float] = None
+        shape: Optional[float] = None,
     ) -> Dict[str, Any]:
         """
-        Compute changepoint statistics.
-        
+        Compute current changepoint statistic.
+
         Parameters
         ----------
         family : str
@@ -120,79 +122,67 @@ class Detector:
         """
         if theta0 is not None:
             theta0 = np.atleast_1d(np.asarray(theta0, dtype=np.float64))
-        
         if shape is not None:
             shape = np.array([shape], dtype=np.float64)
-        
-        result = self._detector.get_statistics(
-            family=family,
-            theta0=theta0,
-            shape=shape
-        )
-        
-        # Convert stat to scalar if it's a 0-d or 1-element array
-        if isinstance(result['stat'], np.ndarray):
-            if result['stat'].size == 1:
-                result['stat'] = float(result['stat'].flat[0])
-        
+
+        result = self._detector.get_statistics(family=family, theta0=theta0, shape=shape)
+
+        # Convert singleton stats to scalar
+        stat = result.get("stat")
+        if isinstance(stat, np.ndarray) and stat.size == 1:
+            result["stat"] = float(stat)
         return result
-    
+
     def get_n_candidates(self) -> int:
-        """Get number of candidate segments currently tracked."""
+        """Return the number of candidate segments currently tracked."""
         return self._detector.get_n_candidates()
-    
+
     def get_n(self) -> int:
-        """Get number of observations processed."""
+        """Return the number of observations processed."""
         return self._detector.get_n()
-    
+
     def get_sn(self) -> np.ndarray:
-        """Get cumulative sum statistic."""
+        """Return the current cumulative sum statistic."""
         return self._detector.get_sn()
-    
+
     def get_candidates(self) -> Dict[str, Any]:
         """
-        Get candidate segments.
-        
+        Return current candidate segments.
+
         Returns
         -------
         dict
             Dictionary with keys:
-            - 'tau': array of int, candidate segment boundaries
-            - 'st': list of arrays, sufficient statistics for each candidate
+            - 'tau': array of int, candidate changepoints
+            - 'st': list of arrays, sufficient statistics for each candidate (e.g., cumulative sums of the data)
             - 'side': list of str, side indicator for each candidate
         """
         return self._detector.get_candidates()
-    
+
     @property
     def type(self) -> str:
-        """Get detector type."""
+        """Return the detector type."""
         return self._type
-    
+
     def __repr__(self) -> str:
         return f"Detector(type='{self._type}', n={self.get_n()}, n_candidates={self.get_n_candidates()})"
 
 
 def generate_projection_indexes(D: int, p: int) -> List[np.ndarray]:
     """
-    Generate circular combinations for multivariate projections.
-    
+    Generate projection index sets for high-dimentional multivariate detectors.
+
     Parameters
     ----------
     D : int
-        Total number of dimensions.
+        Number of total dimensions.
     p : int
-        Size of each projection subset.
-    
+        Projection subset size.
+
     Returns
     -------
     list of arrays
-        List of index arrays for projections.
-    
-    Examples
-    --------
-    >>> indexes = generate_projection_indexes(D=5, p=2)
-    >>> len(indexes)
-    5
+        Circular combinations of indices.
     """
     return _focus.generate_projection_indexes(D, p)
 
@@ -208,20 +198,20 @@ def focus_offline(
     pruning_mult: int = 2,
     pruning_offset: int = 1,
     side: str = "right",
-    shape: Optional[float] = None
+    shape: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
-    Run complete offline changepoint detection.
-    
-    This function processes the entire dataset at once and returns detection results.
-    
+    Run the FOCuS detector in batch/offline mode (entirely in C++).
+
+    Processes all data at once and returns detection results and trajectories.
+
     Parameters
     ----------
     Y : array-like
         Data array. Can be 1D (univariate) or 2D (multivariate, observations x dimensions).
     threshold : float or array-like
         Detection threshold(s). Can be a scalar (applied to all statistics) or
-        an array matching the number of statistics.
+        an array matching the number of statistics. Use np.inf for no thresholding.
     type : str
         Detector type: 'multivariate', 'univariate', 'univariate_one_sided', 'npfocus'.
     family : str
@@ -272,19 +262,15 @@ def focus_offline(
     # Convert inputs to numpy arrays
     Y = np.asarray(Y, dtype=np.float64)
     threshold = np.atleast_1d(np.asarray(threshold, dtype=np.float64))
-    
     if theta0 is not None:
         theta0 = np.atleast_1d(np.asarray(theta0, dtype=np.float64))
-    
     if dim_indexes is not None:
         dim_indexes = [np.asarray(idx, dtype=np.int32) for idx in dim_indexes]
-    
     if quantiles is not None:
         quantiles = np.asarray(quantiles, dtype=np.float64)
-    
     if shape is not None:
         shape = np.array([shape], dtype=np.float64)
-    
+
     result = _focus.focus_offline(
         Y=Y,
         threshold=threshold,
@@ -296,18 +282,12 @@ def focus_offline(
         pruning_mult=pruning_mult,
         pruning_offset=pruning_offset,
         side=side,
-        shape=shape
+        shape=shape,
     )
-    
-    # Convert -1 to None in changepoint array for better Pythonic interface
-    cp_array = result['changepoint']
-    result['changepoint'] = np.where(cp_array == -1, None, cp_array)
-    
+
+    cp = result["changepoint"]
+    result["changepoint"] = np.where(cp == -1, None, cp)
     return result
 
 
-__all__ = [
-    'Detector',
-    'generate_projection_indexes',
-    'focus_offline',
-]
+__all__ = ["Detector", "generate_projection_indexes", "focus_offline"]
