@@ -1,0 +1,18 @@
+# Include build system files
+include CMakeLists.txt
+include pyproject.toml
+include README.md
+include LICENSE
+
+# Include C++ source files
+recursive-include src *.cpp *.cc *.cxx
+
+# Include header files
+recursive-include include *.h *.hpp *.hxx
+
+# Exclude build artifacts and caches
+global-exclude *.py[cod] __pycache__ *.so *.dylib *.dll
+prune build
+prune dist
+prune .git
+prune .github

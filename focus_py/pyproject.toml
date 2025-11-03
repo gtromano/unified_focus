@@ -1,0 +1,102 @@
+[build-system]
+requires = [
+    "scikit-build-core>=0.5.0",
+    "pybind11>=2.11.0",
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "focus_py"
+version = "0.1.0"
+description = "FOCuS (Focusing on Candidate Segments) changepoint detection library"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}  # Adjust as needed
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+keywords = ["changepoint", "detection", "statistics", "time-series"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: C++",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "numpy>=1.19.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "mypy>=1.0",
+]
+docs = [
+    "sphinx>=5.0",
+    "sphinx-rtd-theme>=1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/focus"
+Documentation = "https://focus.readthedocs.io"
+Repository = "https://github.com/yourusername/focus"
+Issues = "https://github.com/yourusername/focus/issues"
+
+[tool.scikit-build]
+# Minimum required CMake version
+cmake.minimum-version = "3.15"
+
+# Build directory
+build-dir = "build/{wheel_tag}"
+
+# Verbose build output for debugging (optional, can be removed for production)
+cmake.verbose = false
+
+# Wheel settings
+wheel.packages = ["focus_py"]
+
+# Installation settings
+install.strip = false
+
+[tool.scikit-build.cmake.define]
+# You can add CMake defines here if needed
+# CMAKE_BUILD_TYPE = "Release"
+
+[tool.cibuildwheel]
+# Configuration for building wheels on CI
+build = "cp38-* cp39-* cp310-* cp311-* cp312-*"
+skip = "*-musllinux_* *-win32 *-manylinux_i686"
+
+# Before build, install Qhull
+[tool.cibuildwheel.linux]
+before-all = "yum install -y qhull-devel || apt-get update && apt-get install -y libqhull-dev"
+environment = {CMAKE_BUILD_PARALLEL_LEVEL = "4"}
+
+[tool.cibuildwheel.macos]
+before-all = "brew install qhull"
+environment = {CMAKE_BUILD_PARALLEL_LEVEL = "4"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py38']
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
