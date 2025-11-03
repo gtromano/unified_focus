@@ -37,7 +37,3 @@ focus_offline <- function(Y, threshold, type, family, theta0 = NULL, dim_indexes
     .Call(`_focus_focus_offline`, Y, threshold, type, family, theta0, dim_indexes, quantiles, pruning_mult, pruning_offset, side, shape)
 }
 
-rcpp_hello_world <- function() {
-    .Call(`_focus_rcpp_hello_world`)
-}
-
