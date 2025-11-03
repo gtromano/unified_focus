@@ -518,7 +518,7 @@ py::dict focus_offline(const py::array_t<double>& Y,
 }
 
 
-PYBIND11_MODULE(focus, m) {
+PYBIND11_MODULE(_focus, m) {
     m.doc() = "FOCuS (Focusing on Candidate Segments) changepoint detection library";
     
     py::class_<Detector>(m, "Detector")

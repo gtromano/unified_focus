@@ -1,4 +1,4 @@
-# focus
+# focus_py
 
 
 - [Features](#features)
@@ -27,10 +27,10 @@
 ``` python
 import numpy as np
 import matplotlib.pyplot as plt
-from python_wrapper import *
+from focus_py import focus_offline, Detector
 ```
 
-**focus** is a high-performance Python package for online changepoint
+**focus_py** is a high-performance Python package for online changepoint
 detection in univariate and multivariate data streams. It provides
 efficient C++ implementations of the **FOCuS** and **md-FOCuS**
 algorithms with Python bindings for real-time monitoring and offline
@@ -52,13 +52,13 @@ analysis.
 You can install the development version of **focus** from source with:
 
 ``` bash
-pip install git+https://github.com/gtromano/unified_focus.git#subdirectory=focus/python
+pip install git+https://github.com/gtromano/unified_focus.git#subdirectory=focus_py
 ```
 
 Or, if you have the local source directory:
 
 ``` bash
-pip install path/to/focus/python
+pip install path/to/focus_py
 ```
 
 ------------------------------------------------------------------------
@@ -451,9 +451,9 @@ print(f"Online time:  {online_time:.2f}s")
 print(f"Offline is {online_time / offline_time:.1f}× faster")
 ```
 
-    Offline time: 0.24s
-    Online time:  0.42s
-    Offline is 1.7× faster
+    Offline time: 0.21s
+    Online time:  0.37s
+    Offline is 1.8× faster
 
 ------------------------------------------------------------------------
 

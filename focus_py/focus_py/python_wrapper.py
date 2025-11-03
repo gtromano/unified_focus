@@ -6,48 +6,44 @@ This provides a more Pythonic interface to the C++ pybind11 extension.
 
 import numpy as np
 from typing import Optional, Union, List, Dict, Any
-import focus as _focus
+
+# Import the compiled extension module
+try:
+    from . import _focus
+except ImportError:
+    # Fallback for development/editable installs
+    import _focus
 
 
 class Detector:
     """
-    Changepoint detector wrapper.
-    
-    This class provides a Pythonic interface to the FOCuS changepoint detection
-    methods, automatically handling array conversions and providing better
-    type hints and documentation.
-    
+    Online (sequential) changepoint detector.
+
+    Provides a step-by-step interface to the FOCuS algorithm.
+    Each `update()` call adds new data, and `get_statistics()` computes
+    the current test statistic and detection result.
+
     Parameters
     ----------
     type : str
-        Type of detector:
-        - 'multivariate': For multivariate data with dimension reduction
-        - 'univariate': For univariate data (two-sided)
-        - 'univariate_one_sided': For univariate data (one-sided)
-        - 'npfocus': For nonparametric detection
+        One of {"univariate", "univariate_one_sided", "multivariate", "npfocus"}.
     dim_indexes : list of array-like, optional
-        For multivariate detectors: list of dimension index arrays for projections.
-        Each element should be an array of integers representing dimensions to project onto.
+        Projection index sets for multivariate detectors.
     quantiles : array-like, optional
-        For npfocus detectors: quantiles to use for nonparametric detection.
-    pruning_mult : int, default=2
-        Pruning multiplier for candidate segment management.
-    pruning_offset : int, default=1
-        Pruning offset for candidate segment management.
-    side : str, default='right'
-        For one-sided detectors: 'right' for increases, 'left' for decreases.
-    
+        Quantiles for nonparametric ("npfocus") detectors.
+    pruning_mult, pruning_offset : int, optional
+        Candidate pruning parameters (default: 2, 1).
+    side : str, optional
+        For one-sided detectors, "right" (increases) or "left" (decreases).
+
     Examples
     --------
-    >>> # Univariate detector
-    >>> detector = Detector(type='univariate')
-    >>> detector.update([1.0])
-    >>> result = detector.get_statistics(family='gaussian', theta0=0.0)
-    
-    >>> # Multivariate detector with projection
-    >>> detector = Detector(type='multivariate', 
-    ...                     dim_indexes=[[0, 1], [1, 2]])
-    >>> detector.update([1.0, 2.0, 3.0])
+    >>> det = Detector(type="univariate")
+    >>> for y in [0.1, 0.2, 2.5]:
+    ...     det.update(y)
+    ...     res = det.get_statistics(family="gaussian")
+    ...     if res["stat"] > 20:
+    ...         print("Detection:", res)
     """
     
     def __init__(
