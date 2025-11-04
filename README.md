@@ -33,15 +33,16 @@ The same **C++ backend** is shared across both interfaces:
 
 ```r
 # from source
-devtools::install_github("yourusername/focus", subdir = "focus")
+devtools::install_github("gtromano/unified_focus", subdir = "focus")
 ```
 
 ### Python
 
 ```bash
-pip install .
+# cloning the repo
+# pip install focus_py
 # or directly from GitHub
-pip install git+https://github.com/yourusername/focus.git#subdirectory=focus_py
+pip install git+https://github.com/gtromano/unified_focus.git#subdirectory=focus_py
 ```
 
 ---
