@@ -9,3 +9,5 @@ Description: focus is a high-performance package for online changepoint detectio
 License: MIT + file LICENSE
 Imports: Rcpp (>= 1.1.0)
 LinkingTo: Rcpp
+Encoding: UTF-8
+RoxygenNote: 7.2.3

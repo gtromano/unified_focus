@@ -453,9 +453,9 @@ print(f"Online time:  {online_time:.2f}s")
 print(f"Offline is {online_time / offline_time:.1f}× faster")
 ```
 
-    Offline time: 0.21s
-    Online time:  0.36s
-    Offline is 1.8× faster
+    Offline time: 0.27s
+    Online time:  0.41s
+    Offline is 1.5× faster
 
 ------------------------------------------------------------------------
 

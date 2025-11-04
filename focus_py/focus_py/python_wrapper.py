@@ -85,7 +85,7 @@ class Detector:
         y : float, list, or array
             New observation(s). Must match the detector's dimensionality.
         """
-        y = np.atleast_1d(np.asarray(y, dtype=np.float64))
+        y = np.ascontiguousarray(y, dtype=np.float64)
         self._detector.update(y)
 
     def get_statistics(
@@ -260,7 +260,7 @@ def focus_offline(
     >>> result = focus_offline(Y, threshold=15.0, type='multivariate', family='gaussian')
     """
     # Convert inputs to numpy arrays
-    Y = np.asarray(Y, dtype=np.float64)
+    Y = np.ascontiguousarray(Y, dtype=np.float64)
     threshold = np.atleast_1d(np.asarray(threshold, dtype=np.float64))
     if theta0 is not None:
         theta0 = np.atleast_1d(np.asarray(theta0, dtype=np.float64))

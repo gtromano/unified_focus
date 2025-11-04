@@ -441,7 +441,7 @@ system.time(
 ```
 
        user  system elapsed 
-      7.839   0.093   7.932 
+      8.407   0.094   8.502 
 
 ``` r
 # Low-dimensional projection approximation
@@ -454,7 +454,7 @@ system.time(
 ```
 
        user  system elapsed 
-      0.127   0.000   0.127 
+      0.134   0.000   0.134 
 
 ``` r
 # Verify similarity
@@ -488,7 +488,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.002 
+      0.003   0.000   0.003 
 
 ``` r
 plot(res_bern$stat, main = "Bernoulli (univariate): change in success probability")
@@ -509,7 +509,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.019   0.000   0.020 
+       0.02    0.00    0.02 
 
 ``` r
 plot(res_bern_multi$stat, main = "Bernoulli (multivariate): two streams")
@@ -566,7 +566,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.003   0.000   0.002 
+      0.002   0.000   0.003 
 
 ``` r
 plot(res_gamma$stat, main = "Gamma: change in scale (shape = 2)")
@@ -775,7 +775,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.143   0.000   0.143 
+      0.146   0.000   0.146 
 
 ``` r
 # Benchmark online mode
@@ -799,7 +799,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.330   0.000   0.329 
+      0.338   0.000   0.338 
 
 ``` r
 # Verify both produce identical results
