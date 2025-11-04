@@ -1,2 +1,5 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+generate_README.qmd
+generate_README_files
+^LICENSE\.md$

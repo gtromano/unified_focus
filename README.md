@@ -36,7 +36,7 @@ The same **C++ backend** is shared across both interfaces:
 devtools::install_github("yourusername/focus", subdir = "focus")
 ```
 
-### Python (TBC!!)
+### Python
 
 ```bash
 pip install .
@@ -48,13 +48,58 @@ pip install git+https://github.com/yourusername/focus.git#subdirectory=focus_py
 
 ## Example (R)
 
-```r
+``` r
 library(focus)
+set.seed(45)
+Y <- c(rnorm(1000, mean = 0), rnorm(500, mean = -1))
 
-# Univariate Gaussian example
-set.seed(1)
-x <- c(rnorm(100, 0), rnorm(100, 2))
-res <- focus_offline(x, threshold = 10, type = "univariate", family = "gaussian")
-plot(res$stat, type = "l", main = "FOCUS statistic over time")
-abline(h = res$threshold, col = "red", lty = 2)
+res <- focus_offline(Y, threshold = 20, type = "univariate", family = "gaussian")
+
+cat("Detection time:", res$detection_time, "\n")
 ```
+
+    Detection time: 1035 
+
+``` r
+cat("Estimated changepoint:", res$detected_changepoint, "\n")
+```
+
+    Estimated changepoint: 991 
+
+## Example (Python)
+
+``` python
+import numpy as np
+from focus_py import focus_offline
+Y = np.concatenate([np.random.normal(0, 1, 1000), np.random.normal(-1, 1, 500)])
+
+res = focus_offline(Y, threshold=20, type="univariate", family="gaussian")
+print("Detection time:", res["detection_time"])
+print("Estimated changepoint:", res["detected_changepoint"])
+```
+
+    Detection time: 1023
+    Estimated changepoint: 1008
+
+## Authors and Contributors 
+
+* Gaetano Romano: [email](mailto:g.romano@lancaster.ac.uk) (**Author**) (**Maintainer**) (**Creator**) (**Translator**)
+
+* Kes Ward: [email](mailto:k.ward4@lancaster.ac.uk) (**Author**)
+
+* Liudmila Pishchagina: [email](mailto:liudmila.pishchagina@univ-evry.fr) (**Author**)
+
+* Guillem Rigaill: [email](mailto:guillem.rigaill@inrae.fr) (**Author**) (**Thesis Advisor**)
+
+* Vincent Runge: [email](mailto:vincent.runge@univ-evry.fr) (**Author**) (**Thesis Advisor**)
+
+* Paul Fearnhead: [email](mailto:p.fearnhead@lancaster.ac.uk) (**Author**) (**Thesis Advisor**)
+
+* Idris A. Eckley: [email](mailto:i.eckley@lancaster.ac.uk) (**Author**) (**Thesis Advisor**)
+
+### External libraries
+
+* The R package version of this software bundles code from code from Qhull (http://www.qhull.org/), from C.B. Barber and The Geometry Center.
+Qhull is free software and may be obtained via http from www.qhull.org. For details, see [focus/inst/COPYRIGHTS/qhull](focus/inst/COPYRIGHTS/qhull)
+
+* The Python package depends on installation of the Qhull library. If not found, the user will be notified with instructions to install.

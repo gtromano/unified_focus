@@ -22,7 +22,9 @@
     (NPFOCuS)](#non-parametric-detection-npfocus)
 - [Performance Comparison](#performance-comparison)
 - [References](#references)
+- [Authors and Contributors](#authors-and-contributors)
 - [License](#license)
+  - [External libraries](#external-libraries)
 
 ``` python
 import numpy as np
@@ -452,17 +454,80 @@ print(f"Offline is {online_time / offline_time:.1f}× faster")
 ```
 
     Offline time: 0.21s
-    Online time:  0.37s
+    Online time:  0.36s
     Offline is 1.8× faster
 
 ------------------------------------------------------------------------
 
 ## References
 
-- Romano, G., Eckley, I. A., Fearnhead, P., & Rigaill, G. (2023). *Fast
-  online changepoint detection via functional pruning CUSUM statistics.*
-  Journal of Machine Learning Research, 23(145), 1–36.
+<div id="ref-pishchagina2023online" class="csl-entry">
+
+Pishchagina, Liudmila, Gaetano Romano, Paul Fearnhead, Vincent Runge,
+and Guillem Rigaill. 2025. “Online Multivariate Changepoint Detection:
+Leveraging Links with Computational Geometry.” *Journal of the Royal
+Statistical Society Series B: Statistical Methodology*: qkaf046.
+<https://doi.org/10.1093/jrsssb/qkaf046>
+
+</div>
+
+<div id="ref-romano2024" class="csl-entry">
+
+Romano, Gaetano, Idris A. Eckley, and Paul Fearnhead. 2024. “A
+Log-Linear Nonparametric Online Changepoint Detection Algorithm Based on
+Functional Pruning.” *IEEE Transactions on Signal Processing* 72:
+594–606. <https://doi.org/10.1109/tsp.2023.3343550>.
+
+</div>
+
+<div id="ref-romano2023fast" class="csl-entry">
+
+Romano, Gaetano, Idris A Eckley, Paul Fearnhead, and Guillem Rigaill.
+2023. “Fast Online Changepoint Detection via Functional Pruning CUSUM
+Statistics.” *Journal of Machine Learning Research* 24 (81): 1–36.
+<https://www.jmlr.org/papers/v24/21-1230.html>.
+
+</div>
+
+<div id="ref-ward2024constant" class="csl-entry">
+
+Ward, Kes, Gaetano Romano, Idris Eckley, and Paul Fearnhead. 2024. “A
+Constant-Per-Iteration Likelihood Ratio Test for Online Changepoint
+Detection for Exponential Family Models.” *Statistics and Computing* 34
+(3): 1–11.
+
+</div>
+
+</div>
+
+## Authors and Contributors
+
+- Gaetano Romano: [email](mailto:g.romano@lancaster.ac.uk) (**Author**)
+  (**Maintainer**) (**Creator**) (**Translator**)
+
+- Kes Ward: [email](mailto:k.ward4@lancaster.ac.uk) (**Author**)
+
+- Liudmila Pishchagina:
+  [email](mailto:liudmila.pishchagina@univ-evry.fr) (**Author**)
+
+- Guillem Rigaill: [email](mailto:guillem.rigaill@inrae.fr) (**Author**)
+  (**Thesis Advisor**)
+
+- Vincent Runge: [email](mailto:vincent.runge@univ-evry.fr) (**Author**)
+  (**Thesis Advisor**)
+
+- Paul Fearnhead: [email](mailto:p.fearnhead@lancaster.ac.uk)
+  (**Author**) (**Thesis Advisor**)
+
+- Idris A. Eckley: [email](mailto:i.eckley@lancaster.ac.uk) (**Author**)
+  (**Thesis Advisor**)
 
 ## License
 
 This package is provided under the MIT License.
+
+### External libraries
+
+The Python package depends on the Qhull library (http://www.qhull.org/),
+from C.B. Barber and The Geometry Center. If the library is not found,
+the user will be notified with instructions to install.

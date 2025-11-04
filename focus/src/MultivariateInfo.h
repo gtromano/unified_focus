@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Info.h"
-#include <libqhullcpp/Qhull.h>
-#include <libqhullcpp/QhullFacetList.h>
-#include <libqhullcpp/QhullVertexSet.h>
+#include "libqhullcpp/Qhull.h"
+#include "libqhullcpp/QhullFacetList.h"
+#include "libqhullcpp/QhullVertexSet.h"
 #include <set>
 #include <utility>
 #include <vector>
