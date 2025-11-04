@@ -58,3 +58,26 @@ res <- focus_offline(x, threshold = 10, type = "univariate", family = "gaussian"
 plot(res$stat, type = "l", main = "FOCUS statistic over time")
 abline(h = res$threshold, col = "red", lty = 2)
 ```
+
+## Contributors 
+
+* Gaetano Romano: [email](mailto:g.romano@lancaster.ac.uk) (**Author**) (**Maintainer**) (**Creator**) (**Translator**)
+
+* Kes Ward: [email](mailto:k.ward4@lancaster.ac.uk) (**Author**)
+
+* Liudmila Pishchagina: [email](mailto:liudmila.pishchagina@univ-evry.fr) (**Author**)
+
+* Guillem Rigaill: [email](mailto:guillem.rigaill@inrae.fr) (**Author**) (**Thesis Advisor**)
+
+* Vincent Runge: [email](mailto:vincent.runge@univ-evry.fr) (**Author**) (**Thesis Advisor**)
+
+* Paul Fearnhead: [email](mailto:p.fearnhead@lancaster.ac.uk) (**Author**) (**Thesis Advisor**)
+
+* Idris A. Eckley: [email](mailto:i.eckley@lancaster.ac.uk) (**Author**) (**Thesis Advisor**)
+
+### External libraries
+
+This software includes Qhull from C.B. Barber and The Geometry Center.
+Files derived from Qhull 1.0 are copyrighted by the Geometry Center.  The
+remaining files are copyrighted by C.B. Barber.  Qhull is free software
+and may be obtained via http from www.qhull.org.
