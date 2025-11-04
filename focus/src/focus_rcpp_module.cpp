@@ -1,4 +1,14 @@
 // focus_rcpp_module.cpp
+//
+// Provides R bindings for the high-performance C++ implementation of the FOCuS
+// and md-FOCuS algorithms for online and offline changepoint detection.
+//
+// Main interfaces:
+// - `detector_create()`: Create online/sequential detector
+// - `detector_update()`: Add new observations step-by-step
+// - `get_statistics()`: Compute current test statistic and detection result
+// - `focus_offline()`: Full C++ offline detector (fast, batch mode)
+
 #include <Rcpp.h>
 #include "Info.h"
 #include "MultivariateInfo.h"
@@ -14,6 +24,73 @@ using namespace changepoint;
 // Factories & wrappers
 // ------------------------
 
+//' Create a FOCuS changepoint detector
+//'
+//' Creates an online (sequential) changepoint detector object that provides
+//' a step-by-step interface to the FOCuS algorithm. Each call to
+//' \code{detector_update()} adds new data, and \code{get_statistics()} computes
+//' the current test statistic and detection result.
+//'
+//' @param type Character string specifying detector type. One of:
+//'   \itemize{
+//'     \item \code{"univariate"}: Two-sided univariate detection
+//'     \item \code{"univariate_one_sided"}: One-sided univariate detection
+//'     \item \code{"multivariate"}: Multivariate detection with projections
+//'     \item \code{"npfocus"}: Nonparametric detection (NP-FOCuS)
+//'   }
+//' @param dim_indexes List of integer vectors specifying projection index sets
+//'   for high-dimensional multivariate detectors. Not required for sequences of dimentions less than 5.
+//'    Each element is a vector of 0-based column indices. Default is \code{NULL}.
+//' @param quantiles Numeric vector of quantiles for nonparametric
+//'   (\code{"npfocus"}) detectors. Required when \code{type = "npfocus"}.
+//'   Default is \code{NULL}.
+//' @param pruning_mult Integer. Candidate pruning multiplier parameter.
+//'   Default is 2.
+//' @param pruning_offset Integer. Candidate pruning offset parameter.
+//'   Default is 1.
+//' @param side Character string. For one-sided detectors, either \code{"right"}
+//'   (detects increases) or \code{"left"} (detects decreases). Default is
+//'   \code{"right"}.
+//'
+//' @return An external pointer (SEXP) to the detector object. This should be
+//'   passed to other detector functions like \code{detector_update()} and
+//'   \code{get_statistics()}.
+//'
+//' @details
+//' The detector maintains sufficient statistics internally and uses pruning
+//' to efficiently track candidate changepoints. The \code{pruning_mult} and
+//' \code{pruning_offset} parameters control the pruning strategy.
+//'
+//' For high-dimensional multivariate detection, computing the full hull would be too prohibitive.
+//' Additionally, the complexity is expected to be log(n)^p, where n is the number of iterations and p is the
+//' dimensions. So for short, high-dimentional sequences, it is possible to reconstruct the set of changepoint
+//' locations by approximating the hull on projections in smaller dimentions.  \code{dim_indexes} specifies which dimensions
+//' to use for each projection of the convex hull for pruning. Use \code{generate_projection_indexes()} to
+//' generate systematic projection sets.
+//'
+//' @examples
+//' \dontrun{
+//' # Univariate detector
+//' det <- detector_create(type = "univariate")
+//' detector_update(det, 0.5)
+//' detector_update(det, 1.2)
+//' r <- get_statistics(det, family = "gaussian")
+//' print(r)
+//'
+//' # Multivariate detector with projections
+//' dim_indexes <- list(c(0,1), c(1,2), c(0,2))  # 0-based indices
+//' det_mv <- detector_create(type = "multivariate", dim_indexes = dim_indexes)
+//' detector_update(det_mv, c(0.5, 1.2, -0.3))
+//'
+//' # Nonparametric detector
+//' quants <- qnorm(c(0.25, 0.5, 0.75))
+//' det_np <- detector_create(type = "npfocus", quantiles = quants)
+//'
+//' # One-sided univariate detector
+//' det_one_sided <- detector_create(type = "univariate_one_sided", side = "left")
+//' }
+//'
+//' @export
 // [[Rcpp::export]]
 SEXP detector_create(std::string type,
                      Nullable<List> dim_indexes = R_NilValue,
@@ -101,9 +178,48 @@ SEXP detector_create(std::string type,
 }
 
 
-
-
-// Update detector with new observation vector y
+//' Update detector with new observation(s)
+//'
+//' Adds new observation(s) to the detector's internal state and updates
+//' sufficient statistics.
+//'
+//' @param info_ptr External pointer to detector created by
+//'   \code{detector_create()}.
+//' @param y Numeric vector of new observation(s). For univariate detectors,
+//'   this should be a scalar (length-1 vector). For multivariate detectors,
+//'   this should be a vector matching the number of dimensions.
+//'
+//' @return NULL (invisibly). The detector is updated in place.
+//'
+//' @examples
+//' \dontrun{
+//' # Univariate example
+//' det <- detector_create(type = "univariate")
+//' detector_update(det, 0.5)
+//' detector_update(det, 1.2)
+//'
+//' # Multivariate example
+//' det_mv <- detector_create(type = "multivariate")
+//' detector_update(det_mv, c(0.5, 1.2, -0.3))
+//'
+//' ## Online (sequential) example
+//' det <- detector_create(type = "univariate")
+//' stat_trace <- numeric(length(Y))
+//' threshold <- 20
+//' for (i in seq_along(Y)) {
+//'   detector_update(det, Y[i])
+//'   r <- get_statistics(det, family = "gaussian")
+//'   stat_trace[i] <- r$stat
+//'   if (!is.null(r$stat) && r$stat > threshold) {
+//'     cat("Online detection at", i, "estimate tau =", r$changepoint, "\n")
+//'     break
+//'   }
+//' }
+//'
+//'
+//' }
+//'
+//' @export
 // [[Rcpp::export]]
 void detector_update(SEXP info_ptr, NumericVector y) {
   XPtr<std::shared_ptr<Info>> ptr(info_ptr);
@@ -111,7 +227,75 @@ void detector_update(SEXP info_ptr, NumericVector y) {
   (*ptr)->update(as<std::vector<double>>(y));
 }
 
-// Get statistics (changepoint result) by computing costs
+//' Compute current changepoint statistics
+//'
+//' Computes the current changepoint test statistic and detection result based
+//' on all observations processed so far.
+//'
+//' @param info_ptr External pointer to detector created by
+//'   \code{detector_create()}.
+//' @param family Character string specifying the distribution family:
+//'   \itemize{
+//'     \item \code{"gaussian"}: Gaussian (normal) distribution
+//'     \item \code{"poisson"}: Poisson distribution
+//'     \item \code{"bernoulli"}: Bernoulli (binary) distribution
+//'     \item \code{"gamma"}: Gamma distribution (requires \code{shape} parameter)
+//'     \item \code{"npfocus"}: Nonparametric detection (see details)
+//'   }
+//' @param theta0 Numeric vector specifying the null hypothesis parameter.
+//'   For univariate detectors: scalar (length-1 vector).
+//'   For multivariate detectors: vector matching the number of dimensions.
+//'   Default is \code{NULL}.
+//' @param shape Numeric scalar. Shape parameter for gamma distribution.
+//'   Required and must be positive when \code{family = "gamma"}.
+//'   Default is \code{NULL}.
+//'
+//' @return A list with components:
+//'   \item{stopping_time}{Integer. Current time index (number of observations
+//'     processed).}
+//'   \item{changepoint}{Integer or NULL. Detected changepoint location
+//'     (1-based index), or NULL if no changepoint detected.}
+//'   \item{stat}{Numeric scalar or vector. Test statistic(s). For univariate
+//'     detectors, a scalar. For multivariate detectors, a vector of statistics
+//'     for each projection.}
+//'
+//' @details
+//' The function computes a log-likelihood ratio test statistic comparing the
+//' null hypothesis (no change) against the alternative (a change at the optimal
+//' location). The statistic is typically compared against a threshold to
+//' determine if a changepoint should be declared.
+//'
+//'
+//' Gamma family:
+//' When \code{family = "gamma"} a positive \code{shape} parameter must
+//' be provided; otherwise an error is raised. Passing \code{shape} for a
+//' non-gamma family will be ignored (and in some interfaces will trigger
+//'                                     a warning).
+//'
+//' NPFOCuS:
+//'   For non-parametric detection (\code{type = "npfocus"} / \code{family = "npfocus"})
+//'   the \code{quantiles} vector is required. NPFOCuS returns two
+//' statistics (sum and max over quantiles) as a vector; in the offline interface
+//' \code{stat} will be a matrix with two columns.
+//'
+//' @examples
+//' \dontrun{
+//' ## Online (sequential) example
+//' det <- detector_create(type = "univariate")
+//' stat_trace <- numeric(length(Y))
+//' threshold <- 20
+//' for (i in seq_along(Y)) {
+//'   detector_update(det, Y[i])
+//'   r <- get_statistics(det, family = "gaussian")
+//'   stat_trace[i] <- r$stat
+//'   if (!is.null(r$stat) && r$stat > threshold) {
+//'     cat("Online detection at", i, "estimate tau =", r$changepoint, "\n")
+//'     break
+//'   }
+//' }
+//' }
+//'
+//' @export
 // [[Rcpp::export]]
 List get_statistics(SEXP info_ptr,
                     std::string family,
@@ -194,7 +378,22 @@ List get_statistics(SEXP info_ptr,
 }
 
 
-// Get number of candidates for inspection
+//' Get number of candidate segments
+//'
+//' Returns the number of candidate changepoint segments currently tracked
+//' by the detector.
+//'
+//' @param info_ptr External pointer to detector created by
+//'   \code{detector_create()}.
+//'
+//' @return Integer. Number of candidate segments.
+//'
+//' @details
+//' The FOCuS algorithm maintains a set of candidate segments that could
+//' potentially contain changepoints. This number grows with time but is
+//' controlled by the pruning parameters.
+//'
+//' @export
 // [[Rcpp::export]]
 int detector_pieces_len(SEXP info_ptr) {
   XPtr<std::shared_ptr<Info>> ptr(info_ptr);
@@ -202,7 +401,16 @@ int detector_pieces_len(SEXP info_ptr) {
   return static_cast<int>((*ptr)->candidates().size());
 }
 
-// Get info.n()
+//' Get number of observations processed
+//'
+//' Returns the total number of observations processed by the detector.
+//'
+//' @param info_ptr External pointer to detector created by
+//'   \code{detector_create()}.
+//'
+//' @return Integer. Number of observations processed (current time index).
+//'
+//' @export
 // [[Rcpp::export]]
 int detector_info_n(SEXP info_ptr) {
   XPtr<std::shared_ptr<Info>> ptr(info_ptr);
@@ -210,7 +418,18 @@ int detector_info_n(SEXP info_ptr) {
   return (*ptr)->n();
 }
 
-// Get info.sn()
+//' Get cumulative sum statistic
+//'
+//' Returns the current cumulative sum statistic maintained by the detector.
+//'
+//' @param info_ptr External pointer to detector created by
+//'   \code{detector_create()}.
+//'
+//' @return Numeric vector. Cumulative sum statistic. For univariate detectors,
+//'   a scalar (length-1 vector). For multivariate detectors, a vector of
+//'   length equal to the number of dimensions.
+//'
+//' @export
 // [[Rcpp::export]]
 std::vector<double> detector_info_sn(SEXP info_ptr) {
   XPtr<std::shared_ptr<Info>> ptr(info_ptr);
@@ -218,7 +437,27 @@ std::vector<double> detector_info_sn(SEXP info_ptr) {
   return (*ptr)->sn();
 }
 
-// Get all candidates as a data frame
+//' Get candidate segments
+//'
+//' Returns detailed information about all candidate changepoint segments
+//' currently tracked by the detector.
+//'
+//' @param info_ptr External pointer to detector created by
+//'   \code{detector_create()}.
+//'
+//' @return A data frame (tibble) with columns:
+//'   \item{tau}{Integer vector. Candidate changepoint locations (0-based indices).}
+//'   \item{st}{List of numeric vectors. Sufficient statistics for each
+//'     candidate segment (e.g., cumulative sums of the data).}
+//'   \item{side}{Character vector. Side indicator for each candidate
+//'     (relevant for one-sided detectors).}
+//'
+//' @details
+//' Each row represents a candidate segment from time \code{tau} to the current
+//' time. The sufficient statistics in \code{st} are used to efficiently compute
+//' test statistics without reprocessing the data.
+//'
+//' @export
 // [[Rcpp::export]]
 List detector_candidates(SEXP info_ptr) {
   XPtr<std::shared_ptr<Info>> ptr(info_ptr);
@@ -264,18 +503,161 @@ List detector_candidates(SEXP info_ptr) {
   return out;
 }
 
+//' Generate projection index sets
+//'
+//' Generates projection index sets for high-dimensional multivariate detectors
+//' using circular combinations.
+//'
+//' @param D Integer. Total number of dimensions.
+//' @param p Integer. Projection subset size (number of dimensions per projection).
+//'
+//' @return A list of integer vectors. Each element is a vector of 0-based
+//'   column indices representing one projection.
+//'
+//' @details
+//' This function generates systematic projection sets for use with multivariate
+//' detectors. The circular combination approach ensures good coverage of the
+//' dimensional space while keeping the number of projections manageable.
+//'
+//' @examples
+//' \dontrun{
+//' # Generate 2-dimensional projections from 5 dimensions
+//' proj <- generate_projection_indexes(D = 5, p = 2)
+//' print(proj)
+//'
+//' # Use with multivariate detector
+//' det <- detector_create(type = "multivariate", dim_indexes = proj)
+//' set.seed(42)
+//' p <- 5
+//' 
+//' # Create data: changepoint at t=1000
+//' Y_multi <- rbind(
+//'     matrix(rnorm(1000 * p, mean = -1, 1), ncol = p),
+//'     matrix(rnorm(500 * p, mean = 1.2), ncol = p)
+//' )
+//' 
+//' # Full multivariate detection
+//' system.time(
+//' res_multi <- focus_offline(Y_multi, threshold = Inf,
+//'                            type = "multivariate", family = "gaussian")
+//' )
+//' 
+//' # Low-dimensional projection approximation
+//' dim_indexes <- generate_projection_indexes(5, 2)
+//' system.time(
+//' res_multi_approx <- focus_offline(Y_multi, threshold = Inf,
+//'                                   type = "multivariate", family = "gaussian",
+//'                                   dim_indexes = dim_indexes)
+//' )
+//' 
+//' # Verify similarity
+//' all.equal(res_multi$stat, res_multi_approx$stat)
+//' }
+//'
+//' @export
 // [[Rcpp::export]]
 std::vector<std::vector<int>> generate_projection_indexes(int D, int p) {
   std::vector<std::vector<int>> combs = generate_circular_combinations(D, p);
   return combs;
 }
 
-// Run complete offline detection in C++ for efficiency
+
+//' @name focus_offline
+//' @title Run FOCuS detector in offline batch mode
+//'
+//' @description
+//' Processes all data at once and returns detection results and trajectories.
+//' This is the most efficient way to run changepoint detection when all data
+//' is available upfront.
+//'
+//' @param Y Numeric vector or matrix. Data array. For univariate detection,
+//'   a numeric vector. For multivariate detection, a matrix with observations
+//'   in rows and dimensions in columns.
+//' @param threshold Numeric scalar or vector. Detection threshold(s). Can be:
+//'   \itemize{
+//'     \item A scalar: applied to all test statistics (default behavior for most cost functions)
+//'     \item A vector: length must match the number of test statistics (for example, np-focus
+//'       returns both the sum and max statistics, so threshold should be length 2).
+//'     \item \code{Inf}: no thresholding (returns all statistics)
+//'   }
+//' @param type Character string specifying detector type. See
+//'   \code{detector_create()} for options. Defaults to \code{"univariate"}.
+//' @param family Character string specifying distribution family. See
+//'   \code{get_statistics()} for options. Defaults to \code{"gaussian"}.
+//' @param theta0 Numeric vector. Null hypothesis parameter. Default is \code{NULL}.
+//' @param dim_indexes List of integer vectors. Projection index sets for
+//'   multivariate detectors. Default is \code{NULL}.
+//' @param quantiles Numeric vector. Quantiles for nonparametric detectors.
+//'   Default is \code{NULL}.
+//' @param pruning_mult Integer. Pruning multiplier parameter. Default is 2.
+//' @param pruning_offset Integer. Pruning offset parameter. Default is 1.
+//' @param side Character string. For one-sided detectors: \code{"right"} or
+//'   \code{"left"}. Default is \code{"right"}.
+//' @param shape Numeric scalar. Shape parameter for gamma distribution.
+//'   Default is \code{NULL}.
+//'
+//' @return A list with components:
+//'   \item{stat}{Numeric matrix. Test statistics over time (n_obs × n_stats).
+//'     Each row corresponds to one time point, each column to one statistic.}
+//'   \item{changepoint}{Integer vector. Detected changepoints at each time
+//'     point (1-based indices), or NA if no changepoint detected at that time.}
+//'   \item{detection_time}{Integer or NULL. Time of first detection (1-based),
+//'     or NULL if no detection occurred.}
+//'   \item{detected_changepoint}{Integer or NULL. Changepoint location at
+//'     detection time (1-based), or NULL if no detection occurred.}
+//'   \item{candidates}{Data frame. Final candidate segments (see
+//'     \code{detector_candidates()}).}
+//'   \item{threshold}{Numeric vector. Threshold(s) used for detection.}
+//'   \item{n}{Integer. Number of observations processed.}
+//'   \item{type}{Character. Detector type used.}
+//'   \item{family}{Character. Distribution family used.}
+//'   \item{shape}{Numeric or NULL. Shape parameter (for gamma family).}
+//'
+//' @details
+//' This function runs the complete detection algorithm in C++ for maximum
+//' efficiency. It processes observations sequentially and stops at the first
+//' detection (when any statistic exceeds its threshold).
+//'
+//' For multivariate data, the algorithm computes multiple statistics (one per
+//' projection). Detection occurs when ANY statistic exceeds its threshold.
+//'
+//' @examples
+//' \dontrun{
+//' # Univariate Gaussian detection
+//' set.seed(123)
+//' Y <- c(rnorm(100, mean = 0), rnorm(100, mean = 2))
+//' result <- focus_offline(Y, threshold = 10, type = "univariate",
+//'                        family = "gaussian")
+//' cat("Detection at time:", result$detection_time, "\n")
+//' cat("Changepoint at:", result$detected_changepoint, "\n")
+//'
+//' # Plot statistics
+//' plot(result$stat, type = "l", ylab = "Test Statistic", xlab = "Time")
+//' abline(h = result$threshold, col = "red", lty = 2)
+//' if (!is.null(result$detection_time)) {
+//'   abline(v = result$detection_time, col = "blue", lty = 2)
+//' }
+//'
+//' # Multivariate detection
+//' Y_multi <- matrix(rnorm(200 * 3), ncol = 3)
+//' Y_multi[101:200, ] <- Y_multi[101:200, ] + 1.5  # Add mean shift
+//' result_multi <- focus_offline(Y_multi, threshold = 15,
+//'                               type = "multivariate",
+//'                               family = "gaussian")
+//'
+//' # Poisson detection
+//' Y_poisson <- c(rpois(100, lambda = 2), rpois(100, lambda = 5))
+//' result_poisson <- focus_offline(Y_poisson, threshold = 10,
+//'                                 type = "univariate",
+//'                                 family = "poisson")
+//' }
+//'
+//' @export
 // [[Rcpp::export]]
 List focus_offline(SEXP Y,
                    SEXP threshold,
-                   std::string type,
-                   std::string family,
+                   std::string type = "univariate",
+                   std::string family = "gaussian",
                    Nullable<NumericVector> theta0 = R_NilValue,
                    Nullable<List> dim_indexes = R_NilValue,
                    Nullable<NumericVector> quantiles = R_NilValue,
@@ -458,12 +840,12 @@ List focus_offline(SEXP Y,
     // On first iteration, determine dimensionality and validate threshold
     if (n_stats == -1) {
       n_stats = stat_vec.empty() ? 1 : static_cast<int>(stat_vec.size());
-      
+
       // Validate threshold dimensions
       if (threshold_vec.size() != 1 && static_cast<int>(threshold_vec.size()) != n_stats) {
         stop("threshold must be a scalar or a vector of length %d (matching number of statistics)", n_stats);
       }
-      
+
       // Issue warning if single threshold used for multiple statistics
       if (threshold_vec.size() == 1 && n_stats > 1 && !threshold_warning_issued) {
         warning("Single threshold provided for %d statistics. Using threshold = %g for all statistics.",
