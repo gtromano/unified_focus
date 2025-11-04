@@ -24,6 +24,7 @@
   Online](#performance-comparison-offline-vs-online)
 - [C++ Integration](#c-integration)
 - [References](#references)
+- [Authors and Contributors](#authors-and-contributors)
 - [License](#license)
 
 **focus** is a high-performance R package for online changepoint
@@ -440,7 +441,7 @@ system.time(
 ```
 
        user  system elapsed 
-      8.854   0.104   8.959 
+      7.839   0.093   7.932 
 
 ``` r
 # Low-dimensional projection approximation
@@ -453,7 +454,7 @@ system.time(
 ```
 
        user  system elapsed 
-      0.129   0.000   0.129 
+      0.127   0.000   0.127 
 
 ``` r
 # Verify similarity
@@ -508,7 +509,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.019   0.000   0.019 
+      0.019   0.000   0.020 
 
 ``` r
 plot(res_bern_multi$stat, main = "Bernoulli (multivariate): two streams")
@@ -533,7 +534,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.003   0.001   0.002 
+      0.002   0.000   0.002 
 
 ``` r
 plot(res_pois$stat, main = "Poisson: change in rate (lambda)")
@@ -565,7 +566,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.002 
+      0.003   0.000   0.002 
 
 ``` r
 plot(res_gamma$stat, main = "Gamma: change in scale (shape = 2)")
@@ -774,7 +775,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.144   0.002   0.146 
+      0.143   0.000   0.143 
 
 ``` r
 # Benchmark online mode
@@ -798,7 +799,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.338   0.000   0.339 
+      0.330   0.000   0.329 
 
 ``` r
 # Verify both produce identical results
@@ -848,10 +849,72 @@ for (const auto& y : data) {
 
 ## References
 
-- Romano, G., Eckley, I. A., Fearnhead, P., & Rigaill, G. (2023). Fast
-  online changepoint detection via functional pruning CUSUM statistics.
-  *Journal of Machine Learning Research*, 23(145), 1-36.
+<div id="ref-pishchagina2023online" class="csl-entry">
+
+Pishchagina, Liudmila, Gaetano Romano, Paul Fearnhead, Vincent Runge,
+and Guillem Rigaill. 2025. “Online Multivariate Changepoint Detection:
+Leveraging Links with Computational Geometry.” *Journal of the Royal
+Statistical Society Series B: Statistical Methodology*: qkaf046.
+<https://doi.org/10.1093/jrsssb/qkaf046>
+
+</div>
+
+<div id="ref-romano2024" class="csl-entry">
+
+Romano, Gaetano, Idris A. Eckley, and Paul Fearnhead. 2024. “A
+Log-Linear Nonparametric Online Changepoint Detection Algorithm Based on
+Functional Pruning.” *IEEE Transactions on Signal Processing* 72:
+594–606. <https://doi.org/10.1109/tsp.2023.3343550>.
+
+</div>
+
+<div id="ref-romano2023fast" class="csl-entry">
+
+Romano, Gaetano, Idris A Eckley, Paul Fearnhead, and Guillem Rigaill.
+2023. “Fast Online Changepoint Detection via Functional Pruning CUSUM
+Statistics.” *Journal of Machine Learning Research* 24 (81): 1–36.
+<https://www.jmlr.org/papers/v24/21-1230.html>.
+
+</div>
+
+<div id="ref-ward2024constant" class="csl-entry">
+
+Ward, Kes, Gaetano Romano, Idris Eckley, and Paul Fearnhead. 2024. “A
+Constant-Per-Iteration Likelihood Ratio Test for Online Changepoint
+Detection for Exponential Family Models.” *Statistics and Computing* 34
+(3): 1–11.
+
+</div>
+
+</div>
+
+## Authors and Contributors
+
+- Gaetano Romano: [email](mailto:g.romano@lancaster.ac.uk) (**Author**)
+  (**Maintainer**) (**Creator**) (**Translator**)
+
+- Kes Ward: [email](mailto:k.ward4@lancaster.ac.uk) (**Author**)
+
+- Liudmila Pishchagina:
+  [email](mailto:liudmila.pishchagina@univ-evry.fr) (**Author**)
+
+- Guillem Rigaill: [email](mailto:guillem.rigaill@inrae.fr) (**Author**)
+  (**Thesis Advisor**)
+
+- Vincent Runge: [email](mailto:vincent.runge@univ-evry.fr) (**Author**)
+  (**Thesis Advisor**)
+
+- Paul Fearnhead: [email](mailto:p.fearnhead@lancaster.ac.uk)
+  (**Author**) (**Thesis Advisor**)
+
+- Idris A. Eckley: [email](mailto:i.eckley@lancaster.ac.uk) (**Author**)
+  (**Thesis Advisor**)
 
 ## License
 
 This package is provided under the MIT License.
+
+The package bundles code from code from Qhull (http://www.qhull.org/),
+from C.B. Barber and The Geometry Center. Qhull is free software and may
+be obtained via http from www.qhull.org. For details, see
+[inst/COPYRIGHTS/qhull](inst/COPYRIGHTS/qhull)
