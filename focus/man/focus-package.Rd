@@ -29,7 +29,7 @@
       \code{detector_update}, \code{get_statistics})}{Create an online
       detector object and update it one observation at a time from R.
       This provides a flexible streaming API and access to candidate
-      segments, at the cost of more R↔C calls per observation.}
+      segments, at the cost of more R/C calls per observation.}
   }
 
   Main features:
