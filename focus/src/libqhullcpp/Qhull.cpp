@@ -96,8 +96,8 @@ Qhull::
 {
     // Except for cerr, does not throw errors
     if(qh_qh->hasQhullMessage()){
-        cerr<< "\nQhull messages at ~Qhull()\n"; // QH11005 FIX: where should error and log messages go on ~Qhull?
-        cerr<< qh_qh->qhullMessage();
+        // cerr<< "\nQhull messages at ~Qhull()\n"; // QH11005 FIX: where should error and log messages go on ~Qhull?
+        // cerr<< qh_qh->qhullMessage();
         qh_qh->clearQhullMessage();
     }
     delete qh_qh;

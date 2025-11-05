@@ -1,0 +1,5 @@
+This package includes code from Qhull (http://www.qhull.org/).
+This is located entirely in src/libqhull_r/ and src/libqhullcpp/.
+
+Minor modifications have been made to the Qhull sources for CRAN compliance.
+Details of these modifications are listed in inst/COPYRIGHTS/MODIFIED.txt.

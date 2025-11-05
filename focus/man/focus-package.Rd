@@ -92,7 +92,7 @@
 
   \emph{Note:} The package bundles and links to code from Qhull (C. B.
   Barber et al., The Geometry Center). Qhull functions are used for
-  convex-hull computations in multivariate pruning. See \file{inst/COPYRIGHTS/qhull}
+  convex-hull computations in multivariate pruning. See \file{inst/COPYRIGHTS/}
   for the Qhull license and attribution details.
 }
 \keyword{ package }

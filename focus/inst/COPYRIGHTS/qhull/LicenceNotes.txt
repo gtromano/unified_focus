@@ -1,2 +1,0 @@
-This package includes code from Qhull (http://www.qhull.org/), located in src/libqhull_r/ and
-src/libqhullcpp/.

@@ -1,0 +1,3 @@
+modified function       file                          line#       date        by                   reason
+=================       ====                          =====       ====        ==                   ======
+~Qhull (destructor)     libqhullcpp/Qhull.cpp         99-100      2025/11/04  Gaetano Romano       Commented out cerr messages in destructor to silence console output for CRAN compliance
