@@ -1,5 +1,8 @@
-This package includes code from Qhull (http://www.qhull.org/).
-This is located entirely in src/libqhull_r/ and src/libqhullcpp/.
+The package bundles code from code from Qhull (http://www.qhull.org/),
+from C.B. Barber and The Geometry Center. Qhull is free software and may
+be obtained via http from www.qhull.org. For details and licence, see
+[inst/COPYRIGHTS/qhull](inst/COPYRIGHTS/qhull).
 
+The bundled code is located entirely in src/libqhull_r/ and src/libqhullcpp/.
 Minor modifications have been made to the Qhull sources for CRAN compliance.
 Details of these modifications are listed in inst/COPYRIGHTS/MODIFIED.txt.
