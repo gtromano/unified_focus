@@ -8,7 +8,7 @@ detector_update(info_ptr, y)
 }
 \arguments{
 \item{info_ptr}{External pointer to detector created by
-\code{detector_create()}.}
+\code{\link{detector_create}()}.}
 
 \item{y}{Numeric vector of new observation(s). For univariate detectors,
 this should be a scalar (length-1 vector). For multivariate detectors,
@@ -33,6 +33,9 @@ det_mv <- detector_create(type = "multivariate")
 detector_update(det_mv, c(0.5, 1.2, -0.3))
 
 ## Online (sequential) example
+# Generate data with a changepoint
+set.seed(123)
+Y <- c(rnorm(500, mean = 0), rnorm(500, mean = 1))
 det <- detector_create(type = "univariate")
 stat_trace <- numeric(length(Y))
 threshold <- 20
@@ -42,10 +45,10 @@ for (i in seq_along(Y)) {
   stat_trace[i] <- r$stat
   if (!is.null(r$stat) && r$stat > threshold) {
     cat("Online detection at", i, "estimate tau =", r$changepoint, "\n")
+    plot(stat_trace[1:i], type = "l", ylab = "Test Statistic", xlab = "Time")
     break
   }
 }
-
 
 }
 

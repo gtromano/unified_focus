@@ -8,7 +8,7 @@ get_statistics(info_ptr, family, theta0 = NULL, shape = NULL)
 }
 \arguments{
 \item{info_ptr}{External pointer to detector created by
-\code{detector_create()}.}
+\code{\link{detector_create}()}.}
 
 \item{family}{Character string specifying the distribution family:
 \itemize{
@@ -56,14 +56,18 @@ non-gamma family will be ignored (and in some interfaces will trigger
                                     a warning).
 
 NPFOCuS:
-  For non-parametric detection (\code{type = "npfocus"} / \code{family = "npfocus"})
-  the \code{quantiles} vector is required. NPFOCuS returns two
+  For non-parametric detection one needs to set \code{detector(type = "npfocus")} and the cost can be computed as \code{get_statistics(family = "npfocus")}.
+  The \code{quantiles} vector argument is required. NPFOCuS returns two
 statistics (sum and max over quantiles) as a vector; in the offline interface
 \code{stat} will be a matrix with two columns.
 }
 \examples{
 \dontrun{
+
 ## Online (sequential) example
+# Generate data with a changepoint
+set.seed(123)
+Y <- c(rnorm(500, mean = 0), rnorm(500, mean = 1))
 det <- detector_create(type = "univariate")
 stat_trace <- numeric(length(Y))
 threshold <- 20
@@ -73,9 +77,35 @@ for (i in seq_along(Y)) {
   stat_trace[i] <- r$stat
   if (!is.null(r$stat) && r$stat > threshold) {
     cat("Online detection at", i, "estimate tau =", r$changepoint, "\n")
+    plot(stat_trace[1:i], type = "l", ylab = "Test Statistic", xlab = "Time")
     break
   }
 }
+
+## Note that multiple models can be tested simultaneously on the same detector
+# as the statistics is independent of the detector state.
+# For example, testing both Gaussian and Poisson costs
+# Compute full trajectories for comparison
+det2 <- detector_create(type = "univariate")
+stat_gaussian <- numeric(length(Y_counts))
+stat_poisson <- numeric(length(Y_counts))
+
+for (i in seq_along(Y_counts)) {
+  detector_update(det2, Y_counts[i])
+  stat_gaussian[i] <- get_statistics(det2, family = "gaussian")$stat
+  stat_poisson[i] <- get_statistics(det2, family = "poisson", theta0 = 10)$stat
+}
+
+# Plot comparison
+par(mfrow = c(1, 2))
+plot(stat_gaussian, type = "l", main = "Gaussian Statistic on Poisson Data",
+     xlab = "Time", ylab = "Statistic", lwd = 2, col = "blue")
+abline(v = 500, col = "green", lty = 3, lwd = 2)
+
+plot(stat_poisson, type = "l", main = "Poisson Statistic on Poisson Data",
+     xlab = "Time", ylab = "Statistic", lwd = 2, col = "red")
+abline(v = 500, col = "green", lty = 3, lwd = 2)
+
 }
 
 }

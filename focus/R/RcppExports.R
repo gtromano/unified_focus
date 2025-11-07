@@ -5,7 +5,7 @@
 #'
 #' Creates an online (sequential) changepoint detector object that provides
 #' a step-by-step interface to the FOCuS algorithm. Each call to
-#' \code{detector_update()} adds new data, and \code{get_statistics()} computes
+#' \code{\link{detector_update}()} adds new data, and \code{\link{get_statistics}()} computes
 #' the current test statistic and detection result.
 #'
 #' @param type Character string specifying detector type. One of:
@@ -13,7 +13,7 @@
 #'     \item \code{"univariate"}: Two-sided univariate detection
 #'     \item \code{"univariate_one_sided"}: One-sided univariate detection
 #'     \item \code{"multivariate"}: Multivariate detection with projections
-#'     \item \code{"npfocus"}: Nonparametric detection (NP-FOCuS)
+#'     \item \code{"npfocus"}: Nonparametric detection (NP-FOCuS). See details.
 #'   }
 #' @param dim_indexes List of integer vectors specifying projection index sets
 #'   for high-dimensional multivariate detectors. Not required for sequences of dimentions less than 5.
@@ -30,20 +30,25 @@
 #'   \code{"right"}.
 #'
 #' @return An external pointer (SEXP) to the detector object. This should be
-#'   passed to other detector functions like \code{detector_update()} and
-#'   \code{get_statistics()}.
+#'   passed to other detector functions like \code{\link{detector_update}()} and
+#'   \code{\link{get_statistics}()}.
 #'
 #' @details
 #' The detector maintains sufficient statistics internally and uses pruning
 #' to efficiently track candidate changepoints. The \code{pruning_mult} and
 #' \code{pruning_offset} parameters control the pruning strategy.
-#'
+#' 
+#' High-dimentional multivariate detectors:
 #' For high-dimensional multivariate detection, computing the full hull would be too prohibitive.
 #' Additionally, the complexity is expected to be log(n)^p, where n is the number of iterations and p is the
 #' dimensions. So for short, high-dimentional sequences, it is possible to reconstruct the set of changepoint
 #' locations by approximating the hull on projections in smaller dimentions.  \code{dim_indexes} specifies which dimensions
 #' to use for each projection of the convex hull for pruning. Use \code{generate_projection_indexes()} to
 #' generate systematic projection sets.
+#'
+#' NPFOCuS:
+#'   For non-parametric detection one needs to set \code{detector(type = "npfocus")} and the cost can be computed as \code{get_statistics(family = "npfocus")}.
+#'   Any other cost will not work with this detector type. The \code{quantiles} vector argument is required, see \code{\link{get_statistics}()} for details.
 #'
 #' @examples
 #' \dontrun{
@@ -53,6 +58,24 @@
 #' detector_update(det, 1.2)
 #' r <- get_statistics(det, family = "gaussian")
 #' print(r)
+#'
+#' ## Online (sequential) example
+#' # Generate data with a changepoint
+#' set.seed(123)
+#' Y <- c(rnorm(500, mean = 0), rnorm(500, mean = 1))
+#' det <- detector_create(type = "univariate")
+#' stat_trace <- numeric(length(Y))
+#' threshold <- 20
+#' for (i in seq_along(Y)) {
+#'   detector_update(det, Y[i])
+#'   r <- get_statistics(det, family = "gaussian")
+#'   stat_trace[i] <- r$stat
+#'   if (!is.null(r$stat) && r$stat > threshold) {
+#'     cat("Online detection at", i, "estimate tau =", r$changepoint, "\n")
+#'     plot(stat_trace[1:i], type = "l", ylab = "Test Statistic", xlab = "Time")
+#'     break
+#'   }
+#' }
 #'
 #' # Multivariate detector with projections
 #' dim_indexes <- list(c(0,1), c(1,2), c(0,2))  # 0-based indices
@@ -78,7 +101,7 @@ detector_create <- function(type, dim_indexes = NULL, quantiles = NULL, pruning_
 #' sufficient statistics.
 #'
 #' @param info_ptr External pointer to detector created by
-#'   \code{detector_create()}.
+#'   \code{\link{detector_create}()}.
 #' @param y Numeric vector of new observation(s). For univariate detectors,
 #'   this should be a scalar (length-1 vector). For multivariate detectors,
 #'   this should be a vector matching the number of dimensions.
@@ -97,6 +120,9 @@ detector_create <- function(type, dim_indexes = NULL, quantiles = NULL, pruning_
 #' detector_update(det_mv, c(0.5, 1.2, -0.3))
 #'
 #' ## Online (sequential) example
+#' # Generate data with a changepoint
+#' set.seed(123)
+#' Y <- c(rnorm(500, mean = 0), rnorm(500, mean = 1))
 #' det <- detector_create(type = "univariate")
 #' stat_trace <- numeric(length(Y))
 #' threshold <- 20
@@ -106,10 +132,10 @@ detector_create <- function(type, dim_indexes = NULL, quantiles = NULL, pruning_
 #'   stat_trace[i] <- r$stat
 #'   if (!is.null(r$stat) && r$stat > threshold) {
 #'     cat("Online detection at", i, "estimate tau =", r$changepoint, "\n")
+#'     plot(stat_trace[1:i], type = "l", ylab = "Test Statistic", xlab = "Time")
 #'     break
 #'   }
 #' }
-#'
 #'
 #' }
 #'
@@ -124,7 +150,7 @@ detector_update <- function(info_ptr, y) {
 #' on all observations processed so far.
 #'
 #' @param info_ptr External pointer to detector created by
-#'   \code{detector_create()}.
+#'   \code{\link{detector_create}()}.
 #' @param family Character string specifying the distribution family:
 #'   \itemize{
 #'     \item \code{"gaussian"}: Gaussian (normal) distribution
@@ -164,14 +190,18 @@ detector_update <- function(info_ptr, y) {
 #'                                     a warning).
 #'
 #' NPFOCuS:
-#'   For non-parametric detection (\code{type = "npfocus"} / \code{family = "npfocus"})
-#'   the \code{quantiles} vector is required. NPFOCuS returns two
+#'   For non-parametric detection one needs to set \code{detector(type = "npfocus")} and the cost can be computed as \code{get_statistics(family = "npfocus")}.
+#'   The \code{quantiles} vector argument is required. NPFOCuS returns two
 #' statistics (sum and max over quantiles) as a vector; in the offline interface
 #' \code{stat} will be a matrix with two columns.
 #'
 #' @examples
 #' \dontrun{
+#' 
 #' ## Online (sequential) example
+#' # Generate data with a changepoint
+#' set.seed(123)
+#' Y <- c(rnorm(500, mean = 0), rnorm(500, mean = 1))
 #' det <- detector_create(type = "univariate")
 #' stat_trace <- numeric(length(Y))
 #' threshold <- 20
@@ -181,9 +211,35 @@ detector_update <- function(info_ptr, y) {
 #'   stat_trace[i] <- r$stat
 #'   if (!is.null(r$stat) && r$stat > threshold) {
 #'     cat("Online detection at", i, "estimate tau =", r$changepoint, "\n")
+#'     plot(stat_trace[1:i], type = "l", ylab = "Test Statistic", xlab = "Time")
 #'     break
 #'   }
 #' }
+#' 
+#' ## Note that multiple models can be tested simultaneously on the same detector
+#' # as the statistics is independent of the detector state.
+#' # For example, testing both Gaussian and Poisson costs
+#' # Compute full trajectories for comparison
+#' det2 <- detector_create(type = "univariate")
+#' stat_gaussian <- numeric(length(Y_counts))
+#' stat_poisson <- numeric(length(Y_counts))
+#' 
+#' for (i in seq_along(Y_counts)) {
+#'   detector_update(det2, Y_counts[i])
+#'   stat_gaussian[i] <- get_statistics(det2, family = "gaussian")$stat
+#'   stat_poisson[i] <- get_statistics(det2, family = "poisson", theta0 = 10)$stat
+#' }
+#' 
+#' # Plot comparison
+#' par(mfrow = c(1, 2))
+#' plot(stat_gaussian, type = "l", main = "Gaussian Statistic on Poisson Data",
+#'      xlab = "Time", ylab = "Statistic", lwd = 2, col = "blue")
+#' abline(v = 500, col = "green", lty = 3, lwd = 2)
+#' 
+#' plot(stat_poisson, type = "l", main = "Poisson Statistic on Poisson Data",
+#'      xlab = "Time", ylab = "Statistic", lwd = 2, col = "red")
+#' abline(v = 500, col = "green", lty = 3, lwd = 2)
+#'
 #' }
 #'
 #' @export
@@ -197,7 +253,7 @@ get_statistics <- function(info_ptr, family, theta0 = NULL, shape = NULL) {
 #' by the detector.
 #'
 #' @param info_ptr External pointer to detector created by
-#'   \code{detector_create()}.
+#'   \code{\link{detector_create}()}.
 #'
 #' @return Integer. Number of candidate segments.
 #'
@@ -216,7 +272,7 @@ detector_pieces_len <- function(info_ptr) {
 #' Returns the total number of observations processed by the detector.
 #'
 #' @param info_ptr External pointer to detector created by
-#'   \code{detector_create()}.
+#'   \code{\link{detector_create}()}.
 #'
 #' @return Integer. Number of observations processed (current time index).
 #'
@@ -230,7 +286,7 @@ detector_info_n <- function(info_ptr) {
 #' Returns the current cumulative sum statistic maintained by the detector.
 #'
 #' @param info_ptr External pointer to detector created by
-#'   \code{detector_create()}.
+#'   \code{\link{detector_create}()}.
 #'
 #' @return Numeric vector. Cumulative sum statistic. For univariate detectors,
 #'   a scalar (length-1 vector). For multivariate detectors, a vector of
@@ -247,7 +303,7 @@ detector_info_sn <- function(info_ptr) {
 #' currently tracked by the detector.
 #'
 #' @param info_ptr External pointer to detector created by
-#'   \code{detector_create()}.
+#'   \code{\link{detector_create}()}.
 #'
 #' @return A data frame (tibble) with columns:
 #'   \item{tau}{Integer vector. Candidate changepoint locations (0-based indices).}
@@ -341,9 +397,9 @@ generate_projection_indexes <- function(D, p) {
 #'     \item \code{Inf}: no thresholding (returns all statistics)
 #'   }
 #' @param type Character string specifying detector type. See
-#'   \code{detector_create()} for options. Defaults to \code{"univariate"}.
+#'   \code{\link{detector_create}()} for options. Defaults to \code{"univariate"}.
 #' @param family Character string specifying distribution family. See
-#'   \code{get_statistics()} for options. Defaults to \code{"gaussian"}.
+#'   \code{\link{get_statistics}()} for options. Defaults to \code{"gaussian"}.
 #' @param theta0 Numeric vector. Null hypothesis parameter. Default is \code{NULL}.
 #' @param dim_indexes List of integer vectors. Projection index sets for
 #'   multivariate detectors. Default is \code{NULL}.

@@ -32,10 +32,10 @@ in rows and dimensions in columns.}
 }}
 
 \item{type}{Character string specifying detector type. See
-\code{detector_create()} for options. Defaults to \code{"univariate"}.}
+\code{\link{detector_create}()} for options. Defaults to \code{"univariate"}.}
 
 \item{family}{Character string specifying distribution family. See
-\code{get_statistics()} for options. Defaults to \code{"gaussian"}.}
+\code{\link{get_statistics}()} for options. Defaults to \code{"gaussian"}.}
 
 \item{theta0}{Numeric vector. Null hypothesis parameter. Default is \code{NULL}.}
 

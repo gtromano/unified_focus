@@ -8,7 +8,7 @@ detector_candidates(info_ptr)
 }
 \arguments{
 \item{info_ptr}{External pointer to detector created by
-\code{detector_create()}.}
+\code{\link{detector_create}()}.}
 }
 \value{
 A data frame (tibble) with columns:

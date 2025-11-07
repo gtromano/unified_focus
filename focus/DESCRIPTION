@@ -3,13 +3,35 @@ Type: Package
 Title: Online Changepoint Detection in Univariate and Multivariate Data Streams
 Version: 0.0.1
 Date: 2025-10-23
-Authors@R: person("Gaetano", "Romano", role = c("aut", "cre"), email = "g.romano@lancaster.ac.uk")
+Authors@R: c(
+    person("Gaetano", "Romano", 
+           email = "g.romano@lancaster.ac.uk",
+           role = c("aut", "cre", "trl")),
+    person("Kes", "Ward", 
+           email = "k.ward4@lancaster.ac.uk",
+           role = "aut"),
+    person("Liudmila", "Pishchagina", 
+           email = "liudmila.pishchagina@univ-evry.fr",
+           role = "aut"),
+    person("Guillem", "Rigaill", 
+           email = "guillem.rigaill@inrae.fr",
+           role = c("aut")),
+    person("Vincent", "Runge", 
+           email = "vincent.runge@univ-evry.fr",
+           role = c("aut")),
+    person("Paul", "Fearnhead", 
+           email = "p.fearnhead@lancaster.ac.uk",
+           role = c("aut")),
+    person("Idris A.", "Eckley", 
+           email = "i.eckley@lancaster.ac.uk",
+           role = c("aut")))
 Maintainer: Gaetano Romano <g.romano@lancaster.ac.uk>
 Description: This is a package for high-performance online changepoint detection in univariate and multivariate data streams. 
              It provides efficient C++ implementations of the FOCUS, MD-FOCUS and NP-FOCUS algorithms, with R and Python 
              interfaces for real-time monitoring and offline analysis.
              The package bundles code from code from Qhull <http://www.qhull.org/>, from C.B. Barber and The Geometry Center. 
              See inst/COPYRIGHTS for details.
+Readme: README.md
 License: MIT + file LICENSE
 Imports: Rcpp (>= 1.1.0)
 LinkingTo: Rcpp

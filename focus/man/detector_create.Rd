@@ -19,7 +19,7 @@ detector_create(
   \item \code{"univariate"}: Two-sided univariate detection
   \item \code{"univariate_one_sided"}: One-sided univariate detection
   \item \code{"multivariate"}: Multivariate detection with projections
-  \item \code{"npfocus"}: Nonparametric detection (NP-FOCuS)
+  \item \code{"npfocus"}: Nonparametric detection (NP-FOCuS). See details.
 }}
 
 \item{dim_indexes}{List of integer vectors specifying projection index sets
@@ -42,13 +42,13 @@ Default is 1.}
 }
 \value{
 An external pointer (SEXP) to the detector object. This should be
-  passed to other detector functions like \code{detector_update()} and
-  \code{get_statistics()}.
+  passed to other detector functions like \code{\link{detector_update}()} and
+  \code{\link{get_statistics}()}.
 }
 \description{
 Creates an online (sequential) changepoint detector object that provides
 a step-by-step interface to the FOCuS algorithm. Each call to
-\code{detector_update()} adds new data, and \code{get_statistics()} computes
+\code{\link{detector_update}()} adds new data, and \code{\link{get_statistics}()} computes
 the current test statistic and detection result.
 }
 \details{
@@ -56,12 +56,17 @@ The detector maintains sufficient statistics internally and uses pruning
 to efficiently track candidate changepoints. The \code{pruning_mult} and
 \code{pruning_offset} parameters control the pruning strategy.
 
+High-dimentional multivariate detectors:
 For high-dimensional multivariate detection, computing the full hull would be too prohibitive.
 Additionally, the complexity is expected to be log(n)^p, where n is the number of iterations and p is the
 dimensions. So for short, high-dimentional sequences, it is possible to reconstruct the set of changepoint
 locations by approximating the hull on projections in smaller dimentions.  \code{dim_indexes} specifies which dimensions
 to use for each projection of the convex hull for pruning. Use \code{generate_projection_indexes()} to
 generate systematic projection sets.
+
+NPFOCuS:
+  For non-parametric detection one needs to set \code{detector(type = "npfocus")} and the cost can be computed as \code{get_statistics(family = "npfocus")}.
+  Any other cost will not work with this detector type. The \code{quantiles} vector argument is required, see \code{\link{get_statistics}()} for details.
 }
 \examples{
 \dontrun{
@@ -71,6 +76,24 @@ detector_update(det, 0.5)
 detector_update(det, 1.2)
 r <- get_statistics(det, family = "gaussian")
 print(r)
+
+## Online (sequential) example
+# Generate data with a changepoint
+set.seed(123)
+Y <- c(rnorm(500, mean = 0), rnorm(500, mean = 1))
+det <- detector_create(type = "univariate")
+stat_trace <- numeric(length(Y))
+threshold <- 20
+for (i in seq_along(Y)) {
+  detector_update(det, Y[i])
+  r <- get_statistics(det, family = "gaussian")
+  stat_trace[i] <- r$stat
+  if (!is.null(r$stat) && r$stat > threshold) {
+    cat("Online detection at", i, "estimate tau =", r$changepoint, "\n")
+    plot(stat_trace[1:i], type = "l", ylab = "Test Statistic", xlab = "Time")
+    break
+  }
+}
 
 # Multivariate detector with projections
 dim_indexes <- list(c(0,1), c(1,2), c(0,2))  # 0-based indices

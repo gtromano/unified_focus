@@ -8,7 +8,7 @@ detector_pieces_len(info_ptr)
 }
 \arguments{
 \item{info_ptr}{External pointer to detector created by
-\code{detector_create()}.}
+\code{\link{detector_create}()}.}
 }
 \value{
 Integer. Number of candidate segments.
