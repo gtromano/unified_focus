@@ -453,9 +453,9 @@ print(f"Online time:  {online_time:.2f}s")
 print(f"Offline is {online_time / offline_time:.1f}× faster")
 ```
 
-    Offline time: 0.27s
-    Online time:  0.41s
-    Offline is 1.5× faster
+    Offline time: 0.21s
+    Online time:  0.33s
+    Offline is 1.6× faster
 
 ------------------------------------------------------------------------
 
@@ -524,7 +524,18 @@ Detection for Exponential Family Models.” *Statistics and Computing* 34
 
 ## License
 
-This package is provided under the MIT License.
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your
+option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see https://www.gnu.org/licenses/gpl-3.0.txt.
 
 ### External libraries
 

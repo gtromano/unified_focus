@@ -441,7 +441,7 @@ system.time(
 ```
 
        user  system elapsed 
-      8.407   0.094   8.502 
+      8.216   0.103   8.320 
 
 ``` r
 # Low-dimensional projection approximation
@@ -454,7 +454,7 @@ system.time(
 ```
 
        user  system elapsed 
-      0.134   0.000   0.134 
+      0.129   0.000   0.128 
 
 ``` r
 # Verify similarity
@@ -488,7 +488,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.003   0.000   0.003 
+      0.003   0.000   0.002 
 
 ``` r
 plot(res_bern$stat, main = "Bernoulli (univariate): change in success probability")
@@ -509,7 +509,7 @@ system.time({
 ```
 
        user  system elapsed 
-       0.02    0.00    0.02 
+      0.020   0.000   0.019 
 
 ``` r
 plot(res_bern_multi$stat, main = "Bernoulli (multivariate): two streams")
@@ -534,7 +534,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.002 
+      0.002   0.000   0.003 
 
 ``` r
 plot(res_pois$stat, main = "Poisson: change in rate (lambda)")
@@ -566,7 +566,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.003 
+      0.002   0.000   0.002 
 
 ``` r
 plot(res_gamma$stat, main = "Gamma: change in scale (shape = 2)")
@@ -775,7 +775,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.146   0.000   0.146 
+      0.141   0.003   0.144 
 
 ``` r
 # Benchmark online mode
@@ -799,7 +799,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.338   0.000   0.338 
+      0.333   0.000   0.333 
 
 ``` r
 # Verify both produce identical results
@@ -912,7 +912,18 @@ Detection for Exponential Family Models.” *Statistics and Computing* 34
 
 ## License
 
-This package is provided under the MIT License.
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your
+option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see https://www.gnu.org/licenses/gpl-3.0.txt.
 
 The package bundles code from code from Qhull (http://www.qhull.org/),
 from C.B. Barber and The Geometry Center. Qhull is free software and may

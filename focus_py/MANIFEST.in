@@ -2,7 +2,7 @@
 include CMakeLists.txt
 include pyproject.toml
 include README.md
-include LICENSE
+include LICENSE.md
 
 # Include C++ source files
 recursive-include src *.cpp *.cc *.cxx

@@ -11,7 +11,7 @@ version = "0.1.0"
 description = "FOCuS (Focusing on Candidate Segments) changepoint detection library"
 readme = "README.md"
 requires-python = ">=3.8"
-license = {text = "MIT"}  # Adjust as needed
+license = {text = "GPL-3.0-or-later"}  # Adjust as needed
 authors = [
     {name = "Your Name", email = "your.email@example.com"}
 ]
@@ -19,7 +19,7 @@ keywords = ["changepoint", "detection", "statistics", "time-series"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",

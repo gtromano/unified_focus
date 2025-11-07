@@ -32,7 +32,7 @@ Description: This is a package for high-performance online changepoint detection
              The package bundles code from code from Qhull <http://www.qhull.org/>, from C.B. Barber and The Geometry Center. 
              See inst/COPYRIGHTS for details.
 Readme: README.md
-License: MIT + file LICENSE
+License: GPL (>= 3)
 Imports: Rcpp (>= 1.1.0)
 LinkingTo: Rcpp
 Encoding: UTF-8
