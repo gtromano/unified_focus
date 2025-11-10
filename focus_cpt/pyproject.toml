@@ -6,9 +6,9 @@ requires = [
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "focus_py"
+name = "focus_cpt"
 version = "0.1.0"
-description = "FOCuS (Focusing on Candidate Segments) changepoint detection library"
+description = "focus changepoint detection library"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "GPL-3.0-or-later"}  # Adjust as needed
@@ -62,7 +62,7 @@ build-dir = "build/{wheel_tag}"
 cmake.verbose = false
 
 # Wheel settings
-wheel.packages = ["focus_py"]
+wheel.packages = ["focus_cpt"]
 
 # Installation settings
 install.strip = false

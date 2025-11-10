@@ -22,8 +22,8 @@ The same **C++ backend** is shared across both interfaces:
 * **R interface** → [focus/](focus)
   → See detailed documentation in [focus/README.md](focus/README.md)
 
-* **Python interface** To be coming. Will be under → [focus_py/](focus_py)
-  → See detailed documentation in [focus_py/README](focus_py/README.md)
+* **Python interface** → [focus_cpt/](focus_cpt)
+  → See detailed documentation in [focus_cpt/README](focus_cpt/README.md)
 
 ---
 
@@ -40,9 +40,9 @@ devtools::install_github("gtromano/unified_focus", subdir = "focus")
 
 ```bash
 # cloning the repo
-# pip install focus_py
+# pip install focus_cpt
 # or directly from GitHub
-pip install git+https://github.com/gtromano/unified_focus.git#subdirectory=focus_py
+pip install git+https://github.com/gtromano/unified_focus.git#subdirectory=focus_cpt
 ```
 
 ---
@@ -71,7 +71,7 @@ cat("Estimated changepoint:", res$detected_changepoint, "\n")
 
 ``` python
 import numpy as np
-from focus_py import focus_offline
+from focus_cpt import focus_offline
 Y = np.concatenate([np.random.normal(0, 1, 1000), np.random.normal(-1, 1, 500)])
 
 res = focus_offline(Y, threshold=20, type="univariate", family="gaussian")

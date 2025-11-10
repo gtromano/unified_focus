@@ -1,5 +1,5 @@
 """
-FOCuS - Focusing on Candidate Segments for changepoint detection.
+FOCuS
 
 This package provides fast changepoint detection methods for univariate,
 multivariate, and nonparametric data using the FOCuS algorithm.

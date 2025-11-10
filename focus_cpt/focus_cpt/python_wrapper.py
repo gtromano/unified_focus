@@ -1,5 +1,5 @@
 """
-focus_py: Python bindings for the FOCuS changepoint detection library.
+focus_cpt: Python bindings for the FOCuS changepoint detection library.
 
 Provides a clean, Pythonic interface to the high-performance C++ implementation
 of the FOCuS and md-FOCuS algorithms for online and offline changepoint detection.

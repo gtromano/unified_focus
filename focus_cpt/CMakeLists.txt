@@ -96,4 +96,4 @@ target_compile_options(_focus PRIVATE
 )
 
 # Install the extension module
-install(TARGETS _focus LIBRARY DESTINATION focus_py)
+install(TARGETS _focus LIBRARY DESTINATION focus_cpt)

@@ -1,69 +1,45 @@
-# focus_py
+---
+title: focus_cpt
+format: gfm
+execute:
+  warning: false
+output-file: README.md
+toc: true
+---
 
-
-- [Features](#features)
-- [Installation](#installation)
-- [Quick Start: Offline vs Online
-  Usage](#quick-start-offline-vs-online-usage)
-  - [Offline Mode (`focus_offline`)](#offline-mode-focus_offline)
-  - [Online Mode (Sequential Updates)](#online-mode-sequential-updates)
-- [Available Functions](#available-functions)
-  - [Offline Mode Interface](#offline-mode-interface)
-  - [Online/Sequential Interface](#onlinesequential-interface)
-- [Notes](#notes)
-- [Examples](#examples)
-  - [Gaussian Univariate Detection](#gaussian-univariate-detection)
-  - [One-sided Detection](#one-sided-detection)
-  - [Multivariate Gaussian Detection](#multivariate-gaussian-detection)
-  - [Bernoulli Example](#bernoulli-example)
-  - [Poisson Example](#poisson-example)
-  - [Gamma Example](#gamma-example)
-  - [Non-parametric Detection
-    (NPFOCuS)](#non-parametric-detection-npfocus)
-- [Performance Comparison](#performance-comparison)
-- [References](#references)
-- [Authors and Contributors](#authors-and-contributors)
-- [License](#license)
-  - [External libraries](#external-libraries)
-
-``` python
+```{python echo=False}
 import numpy as np
 import matplotlib.pyplot as plt
-from focus_py import focus_offline, Detector
+from focus_cpt import focus_offline, Detector
 ```
 
-**focus_py** is a high-performance Python package for online changepoint
-detection in univariate and multivariate data streams. It provides
-efficient C++ implementations of the **FOCuS** and **md-FOCuS**
-algorithms with Python bindings for real-time monitoring and offline
-analysis.
+**focus_cpt** is a high-performance Python package for online changepoint detection in univariate and multivariate data streams.
+It provides efficient C++ implementations of the **FOCuS** and **md-FOCuS** algorithms with Python bindings for real-time monitoring and offline analysis.
 
 ## Features
 
-- **Multiple distributions**: supports *Gaussian change-in-mean*,
-  *Poisson change-in-rate*, *Gamma/Exponential change-in-scale*,
-  *Bernoulli change-in-probability*, and Non-parametric detectors. New
-  models and cost functions are easy to extend.
-- **Univariate and multivariate** detection
-- **Known or unknown pre-change parameters**
-- **One-sided and two-sided detection**
-- **C++ backend** optimized for speed and scalability
+* **Multiple distributions**: supports *Gaussian change-in-mean*, *Poisson change-in-rate*, *Gamma/Exponential change-in-scale*, *Bernoulli change-in-probability*, and Non-parametric detectors.
+  New models and cost functions are easy to extend.
+* **Univariate and multivariate** detection
+* **Known or unknown pre-change parameters**
+* **One-sided and two-sided detection**
+* **C++ backend** optimized for speed and scalability
 
 ## Installation
 
 You can install the development version of **focus** from source with:
 
-``` bash
-pip install git+https://github.com/gtromano/unified_focus.git#subdirectory=focus_py
+```bash
+pip install git+https://github.com/gtromano/unified_focus.git#subdirectory=focus_cpt
 ```
 
 Or, if you have the local source directory:
 
-``` bash
-pip install path/to/focus_py
+```bash
+pip install path/to/focus_cpt
 ```
 
-------------------------------------------------------------------------
+---
 
 ## Quick Start: Offline vs Online Usage
 
@@ -71,17 +47,15 @@ The Python bindings provide two complementary modes:
 
 ### Offline Mode (`focus_offline`)
 
-All computations occur inside C++ for maximum efficiency. This mode is
-ideal for benchmarking, batch processing, and full statistic
-trajectories.
+All computations occur inside C++ for maximum efficiency.
+This mode is ideal for benchmarking, batch processing, and full statistic trajectories.
 
 **Key behaviors:**
 
-- Stops immediately when the threshold is exceeded.
-- Use `threshold=np.inf` to compute statistics for all samples (useful
-  for visualization).
+* Stops immediately when the threshold is exceeded.
+* Use `threshold=np.inf` to compute statistics for all samples (useful for visualization).
 
-``` python
+```{python}
 np.random.seed(123)
 Y = np.concatenate([np.random.normal(0, 1, 500), np.random.normal(2, 1, 500)])
 
@@ -96,17 +70,14 @@ plt.axhline(res["threshold"], color="red", linestyle="--", lw=2)
 plt.show()
 ```
 
-![](generate_README_python_files/figure-commonmark/cell-3-output-1.png)
-
-------------------------------------------------------------------------
+---
 
 ### Online Mode (Sequential Updates)
 
-The online implementation allows step-by-step updates in Python. It’s
-slower (each update crosses the Python–C++ boundary) but supports
-real-time or adaptive control.
+The online implementation allows step-by-step updates in Python.
+It’s slower (each update crosses the Python–C++ boundary) but supports real-time or adaptive control.
 
-``` python
+```{python}
 # Create detector
 detector = Detector(type='univariate')
 
@@ -132,88 +103,61 @@ plt.axhline(threshold, color="red", linestyle="--", linewidth=2)
 plt.show()
 ```
 
-    Detection at time 504 with changepoint estimate τ = 500
+Both modes yield the same statistical results. The offline mode is typically **tens to hundreds of times faster**.
 
-![](generate_README_python_files/figure-commonmark/cell-4-output-2.png)
-
-Both modes yield the same statistical results. The offline mode is
-typically **tens to hundreds of times faster**.
-
-------------------------------------------------------------------------
+---
 
 ## Available Functions
 
 ### Offline Mode Interface
 
 - **`focus_offline(Y, threshold, type, family, ...)`**  
-  Run the FOCuS detector in batch/offline mode with all cycles handled
-  in C++ for maximum efficiency. Stops at detection by default; use
-  `threshold = np.inf` to compute statistics for all observations.
+  Run the FOCuS detector in batch/offline mode with all cycles handled in C++ for maximum efficiency. Stops at detection by default; use `threshold = np.inf` to compute statistics for all observations.
   - `Y`: Observation data (1D array or 2D array)
   - `threshold`: Detection threshold(s). Can be:
     - Scalar: Single threshold applied to all statistics
-    - Vector: (In case of multiple values returned per statistics, see
-      Notes below)
-  - `type`: One of `"univariate"`, `"univariate_one_sided"`,
-    `"multivariate"`, or `"npfocus"`
-  - `family`: Distribution family - `"gaussian"`, `"poisson"`,
-    `"bernoulli"`, `"gamma"`, or `"npfocus"`
+    - Vector: (In case of multiple values returned per statistics, see Notes below)
+  - `type`: One of `"univariate"`, `"univariate_one_sided"`, `"multivariate"`, or `"npfocus"`
+  - `family`: Distribution family - `"gaussian"`, `"poisson"`, `"bernoulli"`, `"gamma"`, or `"npfocus"`
   - `theta0`: (Optional) Baseline parameter vector for cost computation
-  - `shape`: (Optional) Shape parameter for `family = "gamma"` (required
-    for gamma)
-  - `dim_indexes`: (Optional) List of dimension index vectors for
-    multivariate projections
+  - `shape`: (Optional) Shape parameter for `family = "gamma"` (required for gamma)
+  - `dim_indexes`: (Optional) List of dimension index vectors for multivariate projections
   - `quantiles`: (Optional) Quantile vector for `type = "npfocus"`
   - `pruning_mult`, `pruning_offset`: Pruning parameters (default: 2, 1)
   - `side`: Pruning side - `"right"` or `"left"` (default: `"right"`)
-  - Returns: dict-like object with `stat` (2D numpy array where each row
-    is a time and each column is a statistic), `changepoint`,
-    `detection_time`, `detected_changepoint`, `candidates`, `threshold`,
-    `n`, `type`, `family`, and `shape` (if gamma)
+  - Returns: dict-like object with `stat` (2D numpy array where each row is a time and each column is a statistic), `changepoint`, `detection_time`, `detected_changepoint`, `candidates`, `threshold`, `n`, `type`, `family`, and `shape` (if gamma)
 
 ### Online/Sequential Interface
 
 - **`Detector(type, ...)`**  
   Create a new online detector object. Returns a Detector instance.
-
-  - `type`: One of `"univariate"`, `"univariate_one_sided"`,
-    `"multivariate"`, or `"npfocus"`
-  - `dim_indexes`: (Optional) List of dimension index vectors for
-    multivariate projections
+  - `type`: One of `"univariate"`, `"univariate_one_sided"`, `"multivariate"`, or `"npfocus"`
+  - `dim_indexes`: (Optional) List of dimension index vectors for multivariate projections
   - `quantiles`: (Optional) Quantile vector for `type = "npfocus"`
   - `pruning_mult`, `pruning_offset`: Pruning parameters (default: 2, 1)
   - `side`: Pruning side - `"right"` or `"left"` (default: `"right"`)
 
 - **`Detector.update(y)`**  
   Update the detector with a new observation vector `y`.
-
   - `y`: scalar (univariate) or 1D numpy array (multivariate)
 
 - **`Detector.get_statistics(family, theta0=None, shape=None)`**  
-  Compute changepoint statistics for the current state. Returns a
-  dict-like result with keys `stopping_time`, `changepoint`, and `stat`.
+  Compute changepoint statistics for the current state. Returns a dict-like result with keys `stopping_time`, `changepoint`, and `stat`.
 
 - **Inspection helpers**:
-
   - `Detector.get_n_candidates()` - Get number of candidate segments
   - `Detector.get_n()` - Get number of observations processed
   - `Detector.get_sn()` - Get cumulative sum state
-  - `Detector.get_candidates()` - Get all candidate changepoints as a
-    dict-like object
+  - `Detector.get_candidates()` - Get all candidate changepoints as a dict-like object
 
 ## Notes
 
-- **Multiple Statistics**: Some detectors (e.g., `family = "npfocus"`)
-  return multiple statistics. In `focus_offline()`, the `stat` return
-  value is a 2D array where each row corresponds to a time point and
-  each column corresponds to a statistic.
-  - For single-statistic families, the matrix has one column (use
-    `res['stat'].flatten()` when needed)
-  - For multi-statistic families, use vectorized thresholds or a single
-    threshold (with warning)
-- **Gamma Family**: When using `family = "gamma"`, you must provide a
-  positive `shape` parameter. The gamma cost function assumes this shape
-  is known.
+- **Multiple Statistics**: Some detectors (e.g., `family = "npfocus"`) return multiple statistics. In `focus_offline()`, the `stat` return value is a 2D array where each row corresponds to a time point and each column corresponds to a statistic.
+  - For single-statistic families, the matrix has one column (use `res['stat'].flatten()` when needed)
+  - For multi-statistic families, use vectorized thresholds or a single threshold (with warning)
+
+- **Gamma Family**: When using `family = "gamma"`, you must provide a positive `shape` parameter. The gamma cost function assumes this shape is known.
+
 
 ## Examples
 
@@ -221,7 +165,7 @@ typically **tens to hundreds of times faster**.
 
 #### Unknown Pre-change Mean
 
-``` python
+```{python}
 np.random.seed(45)
 Y = np.concatenate([np.random.normal(0, 1, 1000), np.random.normal(-1, 1, 500)])
 
@@ -239,14 +183,9 @@ plt.axvline(1000, color="green", linestyle=":")
 plt.show()
 ```
 
-    Detection time: 1023
-    Estimated changepoint: 1008
-
-![](generate_README_python_files/figure-commonmark/cell-5-output-2.png)
-
 #### Known Pre-change Mean
 
-``` python
+```{python}
 np.random.seed(45)
 theta0 = 0
 Y = np.concatenate([np.random.normal(theta0, 1, 1000),
@@ -270,13 +209,11 @@ plt.tight_layout()
 plt.show()
 ```
 
-![](generate_README_python_files/figure-commonmark/cell-6-output-1.png)
-
-------------------------------------------------------------------------
+---
 
 ### One-sided Detection
 
-``` python
+```{python}
 np.random.seed(789)
 Y = np.concatenate([np.random.normal(0, 1, 800),
                     np.random.normal(1.5, 1, 400)])
@@ -304,16 +241,11 @@ plt.tight_layout()
 plt.show()
 ```
 
-    Right-sided detection: 817
-    Left-sided detection: None
-
-![](generate_README_python_files/figure-commonmark/cell-7-output-2.png)
-
-------------------------------------------------------------------------
+---
 
 ### Multivariate Gaussian Detection
 
-``` python
+```{python}
 np.random.seed(42)
 n, p = 1500, 3
 Y1 = np.random.normal(0, 1, (1000, p))
@@ -334,16 +266,11 @@ plt.title("Multivariate FOCuS (p=3)")
 plt.show()
 ```
 
-    Detection time: 1013
-    Estimated changepoint: 1001
-
-![](generate_README_python_files/figure-commonmark/cell-8-output-2.png)
-
-------------------------------------------------------------------------
+---
 
 ### Bernoulli Example
 
-``` python
+```{python}
 np.random.seed(123)
 n = 2000
 Y = np.concatenate([
@@ -356,13 +283,11 @@ plt.title("Bernoulli: Change in Success Probability")
 plt.show()
 ```
 
-![](generate_README_python_files/figure-commonmark/cell-9-output-1.png)
-
-------------------------------------------------------------------------
+---
 
 ### Poisson Example
 
-``` python
+```{python}
 np.random.seed(101)
 n = 2000
 Y = np.concatenate([
@@ -375,13 +300,11 @@ plt.title("Poisson: Change in Rate")
 plt.show()
 ```
 
-![](generate_README_python_files/figure-commonmark/cell-10-output-1.png)
-
-------------------------------------------------------------------------
+---
 
 ### Gamma Example
 
-``` python
+```{python}
 np.random.seed(124)
 n = 2000
 Y = np.concatenate([
@@ -395,13 +318,11 @@ plt.title("Gamma: Change in Scale (shape=2)")
 plt.show()
 ```
 
-![](generate_README_python_files/figure-commonmark/cell-11-output-1.png)
-
-------------------------------------------------------------------------
+---
 
 ### Non-parametric Detection (NPFOCuS)
 
-``` python
+```{python}
 np.random.seed(123)
 Y = np.concatenate([np.random.normal(0, 1, 1000),
                     np.random.standard_cauchy(200)])
@@ -423,13 +344,11 @@ plt.tight_layout()
 plt.show()
 ```
 
-![](generate_README_python_files/figure-commonmark/cell-12-output-1.png)
-
-------------------------------------------------------------------------
+---
 
 ## Performance Comparison
 
-``` python
+```{python}
 np.random.seed(999)
 n = 100_000
 Y = np.concatenate([np.random.normal(0, 1, n//2),
@@ -453,11 +372,7 @@ print(f"Online time:  {online_time:.2f}s")
 print(f"Offline is {online_time / offline_time:.1f}× faster")
 ```
 
-    Offline time: 0.21s
-    Online time:  0.33s
-    Offline is 1.6× faster
-
-------------------------------------------------------------------------
+---
 
 ## References
 
@@ -465,8 +380,7 @@ print(f"Offline is {online_time / offline_time:.1f}× faster")
 
 Pishchagina, Liudmila, Gaetano Romano, Paul Fearnhead, Vincent Runge,
 and Guillem Rigaill. 2025. “Online Multivariate Changepoint Detection:
-Leveraging Links with Computational Geometry.” *Journal of the Royal
-Statistical Society Series B: Statistical Methodology*: qkaf046.
+Leveraging Links with Computational Geometry.” *Journal of the Royal Statistical Society Series B: Statistical Methodology*: qkaf046.
 <https://doi.org/10.1093/jrsssb/qkaf046>
 
 </div>
@@ -500,45 +414,32 @@ Detection for Exponential Family Models.” *Statistics and Computing* 34
 
 </div>
 
-## Authors and Contributors
 
-- Gaetano Romano: [email](mailto:g.romano@lancaster.ac.uk) (**Author**)
-  (**Maintainer**) (**Creator**) (**Translator**)
+## Authors and Contributors 
 
-- Kes Ward: [email](mailto:k.ward4@lancaster.ac.uk) (**Author**)
+* Gaetano Romano: [email](mailto:g.romano@lancaster.ac.uk) (**Author**) (**Maintainer**) (**Creator**) (**Translator**)
 
-- Liudmila Pishchagina:
-  [email](mailto:liudmila.pishchagina@univ-evry.fr) (**Author**)
+* Kes Ward: [email](mailto:k.ward4@lancaster.ac.uk) (**Author**)
 
-- Guillem Rigaill: [email](mailto:guillem.rigaill@inrae.fr) (**Author**)
-  (**Thesis Advisor**)
+* Liudmila Pishchagina: [email](mailto:liudmila.pishchagina@univ-evry.fr) (**Author**)
 
-- Vincent Runge: [email](mailto:vincent.runge@univ-evry.fr) (**Author**)
-  (**Thesis Advisor**)
+* Guillem Rigaill: [email](mailto:guillem.rigaill@inrae.fr) (**Author**) (**Thesis Advisor**)
 
-- Paul Fearnhead: [email](mailto:p.fearnhead@lancaster.ac.uk)
-  (**Author**) (**Thesis Advisor**)
+* Vincent Runge: [email](mailto:vincent.runge@univ-evry.fr) (**Author**) (**Thesis Advisor**)
 
-- Idris A. Eckley: [email](mailto:i.eckley@lancaster.ac.uk) (**Author**)
-  (**Thesis Advisor**)
+* Paul Fearnhead: [email](mailto:p.fearnhead@lancaster.ac.uk) (**Author**) (**Thesis Advisor**)
+
+* Idris A. Eckley: [email](mailto:i.eckley@lancaster.ac.uk) (**Author**) (**Thesis Advisor**)
 
 ## License
 
-This program is free software: you can redistribute it and/or modify it
-under the terms of the GNU General Public License as published by the
-Free Software Foundation, either version 3 of the License, or (at your
-option) any later version.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
-Public License for more details.
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along
-with this program. If not, see https://www.gnu.org/licenses/gpl-3.0.txt.
+You should have received a copy of the GNU General Public License along with this program. If not, see https://www.gnu.org/licenses/gpl-3.0.txt.
 
 ### External libraries
 
-The Python package depends on the Qhull library (http://www.qhull.org/),
-from C.B. Barber and The Geometry Center. If the library is not found,
-the user will be notified with instructions to install.
+The Python package depends on the Qhull library (http://www.qhull.org/), from C.B. Barber and The Geometry Center. If the library is not found, the user will be notified with instructions to install.
+
