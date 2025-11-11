@@ -130,6 +130,10 @@ threshold <- 20
 for (i in seq_along(Y)) {
   detector_update(det, Y[i])
   result <- get_statistics(det, family = "gaussian")
+  
+  # note that the online interface supports modern R piping
+  # result <- det |> detector_update(Y[i]) |> get_statistics(family = "gaussian")
+  
   stat_trace[i] <- result$stat
   
   if (result$stat > threshold) {
@@ -441,7 +445,7 @@ system.time(
 ```
 
        user  system elapsed 
-      8.216   0.103   8.320 
+      8.773   0.119   8.892 
 
 ``` r
 # Low-dimensional projection approximation
@@ -454,7 +458,7 @@ system.time(
 ```
 
        user  system elapsed 
-      0.129   0.000   0.128 
+      0.140   0.001   0.140 
 
 ``` r
 # Verify similarity
@@ -488,7 +492,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.003   0.000   0.002 
+      0.003   0.000   0.003 
 
 ``` r
 plot(res_bern$stat, main = "Bernoulli (univariate): change in success probability")
@@ -509,7 +513,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.020   0.000   0.019 
+      0.021   0.000   0.021 
 
 ``` r
 plot(res_bern_multi$stat, main = "Bernoulli (multivariate): two streams")
@@ -534,7 +538,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.003 
+      0.002   0.000   0.002 
 
 ``` r
 plot(res_pois$stat, main = "Poisson: change in rate (lambda)")
@@ -725,19 +729,20 @@ par(mfrow = c(1, 1))
 ```
 
 In the online setting, the quantile vector must be provided when
-creating the detector. The statististic can be retrieved as usual,
-however it will be a vector of length 2 (sum and max statistics).
+creating the detector. The statistic can be retrieved as usual, however
+it will be a vector of length 2 (sum and max statistics).
 
 ``` r
 set.seed(123)
 
 det <- detector_create("npfocus", quantiles = quants)
 
-detector_update(det, Y[1])
-detector_update(det, Y[2])
-detector_update(det, Y[3])
+det <- det |> 
+  detector_update(Y[1]) |>
+  detector_update(Y[2]) |>
+  detector_update(Y[3])
 
-get_statistics(det, family="npfocus")
+det |> get_statistics(family="npfocus")
 ```
 
     $stopping_time
@@ -775,7 +780,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.141   0.003   0.144 
+      0.158   0.000   0.157 
 
 ``` r
 # Benchmark online mode
@@ -799,15 +804,15 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.333   0.000   0.333 
+      0.359   0.000   0.360 
 
 ``` r
 # Verify both produce identical results
-cat("\nResults identical:", all.equal(res_offline$stat, stat_online), "\n")
+cat("\nResults identical:", all.equal(as.vector(res_offline$stat), stat_online), "\n")
 ```
 
 
-    Results identical: Attributes: < Modes: list, NULL > Attributes: < Lengths: 1, 0 > Attributes: < names for target but not for current > Attributes: < current is not list-like > target is matrix, current is numeric 
+    Results identical: TRUE 
 
 ``` r
 # Speedup factor

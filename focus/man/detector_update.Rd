@@ -15,7 +15,11 @@ this should be a scalar (length-1 vector). For multivariate detectors,
 this should be a vector matching the number of dimensions.}
 }
 \value{
-NULL (invisibly). The detector is updated in place.
+An external pointer to the detector (the same object that was passed in).
+The detector is updated *in place* — no copy is made — so this return value
+is provided only for convenience, for example when using the native R pipe
+operator (`|>`) e.g.,
+\code{det |> detector_update(y) |> get_statistics()}.
 }
 \description{
 Adds new observation(s) to the detector's internal state and updates

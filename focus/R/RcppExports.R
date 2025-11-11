@@ -37,7 +37,7 @@
 #' The detector maintains sufficient statistics internally and uses pruning
 #' to efficiently track candidate changepoints. The \code{pruning_mult} and
 #' \code{pruning_offset} parameters control the pruning strategy.
-#' 
+#'
 #' High-dimentional multivariate detectors:
 #' For high-dimensional multivariate detection, computing the full hull would be too prohibitive.
 #' Additionally, the complexity is expected to be log(n)^p, where n is the number of iterations and p is the
@@ -106,7 +106,12 @@ detector_create <- function(type, dim_indexes = NULL, quantiles = NULL, pruning_
 #'   this should be a scalar (length-1 vector). For multivariate detectors,
 #'   this should be a vector matching the number of dimensions.
 #'
-#' @return NULL (invisibly). The detector is updated in place.
+#' @return
+#' An external pointer to the detector (the same object that was passed in).
+#' The detector is updated *in place* — no copy is made — so this return value
+#' is provided only for convenience, for example when using the native R pipe
+#' operator (`|>`) e.g.,
+#' \code{det |> detector_update(y) |> get_statistics()}.
 #'
 #' @examples
 #' \dontrun{
@@ -141,7 +146,7 @@ detector_create <- function(type, dim_indexes = NULL, quantiles = NULL, pruning_
 #'
 #' @export
 detector_update <- function(info_ptr, y) {
-    invisible(.Call(`_focus_detector_update`, info_ptr, y))
+    .Call(`_focus_detector_update`, info_ptr, y)
 }
 
 #' Compute current changepoint statistics
@@ -197,7 +202,7 @@ detector_update <- function(info_ptr, y) {
 #'
 #' @examples
 #' \dontrun{
-#' 
+#'
 #' ## Online (sequential) example
 #' # Generate data with a changepoint
 #' set.seed(123)
@@ -215,7 +220,7 @@ detector_update <- function(info_ptr, y) {
 #'     break
 #'   }
 #' }
-#' 
+#'
 #' ## Note that multiple models can be tested simultaneously on the same detector
 #' # as the statistics is independent of the detector state.
 #' # For example, testing both Gaussian and Poisson costs
@@ -223,19 +228,19 @@ detector_update <- function(info_ptr, y) {
 #' det2 <- detector_create(type = "univariate")
 #' stat_gaussian <- numeric(length(Y_counts))
 #' stat_poisson <- numeric(length(Y_counts))
-#' 
+#'
 #' for (i in seq_along(Y_counts)) {
 #'   detector_update(det2, Y_counts[i])
 #'   stat_gaussian[i] <- get_statistics(det2, family = "gaussian")$stat
 #'   stat_poisson[i] <- get_statistics(det2, family = "poisson", theta0 = 10)$stat
 #' }
-#' 
+#'
 #' # Plot comparison
 #' par(mfrow = c(1, 2))
 #' plot(stat_gaussian, type = "l", main = "Gaussian Statistic on Poisson Data",
 #'      xlab = "Time", ylab = "Statistic", lwd = 2, col = "blue")
 #' abline(v = 500, col = "green", lty = 3, lwd = 2)
-#' 
+#'
 #' plot(stat_poisson, type = "l", main = "Poisson Statistic on Poisson Data",
 #'      xlab = "Time", ylab = "Statistic", lwd = 2, col = "red")
 #' abline(v = 500, col = "green", lty = 3, lwd = 2)
@@ -348,19 +353,19 @@ detector_candidates <- function(info_ptr) {
 #' det <- detector_create(type = "multivariate", dim_indexes = proj)
 #' set.seed(42)
 #' p <- 5
-#' 
+#'
 #' # Create data: changepoint at t=1000
 #' Y_multi <- rbind(
 #'     matrix(rnorm(1000 * p, mean = -1, 1), ncol = p),
 #'     matrix(rnorm(500 * p, mean = 1.2), ncol = p)
 #' )
-#' 
+#'
 #' # Full multivariate detection
 #' system.time(
 #' res_multi <- focus_offline(Y_multi, threshold = Inf,
 #'                            type = "multivariate", family = "gaussian")
 #' )
-#' 
+#'
 #' # Low-dimensional projection approximation
 #' dim_indexes <- generate_projection_indexes(5, 2)
 #' system.time(
@@ -368,7 +373,7 @@ detector_candidates <- function(info_ptr) {
 #'                                   type = "multivariate", family = "gaussian",
 #'                                   dim_indexes = dim_indexes)
 #' )
-#' 
+#'
 #' # Verify similarity
 #' all.equal(res_multi$stat, res_multi_approx$stat)
 #' }

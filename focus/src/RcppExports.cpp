@@ -27,14 +27,15 @@ BEGIN_RCPP
 END_RCPP
 }
 // detector_update
-void detector_update(SEXP info_ptr, NumericVector y);
+SEXP detector_update(SEXP info_ptr, NumericVector y);
 RcppExport SEXP _focus_detector_update(SEXP info_ptrSEXP, SEXP ySEXP) {
 BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type info_ptr(info_ptrSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
-    detector_update(info_ptr, y);
-    return R_NilValue;
+    rcpp_result_gen = Rcpp::wrap(detector_update(info_ptr, y));
+    return rcpp_result_gen;
 END_RCPP
 }
 // get_statistics
