@@ -28,6 +28,9 @@
 #' @param side Character string. For one-sided detectors, either \code{"right"}
 #'   (detects increases) or \code{"left"} (detects decreases). Default is
 #'   \code{"right"}.
+#' @param anomaly_intensity Numeric scalar. Anomaly intensity threshold for
+#'   pruning candidates. Only candidates with sufficient signal magnitude are
+#'   retained. Default is \code{NULL} (disabled).
 #'
 #' @return An external pointer (SEXP) to the detector object. This should be
 #'   passed to other detector functions like \code{\link{detector_update}()} and
@@ -91,8 +94,8 @@
 #' }
 #'
 #' @export
-detector_create <- function(type, dim_indexes = NULL, quantiles = NULL, pruning_mult = 2L, pruning_offset = 1L, side = "right") {
-    .Call(`_focus_detector_create`, type, dim_indexes, quantiles, pruning_mult, pruning_offset, side)
+detector_create <- function(type, dim_indexes = NULL, quantiles = NULL, pruning_mult = 2L, pruning_offset = 1L, side = "right", anomaly_intensity = NULL) {
+    .Call(`_focus_detector_create`, type, dim_indexes, quantiles, pruning_mult, pruning_offset, side, anomaly_intensity)
 }
 
 #' Update detector with new observation(s)
@@ -416,6 +419,9 @@ generate_projection_indexes <- function(D, p) {
 #'   \code{"left"}. Default is \code{"right"}.
 #' @param shape Numeric scalar. Shape parameter for gamma distribution.
 #'   Default is \code{NULL}.
+#' @param anomaly_intensity Numeric scalar. Anomaly intensity threshold for
+#'   pruning candidates. Only candidates with sufficient signal magnitude are
+#'   retained. Default is \code{NULL} (disabled).
 #'
 #' @return A list with components:
 #'   \item{stat}{Numeric matrix. Test statistics over time (n_obs × n_stats).
@@ -474,7 +480,7 @@ generate_projection_indexes <- function(D, p) {
 #' }
 #'
 #' @export
-focus_offline <- function(Y, threshold, type = "univariate", family = "gaussian", theta0 = NULL, dim_indexes = NULL, quantiles = NULL, pruning_mult = 2L, pruning_offset = 1L, side = "right", shape = NULL) {
-    .Call(`_focus_focus_offline`, Y, threshold, type, family, theta0, dim_indexes, quantiles, pruning_mult, pruning_offset, side, shape)
+focus_offline <- function(Y, threshold, type = "univariate", family = "gaussian", theta0 = NULL, dim_indexes = NULL, quantiles = NULL, pruning_mult = 2L, pruning_offset = 1L, side = "right", shape = NULL, anomaly_intensity = NULL) {
+    .Call(`_focus_focus_offline`, Y, threshold, type, family, theta0, dim_indexes, quantiles, pruning_mult, pruning_offset, side, shape, anomaly_intensity)
 }
 

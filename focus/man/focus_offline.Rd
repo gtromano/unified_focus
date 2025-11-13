@@ -15,7 +15,8 @@ focus_offline(
   pruning_mult = 2L,
   pruning_offset = 1L,
   side = "right",
-  shape = NULL
+  shape = NULL,
+  anomaly_intensity = NULL
 )
 }
 \arguments{
@@ -54,6 +55,10 @@ Default is \code{NULL}.}
 
 \item{shape}{Numeric scalar. Shape parameter for gamma distribution.
 Default is \code{NULL}.}
+
+\item{anomaly_intensity}{Numeric scalar. Anomaly intensity threshold for
+pruning candidates. Only candidates with sufficient signal magnitude are
+retained. Default is \code{NULL} (disabled).}
 }
 \value{
 A list with components:

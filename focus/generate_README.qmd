@@ -271,6 +271,63 @@ abline(h = 30, col = "red", lty = 2)
 par(mfrow = c(1, 1))
 ```
 
+### Anomaly Detection and Intensity Filtering
+
+The `anomaly_intensity` parameter allows you to filter out weak signals and focus on stronger changes. This is useful when you want to ignore brief anomalies (epidemic changes) or transient deviations that don't represent sustained changes in the data stream.
+
+When `anomaly_intensity` is set to a positive value, candidates are retained only if they show sufficient "signal intensity" -- i.e., the magnitude of the change relative to the segment length is at least `anomaly_intensity`. This filtering occurs during candidate pruning and helps reduce the number of spurious changepoints.
+
+```{r}
+# Create synthetic data with brief anomalies
+set.seed(999)
+n <- 1000
+Y_anom <- c(
+  rnorm(n/2, mean = 0),
+  rnorm(10, mean = -10),      # Brief, intense anomaly
+  rnorm(n/2, mean = 0),
+  rnorm(10, mean = -10),      # Another brief anomaly
+  rnorm(n/2, mean = 0)
+)
+
+# Plot the data
+plot(Y_anom, type = "l", main = "Data with Brief Anomalies",
+     xlab = "Time", ylab = "Value", lwd = 1.5)
+
+# Without anomaly_intensity filtering: all candidates are retained
+res_no_filter <- focus_offline(Y_anom, threshold = Inf, type = "univariate", 
+                                family = "gaussian", theta0 = 0)
+
+# With anomaly_intensity filtering: only strong signals are retained
+res_filtered <- focus_offline(Y_anom, threshold = Inf, type = "univariate", 
+                               family = "gaussian", theta0 = 0, 
+                               anomaly_intensity = 3)
+
+# Compare statistics
+par(mfrow = c(1, 2))
+plot(res_no_filter$stat, type = "l", main = "Without Anomaly Intensity Filtering",
+     xlab = "Time", ylab = "Statistic", lwd = 2)
+
+plot(res_filtered$stat, type = "l", main = "With Anomaly Intensity = 3",
+     xlab = "Time", ylab = "Statistic", lwd = 2)
+par(mfrow = c(1, 1))
+
+# Compare candidate counts
+cat("Candidates without filtering:", nrow(res_no_filter$candidates), "\n")
+cat("Candidates with filtering (intensity = 3):", nrow(res_filtered$candidates), "\n")
+
+# Display some candidates from each
+cat("\nTop 5 candidates (no filtering):\n")
+print(head(res_no_filter$candidates, 5))
+
+cat("\nTop 5 candidates (with intensity = 3):\n")
+print(head(res_filtered$candidates, 5))
+```
+
+**Key points about `anomaly_intensity`:**
+
+- **Default behavior** (`anomaly_intensity = NULL`): All candidates are retained based on standard pruning rules.
+- **When set to a positive value**: Candidates are filtered based on the infinity norm of the signal-to-length ratio. A candidate survives only if at least one dimension has a signal magnitude ≥ `anomaly_intensity`.
+
 ### Gaussian Multivariate Detection
 
 For vector-valued observations:
