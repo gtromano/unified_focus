@@ -16,3 +16,8 @@ dist/
 build/
 pip-wheel-metadata/
 *.egg-info/
+.gitignore
+comparison_with_python.qmd
+*.tar.gz
+focus.Rcheck/
+test.R

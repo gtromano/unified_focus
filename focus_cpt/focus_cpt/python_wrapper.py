@@ -41,6 +41,9 @@ class Detector:
         Candidate pruning parameters (default: 2, 1).
     side : str, optional
         For one-sided detectors, "right" (increases) or "left" (decreases).
+    anomaly_intensity : float, optional
+        Anomaly intensity threshold for pruning candidates. Only candidates with
+        sufficient signal magnitude are retained. Default is None (disabled).
 
     Examples
     --------
@@ -60,11 +63,14 @@ class Detector:
         pruning_mult: int = 2,
         pruning_offset: int = 1,
         side: str = "right",
+        anomaly_intensity: Optional[float] = None,
     ):
         if dim_indexes is not None:
             dim_indexes = [np.asarray(idx, dtype=np.int32) for idx in dim_indexes]
         if quantiles is not None:
             quantiles = np.asarray(quantiles, dtype=np.float64)
+        if anomaly_intensity is not None:
+            anomaly_intensity = np.array([anomaly_intensity], dtype=np.float64)
 
         self._detector = _focus.Detector(
             type=type,
@@ -73,6 +79,7 @@ class Detector:
             pruning_mult=pruning_mult,
             pruning_offset=pruning_offset,
             side=side,
+            anomaly_intensity=anomaly_intensity,
         )
         self._type = type
 
@@ -199,6 +206,7 @@ def focus_offline(
     pruning_offset: int = 1,
     side: str = "right",
     shape: Optional[float] = None,
+    anomaly_intensity: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
     Run the FOCuS detector in batch/offline mode (entirely in C++).
@@ -230,6 +238,9 @@ def focus_offline(
         For one-sided: 'right' or 'left'.
     shape : float, optional
         Shape parameter for gamma distribution.
+    anomaly_intensity : float, optional
+        Anomaly intensity threshold for pruning candidates. Only candidates with
+        sufficient signal magnitude are retained. Default is None (disabled).
     
     Returns
     -------
@@ -270,6 +281,8 @@ def focus_offline(
         quantiles = np.asarray(quantiles, dtype=np.float64)
     if shape is not None:
         shape = np.array([shape], dtype=np.float64)
+    if anomaly_intensity is not None:
+        anomaly_intensity = np.array([anomaly_intensity], dtype=np.float64)
 
     result = _focus.focus_offline(
         Y=Y,
@@ -283,6 +296,7 @@ def focus_offline(
         pruning_offset=pruning_offset,
         side=side,
         shape=shape,
+        anomaly_intensity=anomaly_intensity,
     )
 
     cp = result["changepoint"]

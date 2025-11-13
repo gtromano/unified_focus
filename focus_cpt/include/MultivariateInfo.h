@@ -1,14 +1,16 @@
 #pragma once
 
 #include "Info.h"
-#include <libqhullcpp/Qhull.h>
-#include <libqhullcpp/QhullFacetList.h>
-#include <libqhullcpp/QhullVertexSet.h>
+#include "libqhullcpp/Qhull.h"
+#include "libqhullcpp/QhullFacetList.h"
+#include "libqhullcpp/QhullVertexSet.h"
 #include <set>
 #include <utility>
 #include <vector>
 #include <stdexcept>
 #include <algorithm>
+#include <cmath>
+#include <limits>
 
 namespace changepoint {
 
@@ -81,16 +83,19 @@ private:
   std::vector<std::vector<int>> dim_indexes_;  // Projections of arbitrary p size
   int pruning_params_[2];  // (multiplier, offset)
   mutable int pruning_in_;          // Counter for pruning frequency
+  double anomaly_intensity_;
 
 public:
   MultivariateInfo(const std::vector<double>& sn = {0.0},
                    int n = 0,
                    const std::vector<std::vector<int>>& dim_indexes = {},
                    int pruning_mult = 2,
-                   int pruning_offset = 1)
+                   int pruning_offset = 1,
+                   double anomaly_intensity = std::numeric_limits<double>::quiet_NaN())
     : CandidateListInfo(sn, n),
       dim_indexes_(dim_indexes),
-      pruning_in_(5) {
+      pruning_in_(5),
+      anomaly_intensity_(anomaly_intensity) {
     pruning_params_[0] = pruning_mult;
     pruning_params_[1] = pruning_offset;
 
@@ -310,6 +315,42 @@ public:
           }
         }
       } // end projection loop
+    }
+
+    // Apply anomaly_intensity pruning if enabled
+    if (!std::isnan(anomaly_intensity_) && anomaly_intensity_ > 0.0) {
+      std::set<int> intensity_filtered;
+      
+      for (int idx : hull_indices) {
+        const auto& c = candidates[idx];
+        int denom = n_ - c.tau;
+        
+        // Calculate infinity norm: max absolute ratio across all dimensions
+        double max_abs_ratio = 0.0;
+        bool has_valid_ratio = false;
+        
+        for (int dim = 0; dim < target_dim; ++dim) {
+          if (denom > 0) {
+            double st_val = (dim < static_cast<int>(c.st.size())) ? c.st[dim] : 0.0;
+            double num = sn_[dim] - st_val;
+            double ratio = num / denom;
+            double abs_ratio = std::abs(ratio);
+            
+            if (abs_ratio > max_abs_ratio) {
+              max_abs_ratio = abs_ratio;
+            }
+            has_valid_ratio = true;
+          }
+        }
+        
+        // Keep candidate if infinity norm >= anomaly_intensity
+        // (i.e., at least one dimension has strong signal)
+        if (!has_valid_ratio || max_abs_ratio >= anomaly_intensity_) {
+          intensity_filtered.insert(idx);
+        }
+      }
+      
+      hull_indices = intensity_filtered;
     }
 
     // Build pruned list in tau order

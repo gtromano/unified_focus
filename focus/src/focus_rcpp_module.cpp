@@ -51,6 +51,9 @@ using namespace changepoint;
 //' @param side Character string. For one-sided detectors, either \code{"right"}
 //'   (detects increases) or \code{"left"} (detects decreases). Default is
 //'   \code{"right"}.
+//' @param anomaly_intensity Numeric scalar. Anomaly intensity threshold for
+//'   pruning candidates. Only candidates with sufficient signal magnitude are
+//'   retained. Default is \code{NULL} (disabled).
 //'
 //' @return An external pointer (SEXP) to the detector object. This should be
 //'   passed to other detector functions like \code{\link{detector_update}()} and
@@ -120,7 +123,8 @@ SEXP detector_create(std::string type,
                      Nullable<NumericVector> quantiles = R_NilValue,
                      int pruning_mult = 2,
                      int pruning_offset = 1,
-                     std::string side = "right") {
+                     std::string side = "right",
+                     Nullable<NumericVector> anomaly_intensity = R_NilValue) {
   using namespace changepoint;
 
   std::shared_ptr<Info> cs;
@@ -128,6 +132,13 @@ SEXP detector_create(std::string type,
   // If quantiles provided but type != "npfocus" -> error
   if (!quantiles.isNull() && type != "npfocus") {
     warning("`quantiles` parameter provided but will be ignored unless type == \"npfocus\".");
+  }
+
+  // ---- Parse anomaly_intensity (scalar) ----
+  double anomaly_intensity_val = std::numeric_limits<double>::quiet_NaN();
+  if (!anomaly_intensity.isNull()) {
+    NumericVector ai(anomaly_intensity.get());
+    if (ai.size() >= 1) anomaly_intensity_val = ai[0];
   }
 
   // ---- Build Info object ----
@@ -158,14 +169,16 @@ SEXP detector_create(std::string type,
       0,                            // n
       dim_idx,                      // now vector<vector<int>>
       pruning_mult,
-      pruning_offset
+      pruning_offset,
+      anomaly_intensity_val
     );
 
   } else if (type == "univariate") {
     // two-sided
     cs = std::make_shared<UnivariateInfo>(
       0.0,            // sn
-      0               // n
+      0,              // n
+      anomaly_intensity_val
     );
 
   } else if (type == "univariate_one_sided") {
@@ -175,7 +188,8 @@ SEXP detector_create(std::string type,
     cs = std::make_shared<OneSideUnivariateInfo>(
       0.0,
       0,
-      side
+      side,
+      anomaly_intensity_val
     );
 
   } else if (type == "npfocus") {
@@ -657,6 +671,9 @@ std::vector<std::vector<int>> generate_projection_indexes(int D, int p) {
 //'   \code{"left"}. Default is \code{"right"}.
 //' @param shape Numeric scalar. Shape parameter for gamma distribution.
 //'   Default is \code{NULL}.
+//' @param anomaly_intensity Numeric scalar. Anomaly intensity threshold for
+//'   pruning candidates. Only candidates with sufficient signal magnitude are
+//'   retained. Default is \code{NULL} (disabled).
 //'
 //' @return A list with components:
 //'   \item{stat}{Numeric matrix. Test statistics over time (n_obs × n_stats).
@@ -726,7 +743,8 @@ List focus_offline(SEXP Y,
                    int pruning_mult = 2,
                    int pruning_offset = 1,
                    std::string side = "right",
-                   Nullable<NumericVector> shape = R_NilValue) {
+                   Nullable<NumericVector> shape = R_NilValue,
+                   Nullable<NumericVector> anomaly_intensity = R_NilValue) {
 
   // ---- Parse input data Y ----
   NumericMatrix Y_mat;
@@ -789,7 +807,7 @@ List focus_offline(SEXP Y,
   }
 
   // ---- Create detector (Info object) ----
-  SEXP detector_ptr = detector_create(type, dim_indexes, quantiles, pruning_mult, pruning_offset, side);
+  SEXP detector_ptr = detector_create(type, dim_indexes, quantiles, pruning_mult, pruning_offset, side, anomaly_intensity);
   XPtr<std::shared_ptr<Info>> ptr(detector_ptr);
   if (!ptr || !(*ptr)) stop("Failed to create detector");
   std::shared_ptr<Info>& info = *ptr;
@@ -822,8 +840,6 @@ List focus_offline(SEXP Y,
 
   // ---- Select cost function ----
   CostFunction cost_fn;
-  const auto* maybe_uni = dynamic_cast<const UnivariateInfo*>(info.get());
-  bool is_univariate_info = (maybe_uni != nullptr);
 
   if (family == "gaussian") {
     cost_fn = compute_costs_gaussian;

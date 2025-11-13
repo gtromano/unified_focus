@@ -24,12 +24,23 @@ public:
              const py::object& quantiles = py::none(),
              int pruning_mult = 2,
              int pruning_offset = 1,
-             const std::string& side = "right")
+             const std::string& side = "right",
+             const py::object& anomaly_intensity = py::none())
         : type_(type) {
         
         // Warn if quantiles provided but not npfocus
         if (!quantiles.is_none() && type != "npfocus") {
             py::print("Warning: `quantiles` parameter provided but will be ignored unless type == 'npfocus'");
+        }
+        
+        // Parse anomaly_intensity (scalar)
+        double anomaly_intensity_val = std::numeric_limits<double>::quiet_NaN();
+        if (!anomaly_intensity.is_none()) {
+            py::array_t<double> ai = anomaly_intensity.cast<py::array_t<double>>();
+            auto ai_buf = ai.request();
+            if (ai_buf.size >= 1) {
+                anomaly_intensity_val = static_cast<double*>(ai_buf.ptr)[0];
+            }
         }
         
         if (type == "multivariate") {
@@ -59,17 +70,18 @@ public:
                 0,
                 dim_idx,
                 pruning_mult,
-                pruning_offset
+                pruning_offset,
+                anomaly_intensity_val
             );
             
         } else if (type == "univariate") {
-            info_ = std::make_shared<UnivariateInfo>(0.0, 0);
+            info_ = std::make_shared<UnivariateInfo>(0.0, 0, anomaly_intensity_val);
             
         } else if (type == "univariate_one_sided") {
             if (side != "right" && side != "left") {
                 throw std::invalid_argument("side must be 'right' or 'left'");
             }
-            info_ = std::make_shared<OneSideUnivariateInfo>(0.0, 0, side);
+            info_ = std::make_shared<OneSideUnivariateInfo>(0.0, 0, side, anomaly_intensity_val);
             
         } else if (type == "npfocus") {
             if (quantiles.is_none()) {
@@ -263,7 +275,8 @@ py::dict focus_offline(const py::array_t<double>& Y,
                       int pruning_mult = 2,
                       int pruning_offset = 1,
                       const std::string& side = "right",
-                      const py::object& shape = py::none()) {
+                      const py::object& shape = py::none(),
+                      const py::object& anomaly_intensity = py::none()) {
     
     // Parse input data Y
     auto Y_buf = Y.request();
@@ -325,7 +338,7 @@ py::dict focus_offline(const py::array_t<double>& Y,
     }
     
     // Create detector
-    Detector detector(type, dim_indexes, quantiles, pruning_mult, pruning_offset, side);
+    Detector detector(type, dim_indexes, quantiles, pruning_mult, pruning_offset, side, anomaly_intensity);
     
     // Parse theta0
     std::vector<double> theta0_vec;
@@ -522,13 +535,14 @@ PYBIND11_MODULE(_focus, m) {
     m.doc() = "FOCuS (Focusing on Candidate Segments) changepoint detection library";
     
     py::class_<Detector>(m, "Detector")
-        .def(py::init<const std::string&, const py::object&, const py::object&, int, int, const std::string&>(),
+        .def(py::init<const std::string&, const py::object&, const py::object&, int, int, const std::string&, const py::object&>(),
              py::arg("type"),
              py::arg("dim_indexes") = py::none(),
              py::arg("quantiles") = py::none(),
              py::arg("pruning_mult") = 2,
              py::arg("pruning_offset") = 1,
              py::arg("side") = "right",
+             py::arg("anomaly_intensity") = py::none(),
              R"pbdoc(
                 Create a new changepoint detector.
                 
@@ -546,6 +560,9 @@ PYBIND11_MODULE(_focus, m) {
                     Pruning offset
                 side : str, default='right'
                     For one-sided: 'right' or 'left'
+                anomaly_intensity : float, optional
+                    Anomaly intensity threshold for pruning candidates. Only candidates with
+                    sufficient signal magnitude are retained. Default is None (disabled).
              )pbdoc")
         .def("update", &Detector::update, py::arg("y"),
              "Update detector with new observation(s)")
@@ -597,6 +614,7 @@ PYBIND11_MODULE(_focus, m) {
           py::arg("pruning_offset") = 1,
           py::arg("side") = "right",
           py::arg("shape") = py::none(),
+          py::arg("anomaly_intensity") = py::none(),
           R"pbdoc(
             Run complete offline changepoint detection.
             
@@ -624,6 +642,9 @@ PYBIND11_MODULE(_focus, m) {
                 Side for one-sided detection
             shape : float, optional
                 Shape parameter for gamma
+            anomaly_intensity : float, optional
+                Anomaly intensity threshold for pruning candidates. Only candidates with
+                sufficient signal magnitude are retained. Default is None (disabled).
             
             Returns
             -------

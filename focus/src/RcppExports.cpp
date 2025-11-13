@@ -11,8 +11,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // detector_create
-SEXP detector_create(std::string type, Nullable<List> dim_indexes, Nullable<NumericVector> quantiles, int pruning_mult, int pruning_offset, std::string side);
-RcppExport SEXP _focus_detector_create(SEXP typeSEXP, SEXP dim_indexesSEXP, SEXP quantilesSEXP, SEXP pruning_multSEXP, SEXP pruning_offsetSEXP, SEXP sideSEXP) {
+SEXP detector_create(std::string type, Nullable<List> dim_indexes, Nullable<NumericVector> quantiles, int pruning_mult, int pruning_offset, std::string side, Nullable<NumericVector> anomaly_intensity);
+RcppExport SEXP _focus_detector_create(SEXP typeSEXP, SEXP dim_indexesSEXP, SEXP quantilesSEXP, SEXP pruning_multSEXP, SEXP pruning_offsetSEXP, SEXP sideSEXP, SEXP anomaly_intensitySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -22,7 +22,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type pruning_mult(pruning_multSEXP);
     Rcpp::traits::input_parameter< int >::type pruning_offset(pruning_offsetSEXP);
     Rcpp::traits::input_parameter< std::string >::type side(sideSEXP);
-    rcpp_result_gen = Rcpp::wrap(detector_create(type, dim_indexes, quantiles, pruning_mult, pruning_offset, side));
+    Rcpp::traits::input_parameter< Nullable<NumericVector> >::type anomaly_intensity(anomaly_intensitySEXP);
+    rcpp_result_gen = Rcpp::wrap(detector_create(type, dim_indexes, quantiles, pruning_mult, pruning_offset, side, anomaly_intensity));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -109,8 +110,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // focus_offline
-List focus_offline(SEXP Y, SEXP threshold, std::string type, std::string family, Nullable<NumericVector> theta0, Nullable<List> dim_indexes, Nullable<NumericVector> quantiles, int pruning_mult, int pruning_offset, std::string side, Nullable<NumericVector> shape);
-RcppExport SEXP _focus_focus_offline(SEXP YSEXP, SEXP thresholdSEXP, SEXP typeSEXP, SEXP familySEXP, SEXP theta0SEXP, SEXP dim_indexesSEXP, SEXP quantilesSEXP, SEXP pruning_multSEXP, SEXP pruning_offsetSEXP, SEXP sideSEXP, SEXP shapeSEXP) {
+List focus_offline(SEXP Y, SEXP threshold, std::string type, std::string family, Nullable<NumericVector> theta0, Nullable<List> dim_indexes, Nullable<NumericVector> quantiles, int pruning_mult, int pruning_offset, std::string side, Nullable<NumericVector> shape, Nullable<NumericVector> anomaly_intensity);
+RcppExport SEXP _focus_focus_offline(SEXP YSEXP, SEXP thresholdSEXP, SEXP typeSEXP, SEXP familySEXP, SEXP theta0SEXP, SEXP dim_indexesSEXP, SEXP quantilesSEXP, SEXP pruning_multSEXP, SEXP pruning_offsetSEXP, SEXP sideSEXP, SEXP shapeSEXP, SEXP anomaly_intensitySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -125,13 +126,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type pruning_offset(pruning_offsetSEXP);
     Rcpp::traits::input_parameter< std::string >::type side(sideSEXP);
     Rcpp::traits::input_parameter< Nullable<NumericVector> >::type shape(shapeSEXP);
-    rcpp_result_gen = Rcpp::wrap(focus_offline(Y, threshold, type, family, theta0, dim_indexes, quantiles, pruning_mult, pruning_offset, side, shape));
+    Rcpp::traits::input_parameter< Nullable<NumericVector> >::type anomaly_intensity(anomaly_intensitySEXP);
+    rcpp_result_gen = Rcpp::wrap(focus_offline(Y, threshold, type, family, theta0, dim_indexes, quantiles, pruning_mult, pruning_offset, side, shape, anomaly_intensity));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_focus_detector_create", (DL_FUNC) &_focus_detector_create, 6},
+    {"_focus_detector_create", (DL_FUNC) &_focus_detector_create, 7},
     {"_focus_detector_update", (DL_FUNC) &_focus_detector_update, 2},
     {"_focus_get_statistics", (DL_FUNC) &_focus_get_statistics, 4},
     {"_focus_detector_pieces_len", (DL_FUNC) &_focus_detector_pieces_len, 1},
@@ -139,7 +141,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_focus_detector_info_sn", (DL_FUNC) &_focus_detector_info_sn, 1},
     {"_focus_detector_candidates", (DL_FUNC) &_focus_detector_candidates, 1},
     {"_focus_generate_projection_indexes", (DL_FUNC) &_focus_generate_projection_indexes, 2},
-    {"_focus_focus_offline", (DL_FUNC) &_focus_focus_offline, 11},
+    {"_focus_focus_offline", (DL_FUNC) &_focus_focus_offline, 12},
     {NULL, NULL, 0}
 };
 

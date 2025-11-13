@@ -10,7 +10,8 @@ detector_create(
   quantiles = NULL,
   pruning_mult = 2L,
   pruning_offset = 1L,
-  side = "right"
+  side = "right",
+  anomaly_intensity = NULL
 )
 }
 \arguments{
@@ -39,6 +40,10 @@ Default is 1.}
 \item{side}{Character string. For one-sided detectors, either \code{"right"}
 (detects increases) or \code{"left"} (detects decreases). Default is
 \code{"right"}.}
+
+\item{anomaly_intensity}{Numeric scalar. Anomaly intensity threshold for
+pruning candidates. Only candidates with sufficient signal magnitude are
+retained. Default is \code{NULL} (disabled).}
 }
 \value{
 An external pointer (SEXP) to the detector object. This should be
