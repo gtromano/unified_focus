@@ -87,7 +87,9 @@ class OneSideUnivariateInfo : public Info {
 private:
   std::string side_;
   std::vector<Candidate> candidates_;  // Pre-allocated storage
-  size_t k_;                          // Active candidate count
+  size_t left_;                       // Start of active candidates
+  size_t k_;                          // End of active candidates (exclusive)
+  double anomaly_intensity_;
 
   mutable std::vector<Candidate> active_cache_;
   mutable bool cache_valid_;
@@ -98,17 +100,31 @@ private:
 
   void rebuild_active_cache() const {
     active_cache_.clear();
-    active_cache_.reserve(k_);
-    for (size_t i = 0; i < k_; ++i) {
+    active_cache_.reserve(k_ - left_);
+    for (size_t i = left_; i < k_; ++i) {
       active_cache_.push_back(candidates_[i]);
     }
     cache_valid_ = true;
   }
 
+  void compact_if_needed() {
+    // If we're about to exceed capacity, compact the array
+    if (k_ >= candidates_.size()) {
+      size_t active_count = k_ - left_;
+      for (size_t i = 0; i < active_count; ++i) {
+        candidates_[i] = candidates_[left_ + i];
+      }
+      left_ = 0;
+      k_ = active_count;
+    }
+  }
+
 public:
   OneSideUnivariateInfo(double sn = 0.0, int n = 0,
-                        const std::string& side = "right")
-    : Info({sn}, n), side_(side), k_(0), cache_valid_(false) {
+                        const std::string& side = "right",
+                        double anomaly_intensity = std::numeric_limits<double>::quiet_NaN())
+    : Info({sn}, n), side_(side), left_(0), k_(0), 
+      anomaly_intensity_(anomaly_intensity), cache_valid_(false) {
     
     if (side != "right" && side != "left") {
       throw std::invalid_argument("side must be 'right' or 'left'");
@@ -143,15 +159,46 @@ public:
   }
 
   const std::string& side() const { return side_; }
-  size_t active_candidate_count() const { return k_; }
+  size_t active_candidate_count() const { return k_ - left_; }
 
 private:
   void prune_inplace() {
-    if (k_ <= 1) {
+    // First, prune from the left based on anomaly_intensity
+    prune_left_by_intensity();
+    
+    // Then, prune from the right based on monotonicity
+    prune_right_by_monotonicity();
+  }
+
+  void prune_left_by_intensity() {
+    if (std::isnan(anomaly_intensity_) || anomaly_intensity_ <= 0.0) {
+      return;  // No intensity-based pruning
+    }
+
+    while (left_ < k_) {
+      const auto& c = candidates_[left_];
+      int tau = c.tau;
+      int denom = n_ - tau;
+      double num = sn_[0] - c.scalar_st();
+      
+      double ratio = (denom > 0) ? (num / denom) : std::numeric_limits<double>::infinity();
+      double abs_ratio = std::abs(ratio);
+
+      if (abs_ratio < anomaly_intensity_) {
+        left_++;
+        invalidate_cache();
+      } else {
+        break;  // Stop at first candidate that meets threshold
+      }
+    }
+  }
+
+  void prune_right_by_monotonicity() {
+    if (k_ - left_ <= 1) {
       return;
     }
 
-    while (k_ > 1) {
+    while (k_ - left_ > 1) {
       const auto& c1 = candidates_[k_ - 1];
       const auto& c0 = candidates_[k_ - 2];
 
@@ -171,7 +218,7 @@ private:
       if (cond) {
         k_--;
         invalidate_cache();
-        if (k_ == 1) break;
+        if (k_ - left_ == 1) break;
       } else {
         break;
       }
@@ -179,6 +226,8 @@ private:
   }
 
   void append_new_candidate() {
+    compact_if_needed();
+    
     if (k_ < candidates_.size()) {
       candidates_[k_].st = sn_;
       candidates_[k_].tau = n_;
@@ -203,11 +252,12 @@ private:
   mutable bool cache_valid_;
 
 public:
-  UnivariateInfo(double sn = 0.0, int n = 0)
+  UnivariateInfo(double sn = 0.0, int n = 0, 
+                 double anomaly_intensity = std::numeric_limits<double>::quiet_NaN())
     : Info({sn}, n), cache_valid_(false) {
 
-    right_ = std::make_unique<OneSideUnivariateInfo>(sn, n, "right");
-    left_ = std::make_unique<OneSideUnivariateInfo>(sn, n, "left");
+    right_ = std::make_unique<OneSideUnivariateInfo>(sn, n, "right", anomaly_intensity);
+    left_ = std::make_unique<OneSideUnivariateInfo>(sn, n, "left", anomaly_intensity);
   }
 
   std::vector<Candidate> new_candidate() const override {

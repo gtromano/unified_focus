@@ -14,6 +14,8 @@
 - [Examples](#examples)
   - [Gaussian Univariate Detection](#gaussian-univariate-detection)
   - [One-sided Detection](#one-sided-detection)
+  - [Anomaly Detection and Intensity
+    Filtering](#anomaly-detection-and-intensity-filtering)
   - [Multivariate Gaussian Detection](#multivariate-gaussian-detection)
   - [Bernoulli Example](#bernoulli-example)
   - [Poisson Example](#poisson-example)
@@ -311,6 +313,94 @@ plt.show()
 
 ------------------------------------------------------------------------
 
+### Anomaly Detection and Intensity Filtering
+
+The `anomaly_intensity` parameter allows you to filter out weak signals
+and focus on stronger changes. This is useful when you want to ignore
+brief anomalies (epidemic changes) or transient deviations that don’t
+represent sustained changes in the data stream.
+
+When `anomaly_intensity` is set to a positive value, candidates are
+retained only if they show sufficient “signal intensity” — i.e., the
+magnitude of the change relative to the segment length is at least
+`anomaly_intensity`. This filtering occurs during candidate pruning and
+helps reduce the number of spurious changepoints.
+
+The following example runs the detector sequentially and flags an alarm
+while we’re in the anomalous period:
+
+``` python
+# Create synthetic data with brief anomalies
+np.random.seed(999)
+n = 1000
+Y_anom = np.concatenate([
+    np.random.normal(0, 1, n//2),
+    np.random.normal(-3, 1, 10),      # Brief, weak anomaly
+    np.random.normal(0, 1, n//2),
+    np.random.normal(5, 1, 10),       # Stronger brief anomaly
+    np.random.normal(0, 1, n//2)
+])
+
+# Online (sequential) detection
+detector = Detector(type="univariate", anomaly_intensity=2)
+threshold = 20.0
+in_anom = False
+starts = []
+ends = []
+
+for i, y in enumerate(Y_anom, start=1):
+    detector.update(y)
+    res = detector.get_statistics(family="gaussian", theta0=0)
+    stat = res["stat"] if res["stat"] is not None else 0
+
+    if not in_anom and stat > threshold:
+        in_anom = True
+        starts.append(res["changepoint"])
+        print(f"anomaly starting at {i}")
+
+    if in_anom and stat <= threshold:
+        in_anom = False
+        ends.append(res["changepoint"])
+        print(f"anomaly ending at {i}")
+
+# If we were still in an anomaly at the end, close it
+if in_anom:
+    ends.append(len(Y_anom))
+    print(f"anomaly ending at {len(Y_anom)} (end of series)")
+
+# Plot the data and mark starts/ends
+plt.figure(figsize=(12, 5))
+plt.plot(Y_anom, lw=1.2)
+for s in starts:
+    if s is not None:
+        plt.axvline(s, color="green", linestyle="--", label="est. anomaly start" if s == starts[0] else "")
+for e in ends:
+    if e is not None:
+        plt.axvline(e, color="red", linestyle="--", label="est. anomaly end" if e == ends[0] else "")
+plt.title("Data with Detected Anomalies")
+plt.xlabel("Time")
+plt.ylabel("Value")
+plt.legend()
+plt.tight_layout()
+plt.show()
+```
+
+    anomaly starting at 503
+    anomaly ending at 513
+    anomaly starting at 1011
+    anomaly ending at 1034
+
+![](generate_README_python_files/figure-commonmark/cell-8-output-2.png)
+
+- **Default behavior** (`anomaly_intensity = None`): All candidates are
+  retained based on standard pruning rules.
+- **When set to a positive value**: Candidates are filtered based on the
+  infinity norm of the signal-to-length ratio. A candidate survives only
+  if at least one dimension has a signal magnitude ≥
+  `anomaly_intensity`.
+
+------------------------------------------------------------------------
+
 ### Multivariate Gaussian Detection
 
 ``` python
@@ -337,7 +427,7 @@ plt.show()
     Detection time: 1013
     Estimated changepoint: 1001
 
-![](generate_README_python_files/figure-commonmark/cell-8-output-2.png)
+![](generate_README_python_files/figure-commonmark/cell-9-output-2.png)
 
 ------------------------------------------------------------------------
 
@@ -356,7 +446,7 @@ plt.title("Bernoulli: Change in Success Probability")
 plt.show()
 ```
 
-![](generate_README_python_files/figure-commonmark/cell-9-output-1.png)
+![](generate_README_python_files/figure-commonmark/cell-10-output-1.png)
 
 ------------------------------------------------------------------------
 
@@ -375,7 +465,7 @@ plt.title("Poisson: Change in Rate")
 plt.show()
 ```
 
-![](generate_README_python_files/figure-commonmark/cell-10-output-1.png)
+![](generate_README_python_files/figure-commonmark/cell-11-output-1.png)
 
 ------------------------------------------------------------------------
 
@@ -395,7 +485,7 @@ plt.title("Gamma: Change in Scale (shape=2)")
 plt.show()
 ```
 
-![](generate_README_python_files/figure-commonmark/cell-11-output-1.png)
+![](generate_README_python_files/figure-commonmark/cell-12-output-1.png)
 
 ------------------------------------------------------------------------
 
@@ -423,7 +513,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-![](generate_README_python_files/figure-commonmark/cell-12-output-1.png)
+![](generate_README_python_files/figure-commonmark/cell-13-output-1.png)
 
 ------------------------------------------------------------------------
 
@@ -453,8 +543,8 @@ print(f"Online time:  {online_time:.2f}s")
 print(f"Offline is {online_time / offline_time:.1f}× faster")
 ```
 
-    Offline time: 0.21s
-    Online time:  0.32s
+    Offline time: 0.25s
+    Online time:  0.39s
     Offline is 1.5× faster
 
 ------------------------------------------------------------------------
