@@ -378,10 +378,13 @@ brief anomalies (epidemic changes) or transient deviations that don’t
 represent sustained changes in the data stream.
 
 When `anomaly_intensity` is set to a positive value, candidates are
-retained only if they show sufficient “signal intensity” – i.e., the
+retained only if they show sufficient “signal intensity” — i.e., the
 magnitude of the change relative to the segment length is at least
 `anomaly_intensity`. This filtering occurs during candidate pruning and
 helps reduce the number of spurious changepoints.
+
+The following example runs the detector sequentially, and flags an alarm
+whilist we’re in the anomalous period.
 
 ``` r
 # Create synthetic data with brief anomalies
@@ -389,90 +392,62 @@ set.seed(999)
 n <- 1000
 Y_anom <- c(
   rnorm(n/2, mean = 0),
-  rnorm(10, mean = -10),      # Brief, intense anomaly
+  rnorm(10, mean = -3),      # Brief, weak anomaly
   rnorm(n/2, mean = 0),
-  rnorm(10, mean = -10),      # Another brief anomaly
+  rnorm(10, mean = 5),      # Stronger brief anomaly
   rnorm(n/2, mean = 0)
 )
 
-# Plot the data
-plot(Y_anom, type = "l", main = "Data with Brief Anomalies",
-     xlab = "Time", ylab = "Value", lwd = 1.5)
+# Online (sequential) detection
+det <- detector_create(type = "univariate", anomaly_intensity = 2)
+threshold <- 20
+in_anom <- FALSE
+starts <- integer(0)
+ends <- integer(0)
+
+for (i in seq_along(Y_anom)) {
+  detector_update(det, Y_anom[i])
+  res <- get_statistics(det, family = "gaussian", theta0 = 0)
+  stat <- res$stat
+
+  # robustly handle NULL/NA
+  if (is.null(stat) || length(stat) == 0) stat <- 0
+
+  if (!in_anom && stat > threshold) {
+    in_anom <- TRUE
+    starts <- c(starts, res$changepoint)
+    cat("anomaly starting at", i, "\n")
+  }
+
+  if (in_anom && stat <= threshold) {
+    in_anom <- FALSE
+    ends <- c(ends, res$changepoint)
+    cat("anomaly ending at", i, "\n")
+  }
+}
+```
+
+    anomaly starting at 503 
+    anomaly ending at 513 
+    anomaly starting at 1011 
+    anomaly ending at 1037 
+
+``` r
+# If we were still in an anomaly at the end, close it
+if (in_anom) {
+  ends <- c(ends, length(Y_anom))
+  cat("anomaly ending at", length(Y_anom), "(end of series)", "\n")
+}
+
+# Plot the data and mark starts/ends
+plot(Y_anom, type = "l", main = "Data with Detected Anomalies",
+     xlab = "Time", ylab = "Value", lwd = 1.2)
+if (length(starts) > 0) abline(v = starts, col = "green", lty = 2)
+if (length(ends) > 0) abline(v = ends, col = "red", lty = 2)
+legend("topright", legend = c("est. anomaly start", "est. anomaly end"), col = c("green", "red"), lty = 2)
 ```
 
 ![](generate_README_files/figure-commonmark/unnamed-chunk-7-1.png)
-
-``` r
-# Without anomaly_intensity filtering: all candidates are retained
-res_no_filter <- focus_offline(Y_anom, threshold = Inf, type = "univariate", 
-                                family = "gaussian", theta0 = 0)
-
-# With anomaly_intensity filtering: only strong signals are retained
-res_filtered <- focus_offline(Y_anom, threshold = Inf, type = "univariate", 
-                               family = "gaussian", theta0 = 0, 
-                               anomaly_intensity = 3)
-
-# Compare statistics
-par(mfrow = c(1, 2))
-plot(res_no_filter$stat, type = "l", main = "Without Anomaly Intensity Filtering",
-     xlab = "Time", ylab = "Statistic", lwd = 2)
-
-plot(res_filtered$stat, type = "l", main = "With Anomaly Intensity = 3",
-     xlab = "Time", ylab = "Statistic", lwd = 2)
-```
-
-![](generate_README_files/figure-commonmark/unnamed-chunk-7-2.png)
-
-``` r
-par(mfrow = c(1, 1))
-
-# Compare candidate counts
-cat("Candidates without filtering:", nrow(res_no_filter$candidates), "\n")
-```
-
-    Candidates without filtering: 18 
-
-``` r
-cat("Candidates with filtering (intensity = 3):", nrow(res_filtered$candidates), "\n")
-```
-
-    Candidates with filtering (intensity = 3): 2 
-
-``` r
-# Display some candidates from each
-cat("\nTop 5 candidates (no filtering):\n")
-```
-
-
-    Top 5 candidates (no filtering):
-
-``` r
-print(head(res_no_filter$candidates, 5))
-```
-
-       tau        st  side
-    1    0         0 right
-    2    2   -1.5943 right
-    3   10 -6.606584 right
-    4  510 -127.7429 right
-    5 1025 -230.4722 right
-
-``` r
-cat("\nTop 5 candidates (with intensity = 3):\n")
-```
-
-
-    Top 5 candidates (with intensity = 3):
-
-``` r
-print(head(res_filtered$candidates, 5))
-```
-
-       tau        st  side
-    1 1520 -194.4865 right
-    2 1520 -194.4865  left
-
-**Key points about `anomaly_intensity`:**
 
 - **Default behavior** (`anomaly_intensity = NULL`): All candidates are
   retained based on standard pruning rules.
@@ -558,7 +533,7 @@ system.time(
 ```
 
        user  system elapsed 
-      8.203   0.120   8.338 
+      9.827   0.145   9.971 
 
 ``` r
 # Low-dimensional projection approximation
@@ -571,7 +546,7 @@ system.time(
 ```
 
        user  system elapsed 
-      0.128   0.000   0.128 
+      0.162   0.000   0.162 
 
 ``` r
 # Verify similarity
@@ -605,7 +580,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.003 
+      0.004   0.000   0.003 
 
 ``` r
 plot(res_bern$stat, main = "Bernoulli (univariate): change in success probability")
@@ -626,7 +601,7 @@ system.time({
 ```
 
        user  system elapsed 
-       0.02    0.00    0.02 
+      0.026   0.000   0.026 
 
 ``` r
 plot(res_bern_multi$stat, main = "Bernoulli (multivariate): two streams")
@@ -651,7 +626,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.002 
+      0.003   0.000   0.003 
 
 ``` r
 plot(res_pois$stat, main = "Poisson: change in rate (lambda)")
@@ -683,7 +658,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.003   0.000   0.003 
+      0.004   0.000   0.004 
 
 ``` r
 plot(res_gamma$stat, main = "Gamma: change in scale (shape = 2)")
@@ -893,7 +868,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.146   0.000   0.145 
+      0.185   0.001   0.186 
 
 ``` r
 # Benchmark online mode
@@ -917,7 +892,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.344   0.000   0.344 
+      0.422   0.000   0.422 
 
 ``` r
 # Verify both produce identical results
@@ -933,7 +908,7 @@ speedup <- time_online["elapsed"] / time_offline["elapsed"]
 cat("Offline mode is", round(speedup, 1), "x faster\n")
 ```
 
-    Offline mode is 2.4 x faster
+    Offline mode is 2.3 x faster
 
 ## C++ Integration
 
