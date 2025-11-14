@@ -22,6 +22,9 @@
   - [Gamma Example](#gamma-example)
   - [Non-parametric Detection
     (NPFOCuS)](#non-parametric-detection-npfocus)
+- [Flexibility: Statistics Independent of Detector
+  Type](#flexibility-statistics-independent-of-detector-type)
+- [C++ Integration](#c-integration)
 - [Performance Comparison](#performance-comparison)
 - [References](#references)
 - [Authors and Contributors](#authors-and-contributors)
@@ -315,10 +318,10 @@ plt.show()
 
 ### Anomaly Detection and Intensity Filtering
 
-The `anomaly_intensity` parameter allows you to filter out weak signals
-and focus on stronger changes. This is useful when you want to ignore
-brief anomalies (epidemic changes) or transient deviations that don’t
-represent sustained changes in the data stream.
+The `anomaly_intensity` parameter focuses on detecting anomalies
+(epidemic changepoints) and more transient changes, while ignoring
+longer, less intense changes. This is particularly useful when we have
+an expected background rate, and we seek any deviations from it.
 
 When `anomaly_intensity` is set to a positive value, candidates are
 retained only if they show sufficient “signal intensity” — i.e., the
@@ -517,6 +520,94 @@ plt.show()
 
 ------------------------------------------------------------------------
 
+## Flexibility: Statistics Independent of Detector Type
+
+A key feature of the library is that the detector (how candidate
+segments are managed) is independent of the statistical model (how
+costs/statistics are computed). You can create a detector once, feed it
+data, and then compute different statistics (Gaussian, Poisson, etc.) on
+the same detector state.
+
+Example: simulate Poisson counts, update a univariate detector, and
+compare Gaussian vs Poisson statistics on the same detector state.
+
+``` python
+np.random.seed(2024)
+# Generate Poisson count data with a rate change
+Y_counts = np.concatenate([np.random.poisson(10, 500), np.random.poisson(15, 500)])
+
+# Create a univariate detector and update with all data
+det = Detector(type='univariate')
+for y in Y_counts:
+  det.update(y)
+
+# Compute statistics on the SAME detector state
+result_gaussian = det.get_statistics(family='gaussian')
+result_poisson = det.get_statistics(family='poisson', theta0=10)
+
+print('Using Gaussian statistic:')
+print('  Changepoint:', result_gaussian['changepoint'])
+print('  Statistic:', result_gaussian['stat'])
+print('\nUsing Poisson statistic (more appropriate for count data):')
+print('  Changepoint:', result_poisson['changepoint'])
+print('  Statistic:', result_poisson['stat'])
+
+# Full trajectories for comparison (offline mode is still faster)
+det2 = Detector(type='univariate')
+stat_gaussian = []
+stat_poisson = []
+for y in Y_counts:
+  det2.update(y)
+  stat_gaussian.append(det2.get_statistics(family='gaussian')['stat'])
+  stat_poisson.append(det2.get_statistics(family='poisson', theta0=10)['stat'])
+
+import matplotlib.pyplot as plt
+plt.figure(figsize=(10,4))
+plt.plot(stat_gaussian, label='Gaussian')
+plt.plot(stat_poisson, label='Poisson')
+plt.legend()
+plt.title('Gaussian vs Poisson statistics on same detector state')
+plt.show()
+```
+
+    Using Gaussian statistic:
+      Changepoint: 500
+      Statistic: 6922.160999999964
+
+    Using Poisson statistic (more appropriate for count data):
+      Changepoint: 500
+      Statistic: 557.7242432563144
+
+![](generate_README_python_files/figure-commonmark/cell-14-output-2.png)
+
+## C++ Integration
+
+If you wish to use the library entirely in C++ (for maximum speed or
+integration into other C++ projects), you can follow the same patterns
+used in the R and Python bindings. The core classes are `Info` (and
+derived classes), cost functions like `compute_costs_gaussian`, and the
+`ChangepointResult` structure.
+
+Example C++ usage:
+
+``` cpp
+#include "Info.h"
+#include "Costs.h"
+
+// Create detector
+auto info = std::make_shared<UnivariateInfo>();
+
+// Update with data
+for (const auto& y : data) {
+  info->update({y});
+  auto result = compute_costs_gaussian(*info, {theta0});
+  if (result.stat.value() > threshold) {
+    // Detection!
+    break;
+  }
+}
+```
+
 ## Performance Comparison
 
 ``` python
@@ -543,8 +634,8 @@ print(f"Online time:  {online_time:.2f}s")
 print(f"Offline is {online_time / offline_time:.1f}× faster")
 ```
 
-    Offline time: 0.25s
-    Online time:  0.39s
+    Offline time: 0.22s
+    Online time:  0.33s
     Offline is 1.5× faster
 
 ------------------------------------------------------------------------

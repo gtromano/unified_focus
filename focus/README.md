@@ -14,9 +14,9 @@
 - [Usage Examples](#usage-examples)
   - [Gaussian Univariate Detection](#gaussian-univariate-detection)
   - [One-sided Detection](#one-sided-detection)
+  - [Gaussian Multivariate Detection](#gaussian-multivariate-detection)
   - [Anomaly Detection and Intensity
     Filtering](#anomaly-detection-and-intensity-filtering)
-  - [Gaussian Multivariate Detection](#gaussian-multivariate-detection)
   - [Exponential family models](#exponential-family-models)
   - [Flexibility: Statistics Independent of Detector
     Type](#flexibility-statistics-independent-of-detector-type)
@@ -370,92 +370,6 @@ abline(h = 30, col = "red", lty = 2)
 par(mfrow = c(1, 1))
 ```
 
-### Anomaly Detection and Intensity Filtering
-
-The `anomaly_intensity` parameter allows you to filter out weak signals
-and focus on stronger changes. This is useful when you want to ignore
-brief anomalies (epidemic changes) or transient deviations that don’t
-represent sustained changes in the data stream.
-
-When `anomaly_intensity` is set to a positive value, candidates are
-retained only if they show sufficient “signal intensity” — i.e., the
-magnitude of the change relative to the segment length is at least
-`anomaly_intensity`. This filtering occurs during candidate pruning and
-helps reduce the number of spurious changepoints.
-
-The following example runs the detector sequentially, and flags an alarm
-whilist we’re in the anomalous period.
-
-``` r
-# Create synthetic data with brief anomalies
-set.seed(999)
-n <- 1000
-Y_anom <- c(
-  rnorm(n/2, mean = 0),
-  rnorm(10, mean = -3),      # Brief, weak anomaly
-  rnorm(n/2, mean = 0),
-  rnorm(10, mean = 5),      # Stronger brief anomaly
-  rnorm(n/2, mean = 0)
-)
-
-# Online (sequential) detection
-det <- detector_create(type = "univariate", anomaly_intensity = 2)
-threshold <- 20
-in_anom <- FALSE
-starts <- integer(0)
-ends <- integer(0)
-
-for (i in seq_along(Y_anom)) {
-  detector_update(det, Y_anom[i])
-  res <- get_statistics(det, family = "gaussian", theta0 = 0)
-  stat <- res$stat
-
-  # robustly handle NULL/NA
-  if (is.null(stat) || length(stat) == 0) stat <- 0
-
-  if (!in_anom && stat > threshold) {
-    in_anom <- TRUE
-    starts <- c(starts, res$changepoint)
-    cat("anomaly starting at", i, "\n")
-  }
-
-  if (in_anom && stat <= threshold) {
-    in_anom <- FALSE
-    ends <- c(ends, res$changepoint)
-    cat("anomaly ending at", i, "\n")
-  }
-}
-```
-
-    anomaly starting at 503 
-    anomaly ending at 513 
-    anomaly starting at 1011 
-    anomaly ending at 1037 
-
-``` r
-# If we were still in an anomaly at the end, close it
-if (in_anom) {
-  ends <- c(ends, length(Y_anom))
-  cat("anomaly ending at", length(Y_anom), "(end of series)", "\n")
-}
-
-# Plot the data and mark starts/ends
-plot(Y_anom, type = "l", main = "Data with Detected Anomalies",
-     xlab = "Time", ylab = "Value", lwd = 1.2)
-if (length(starts) > 0) abline(v = starts, col = "green", lty = 2)
-if (length(ends) > 0) abline(v = ends, col = "red", lty = 2)
-legend("topright", legend = c("est. anomaly start", "est. anomaly end"), col = c("green", "red"), lty = 2)
-```
-
-![](generate_README_files/figure-commonmark/unnamed-chunk-7-1.png)
-
-- **Default behavior** (`anomaly_intensity = NULL`): All candidates are
-  retained based on standard pruning rules.
-- **When set to a positive value**: Candidates are filtered based on the
-  infinity norm of the signal-to-length ratio. A candidate survives only
-  if at least one dimension has a signal magnitude ≥
-  `anomaly_intensity`.
-
 ### Gaussian Multivariate Detection
 
 For vector-valued observations:
@@ -504,7 +418,7 @@ legend("topleft",
        col = c("red", "blue", "green"), lty = c(2, 2, 3), lwd = 2)
 ```
 
-![](generate_README_files/figure-commonmark/unnamed-chunk-8-1.png)
+![](generate_README_files/figure-commonmark/unnamed-chunk-7-1.png)
 
 **Note:** When you have more than 5 dimensions, computing the convex
 hull can become quite slow and you may not prune many points. A
@@ -533,7 +447,7 @@ system.time(
 ```
 
        user  system elapsed 
-      9.827   0.145   9.971 
+      8.145   0.108   8.254 
 
 ``` r
 # Low-dimensional projection approximation
@@ -546,7 +460,7 @@ system.time(
 ```
 
        user  system elapsed 
-      0.162   0.000   0.162 
+      0.129   0.000   0.129 
 
 ``` r
 # Verify similarity
@@ -554,6 +468,102 @@ all.equal(res_multi$stat, res_multi_approx$stat)
 ```
 
     [1] "Mean relative difference: 0.003782673"
+
+### Anomaly Detection and Intensity Filtering
+
+The `anomaly_intensity` parameter focuses on detecting anomalies
+(epidemic changepoints) and more transient changes, while ignoring
+longer, less intense changes. This is particularly useful when we have
+an expected background rate, and we seek any deviations from it.
+
+When `anomaly_intensity` is set to a positive value, candidates are
+retained only if they show sufficient “signal intensity” — i.e., the
+magnitude of the change relative to the segment length is at least
+`anomaly_intensity`. This filtering occurs during candidate pruning and
+helps reduce the number of spurious changepoints.
+
+The following example runs the detector sequentially, and flags an alarm
+whilist we’re in the anomalous period.
+
+``` r
+# Create synthetic data with brief anomalies
+set.seed(999)
+n <- 1000
+Y_anom <- c(
+  rnorm(n/2, mean = 0),
+  rnorm(10, mean = -3),      # Brief, weak anomaly
+  rnorm(n/2, mean = 0),
+  rnorm(10, mean = 5),      # Stronger brief anomaly
+  rnorm(n/2, mean = 0)
+)
+
+# Online (sequential) detection
+det <- detector_create(type = "univariate", anomaly_intensity = 2)
+threshold <- 20
+in_anom <- FALSE
+starts <- integer(0)
+ends <- integer(0)
+
+stat_trace <- numeric(length(Y_anom))
+
+for (i in seq_along(Y_anom)) {
+  detector_update(det, Y_anom[i])
+  res <- get_statistics(det, family = "gaussian", theta0 = 0)
+  stat <- res$stat
+  stat_trace[i] <- stat
+
+  # robustly handle NULL/NA
+  if (is.null(stat) || length(stat) == 0) stat <- 0
+
+  if (!in_anom && stat > threshold) {
+    in_anom <- TRUE
+    starts <- c(starts, res$changepoint)
+    cat("anomaly starting at", i, "\n")
+  }
+
+  if (in_anom && stat <= threshold) {
+    in_anom <- FALSE
+    ends <- c(ends, res$changepoint)
+    cat("anomaly ending at", i, "\n")
+  }
+}
+```
+
+    anomaly starting at 503 
+    anomaly ending at 513 
+    anomaly starting at 1011 
+    anomaly ending at 1037 
+
+``` r
+# If we were still in an anomaly at the end, close it
+if (in_anom) {
+  ends <- c(ends, length(Y_anom))
+  cat("anomaly ending at", length(Y_anom), "(end of series)", "\n")
+}
+
+# Plot the data and mark starts/ends
+par(mfrow = c(2, 1))
+plot(Y_anom, type = "l", main = "Data with Detected Anomalies",
+     xlab = "Time", ylab = "Value", lwd = 1.2)
+if (length(starts) > 0) abline(v = starts, col = "green", lty = 2)
+if (length(ends) > 0) abline(v = ends, col = "red", lty = 2)
+legend("topright", legend = c("an. start", "an. end"), col = c("green", "red"), lty = 2)
+plot(stat_trace, type = "l", main = "Statistics Trace",
+     xlab = "Time", ylab = "Statistic", lwd = 2)
+```
+
+![](generate_README_files/figure-commonmark/unnamed-chunk-9-1.png)
+
+``` r
+par(mfrow = c(2, 1))
+```
+
+- **Default behavior** (`anomaly_intensity = NULL`): All candidates are
+  retained based on standard pruning rules.
+- **When set to a positive value**: Candidates are filtered based on the
+  infinity norm of the signal-to-length ratio. A candidate survives only
+  if at least one dimension has a signal magnitude ≥
+  `anomaly_intensity`.
 
 ### Exponential family models
 
@@ -580,7 +590,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.004   0.000   0.003 
+      0.002   0.000   0.003 
 
 ``` r
 plot(res_bern$stat, main = "Bernoulli (univariate): change in success probability")
@@ -601,7 +611,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.026   0.000   0.026 
+      0.020   0.000   0.019 
 
 ``` r
 plot(res_bern_multi$stat, main = "Bernoulli (multivariate): two streams")
@@ -626,7 +636,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.003   0.000   0.003 
+      0.003   0.000   0.002 
 
 ``` r
 plot(res_pois$stat, main = "Poisson: change in rate (lambda)")
@@ -658,7 +668,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.004   0.000   0.004 
+      0.003   0.000   0.002 
 
 ``` r
 plot(res_gamma$stat, main = "Gamma: change in scale (shape = 2)")
@@ -868,7 +878,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.185   0.001   0.186 
+      0.147   0.000   0.147 
 
 ``` r
 # Benchmark online mode
@@ -892,7 +902,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.422   0.000   0.422 
+      0.345   0.000   0.344 
 
 ``` r
 # Verify both produce identical results

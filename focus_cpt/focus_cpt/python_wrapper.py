@@ -22,37 +22,64 @@ except ImportError:
 
 
 class Detector:
-    """
-    Online (sequential) changepoint detector.
+    """Online (sequential) changepoint detector.
 
-    Provides a step-by-step interface to the FOCuS algorithm.
-    Each `update()` call adds new data, and `get_statistics()` computes
-    the current test statistic and detection result.
+    A thin, Pythonic wrapper around the compiled FOCuS C++ detector. Use this
+    class to run the online (sequential) detector: call ``update(y)`` for new
+    observation(s) and ``get_statistics(...)`` to compute the current test
+    statistic and (optional) detection result.
 
     Parameters
     ----------
     type : str
-        One of {"univariate", "univariate_one_sided", "multivariate", "npfocus"}.
+        Detector type; one of:
+        - ``"univariate"``: two-sided univariate detection
+        - ``"univariate_one_sided"``: one-sided univariate detection
+        - ``"multivariate"``: multivariate detection using projection sets
+        - ``"npfocus"``: nonparametric NP-FOCuS detector (requires ``quantiles``)
     dim_indexes : list of array-like, optional
-        Projection index sets for multivariate detectors.
+        For ``type='multivariate'``, a list of index arrays (0-based) giving
+        which dimensions to use for each projection. See
+        :func:`generate_projection_indexes` for a helper to build these.
     quantiles : array-like, optional
-        Quantiles for nonparametric ("npfocus") detectors.
-    pruning_mult, pruning_offset : int, optional
-        Candidate pruning parameters (default: 2, 1).
-    side : str, optional
-        For one-sided detectors, "right" (increases) or "left" (decreases).
+        For ``type='npfocus'`` this numeric vector of quantiles is required.
+    pruning_mult : int, default 2
+        Candidate pruning multiplier (controls how aggressively candidates are pruned).
+    pruning_offset : int, default 1
+        Candidate pruning offset.
+    side : str, default 'right'
+        For one-sided univariate detectors: ``'right'`` (detect increases) or
+        ``'left'`` (detect decreases).
     anomaly_intensity : float, optional
-        Anomaly intensity threshold for pruning candidates. Only candidates with
-        sufficient signal magnitude are retained. Default is None (disabled).
+        Optional anomaly intensity threshold used to discard candidate
+        segments with too-small signal magnitude. ``None`` (default) disables
+        this behaviour.
+
+    Notes
+    -----
+    The Python API mirrors the R bindings and the underlying C++ behaviour.
+    Multivariate detection with many dimensions can be approximated by using
+    projections (subsets of dimensions) supplied via ``dim_indexes``.
 
     Examples
     --------
-    >>> det = Detector(type="univariate")
+    >>> # Simple univariate online usage
+    >>> det = Detector(type='univariate')
     >>> for y in [0.1, 0.2, 2.5]:
     ...     det.update(y)
-    ...     res = det.get_statistics(family="gaussian")
-    ...     if res["stat"] > 20:
-    ...         print("Detection:", res)
+    ...     r = det.get_statistics(family='gaussian')
+    ...     if r['stat'] is not None and r['stat'] > 20:
+    ...         print('Detection at', r['stopping_time'], 'cp=', r['changepoint'])
+
+    >>> # Multivariate detector with projection sets
+    >>> proj = generate_projection_indexes(D=3, p=2)
+    >>> det_mv = Detector(type='multivariate', dim_indexes=proj)
+    >>> det_mv.update([0.5, 1.2, -0.3])
+
+    >>> # Nonparametric NP-FOCuS (quantiles required)
+    >>> import numpy as np
+    >>> quants = np.percentile(np.random.randn(1000), [25, 50, 75])
+    >>> det_np = Detector(type='npfocus', quantiles=quants)
     """
 
     def __init__(
@@ -101,31 +128,41 @@ class Detector:
         theta0: Optional[Union[float, List[float], np.ndarray]] = None,
         shape: Optional[float] = None,
     ) -> Dict[str, Any]:
-        """
-        Compute current changepoint statistic.
+        """Compute the current changepoint statistic.
 
         Parameters
         ----------
         family : str
-            Distribution family:
-            - 'gaussian': Gaussian (normal) distribution
-            - 'poisson': Poisson distribution
-            - 'bernoulli': Bernoulli (binary) distribution
-            - 'gamma': Gamma distribution (requires `shape` parameter)
-            - 'npfocus': Nonparametric detection
+            Distribution family. Supported values:
+            - ``'gaussian'``: Gaussian (normal) log-likelihood ratio
+            - ``'poisson'``: Poisson cost
+            - ``'bernoulli'``: Bernoulli (binary) cost
+            - ``'gamma'``: Gamma cost (requires positive ``shape``)
+            - ``'npfocus'``: Nonparametric NP-FOCuS (only valid when the detector
+              was created with ``type='npfocus'`` and ``quantiles`` provided)
         theta0 : float, list, or array, optional
-            Null hypothesis parameter. For univariate: scalar.
-            For multivariate: vector matching dimension.
+            Null-hypothesis parameter(s). For univariate detectors supply a
+            scalar; for multivariate detectors supply a vector matching the
+            number of dimensions.
         shape : float, optional
-            Shape parameter for gamma distribution. Required if family='gamma'.
-        
+            Shape parameter for the gamma family. Must be provided and
+            positive when ``family=='gamma'``; otherwise it is ignored.
+
         Returns
         -------
         dict
-            Dictionary with keys:
-            - 'stopping_time': int, current time index
-            - 'changepoint': int or None, detected changepoint location
-            - 'stat': float or array, test statistic(s)
+            A dictionary with keys:
+            - ``'stopping_time'``: int, number of observations processed
+            - ``'changepoint'``: int or ``None``, detected changepoint location (1-based), or ``None``
+            - ``'stat'``: float or numpy array, the computed test statistic(s)
+
+        Notes
+        -----
+        - When ``family=='gamma'`` a positive ``shape`` must be supplied.
+        - For ``family=='npfocus'`` the detector must have been created with
+          ``type='npfocus'`` and given ``quantiles``; NP-FOCuS returns two
+          statistics (sum and max across quantiles) for which the returned
+          ``'stat'`` can be an array.
         """
         if theta0 is not None:
             theta0 = np.atleast_1d(np.asarray(theta0, dtype=np.float64))
@@ -149,7 +186,12 @@ class Detector:
         return self._detector.get_n()
 
     def get_sn(self) -> np.ndarray:
-        """Return the current cumulative sum statistic."""
+        """Return the current cumulative-sum statistic.
+
+        For univariate detectors this will be a length-1 array; for multivariate
+        detectors it returns an array of length equal to the number of
+        dimensions.
+        """
         return self._detector.get_sn()
 
     def get_candidates(self) -> Dict[str, Any]:
@@ -177,7 +219,7 @@ class Detector:
 
 def generate_projection_indexes(D: int, p: int) -> List[np.ndarray]:
     """
-    Generate projection index sets for high-dimentional multivariate detectors.
+    Generate projection index sets for high-dimensional multivariate detectors.
 
     Parameters
     ----------
@@ -190,6 +232,12 @@ def generate_projection_indexes(D: int, p: int) -> List[np.ndarray]:
     -------
     list of arrays
         Circular combinations of indices.
+    
+    Examples
+    --------
+    >>> # 2-dim projections from 5 dimensions
+    >>> generate_projection_indexes(D=5, p=2)
+    [array([0,1]), array([1,2]), array([2,3]), array([3,4]), array([4,0])]
     """
     return _focus.generate_projection_indexes(D, p)
 
@@ -242,6 +290,12 @@ def focus_offline(
         Anomaly intensity threshold for pruning candidates. Only candidates with
         sufficient signal magnitude are retained. Default is None (disabled).
     
+        Notes
+        -----
+        - For multivariate data the detector computes a statistic per projection.
+            Detection occurs when any statistic exceeds its corresponding threshold.
+        - If ``quantiles`` are provided but ``type!='npfocus'``, a ``ValueError``
+            is raised.
     Returns
     -------
     dict
