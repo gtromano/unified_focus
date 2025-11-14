@@ -109,7 +109,7 @@ private:
 
   void compact_if_needed() {
     // If we're about to exceed capacity, compact the array
-    if (k_ >= candidates_.size()) {
+    if (k_ >= candidates_.size() && left_ > 0) {
       size_t active_count = k_ - left_;
       for (size_t i = 0; i < active_count; ++i) {
         candidates_[i] = candidates_[left_ + i];
