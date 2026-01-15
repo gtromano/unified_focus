@@ -60,7 +60,6 @@ if(NOT Qhull_FOUND)
             "  Ubuntu/Debian: sudo apt-get install libqhull-dev\n"
             "  Fedora/RHEL:   sudo dnf install qhull-devel\n"
             "  macOS:         brew install qhull\n"
-            "  Conda:         conda install -c conda-forge qhull"
         )
     endif()
 else()
