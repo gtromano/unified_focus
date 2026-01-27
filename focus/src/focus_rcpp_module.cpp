@@ -16,6 +16,8 @@
 #include "Costs.h"
 #include "NonparametricInfo.h"
 #include "CostsNonparametric.h"
+#include "ARpInfo.h"
+#include "CostsArp.h"
 
 using namespace Rcpp;
 using namespace changepoint;
@@ -124,7 +126,9 @@ SEXP detector_create(std::string type,
                      int pruning_mult = 2,
                      int pruning_offset = 1,
                      std::string side = "right",
-                     Nullable<NumericVector> anomaly_intensity = R_NilValue) {
+                     Nullable<NumericVector> anomaly_intensity = R_NilValue,
+                     Nullable<NumericVector> rho = R_NilValue,
+                     bool known_prechange = false) {
   using namespace changepoint;
 
   std::shared_ptr<Info> cs;
@@ -205,8 +209,21 @@ SEXP detector_create(std::string type,
     // NonparametricInfo constructor
     cs = std::make_shared<NonparametricInfo>(quants);
 
+  } else if (type == "arp") {
+    // ARP (AutoRegressive Process) detector: require rho vector
+    if (rho.isNull()) {
+      stop("type == 'arp' requires a NumericVector `rho` argument (AR coefficients).");
+    }
+    NumericVector rv(rho.get());
+    if (rv.size() < 1) stop("`rho` must be a NumericVector of length >= 1 (AR order p)");
+
+    std::vector<double> rho_vec = as<std::vector<double>>(rv);
+
+    // ARpInfo constructor
+    cs = std::make_shared<ARpInfo>(rho_vec, known_prechange);
+
   } else {
-    stop("type must be one of: 'multivariate', 'univariate', 'univariate_one_sided', 'npfocus'");
+    stop("type must be one of: 'multivariate', 'univariate', 'univariate_one_sided', 'npfocus', 'arp'");
   }
 
   // ---- Return Info pointer ----
@@ -431,8 +448,11 @@ List get_statistics(SEXP info_ptr,
   } else if (family == "npfocus") {
     // typed npfocus wrapper will check the Info type and throw if mismatch
     result = compute_costs_npfocus(cs, theta0_vec);
+  } else if (family == "arp") {
+    // typed arp wrapper will check the Info type and throw if mismatch
+    result = compute_costs_arp(cs, theta0_vec);
   } else {
-    stop("Unknown family: must be 'gaussian', 'poisson', 'bernoulli', 'gamma' or 'npfocus'");
+    stop("Unknown family: must be 'gaussian', 'poisson', 'bernoulli', 'gamma', 'npfocus' or 'arp'");
   }
 
   // ---- Convert to R list ----
