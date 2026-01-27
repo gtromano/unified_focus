@@ -70,7 +70,7 @@ struct State; // forward-declare struct if defined later
 
 State init_state(double first_value);
 
-void focus_arp_one_iter_cpp(const std::vector<double>& series,
+void focus_arp_one_iter_cpp(double x_new,
                             int i,
                             State& st,
                             const std::vector<double>& rho,
@@ -610,7 +610,7 @@ struct State {
   int    cpt     = -1;
 };
 
-void focus_arp_one_iter_cpp(const std::vector<double>& series,
+void focus_arp_one_iter_cpp(double x_new,
                             int i,
                             State& st,
                             const std::vector<double>& rho,
@@ -620,7 +620,6 @@ void focus_arp_one_iter_cpp(const std::vector<double>& series,
                             bool known_prechange,
                             bool right_side) {
   // Append new observation to buffer
-  const double x_new = series[i - 1];
   st.buf.push_back(x_new);
   if ((int)st.buf.size() > buf_max) {
     st.buf_sum_offset += st.buf.front();
@@ -661,12 +660,19 @@ void focus_arp_one_iter_cpp(const std::vector<double>& series,
     }
 
     // Build S_tau for tau = 1
+    // At i == p+2, buf contains observations 0..p+1 (p+2 elements)
     std::vector<double> S_tau; S_tau.reserve(2 * p + 1);
     for (int z = 0; z < p; ++z) S_tau.push_back(0.0);
-    for (int k = 0; k <= p; ++k) {
-      double s = 0.0;
-      for (int t = 0; t <= k; ++t) s += series[t];
-      S_tau.push_back(s);
+    
+    // Build partial sums from buf[0] to buf[p]
+    double cumsum = 0.0;
+    for (int k = 0; k <= p && k < (int)st.buf.size(); ++k) {
+      cumsum += st.buf[k];
+      S_tau.push_back(cumsum);
+    }
+    // If buffer is shorter than expected, pad with last value
+    while ((int)S_tau.size() < 2 * p + 1) {
+      S_tau.push_back(cumsum);
     }
 
     Triple triple_1(1, S_tau);
@@ -678,8 +684,11 @@ void focus_arp_one_iter_cpp(const std::vector<double>& series,
     st.triples.clear();
     st.triples.push_back(triple_1);
 
+    // Compute and store S_n_1 (cumulative sum from 0 to p)
     st.S_n_1 = 0.0;
-    for (int t = 0; t <= p; ++t) st.S_n_1 += series[t];
+    for (int t = 0; t <= p && t < (int)st.buf.size(); ++t) {
+      st.S_n_1 += st.buf[t];
+    }
 
     enter_recursion = true;
   }
@@ -700,18 +709,18 @@ void focus_arp_one_iter_cpp(const std::vector<double>& series,
       lag_vec.assign(p, 0.0);
     }
 
-    double y_next_n = series[i - 1] - dot_vec(rho, lag_vec);
+    double y_next_n = x_new - dot_vec(rho, lag_vec);
 
     if (!known_prechange) {
       st.sum_square += y_next_n * y_next_n;
       st.S_n_1 = Q_n_mu_arp_unified(st.triples, st.buf, st.buf_start, st.buf_sum_offset,
-                                         series[i - 1], i, st.S_n_1, rho,
+                                         x_new, i, st.S_n_1, rho,
                                          known_prechange, st.sum_square, st.y_start,
                                          right_side);
       st.triples = coef_update_arp(st.triples, rho, y_next_n, known_prechange);
     } else {
       st.S_n_1 = Q_n_mu_arp_unified(st.triples, st.buf, st.buf_start, st.buf_sum_offset,
-                                         series[i - 1], i, st.S_n_1, rho,
+                                         x_new, i, st.S_n_1, rho,
                                          known_prechange, 0.0, std::vector<double>(),
                                          right_side);
       st.triples = coef_update_arp(st.triples, rho, y_next_n, known_prechange);
@@ -762,13 +771,12 @@ struct ARpStates {
   State left_pos;
   State right_neg;
   State left_neg;
-  std::vector<double> data_neg;  // Negative version of the data
 };
 
 namespace changepoint {
 
 // Implementation function called from ARpInfo::update
-void arp_detector_update_impl(const std::vector<double>& series,
+void arp_detector_update_impl(double obs,
                                const std::vector<double>& rho,
                                int p,
                                int buf_max,
@@ -782,32 +790,21 @@ void arp_detector_update_impl(const std::vector<double>& series,
   // Initialize opaque_states on first call (when n == 2)
   if (!opaque_states) {
     ARpStates* arp_states = new ARpStates();
-    arp_states->right_pos = init_state(series[0]);
-    arp_states->left_pos  = init_state(series[0]);
-    
-    // Prepare negative data from series
-    arp_states->data_neg.assign(series.begin(), series.end());
-    for (double &v : arp_states->data_neg) v = -v;
-    
-    arp_states->right_neg = init_state(arp_states->data_neg[0]);
-    arp_states->left_neg  = init_state(arp_states->data_neg[0]);
+    arp_states->right_pos = init_state(0.0);  // Will get first real value shortly
+    arp_states->left_pos  = init_state(0.0);
+    arp_states->right_neg = init_state(0.0);
+    arp_states->left_neg  = init_state(0.0);
     
     opaque_states = static_cast<void*>(arp_states);
   }
   
   ARpStates* arp_states = static_cast<ARpStates*>(opaque_states);
   
-  // Ensure data_neg is kept in sync with negative of series
-  if (arp_states->data_neg.size() != series.size()) {
-    arp_states->data_neg.assign(series.begin(), series.end());
-    for (double &v : arp_states->data_neg) v = -v;
-  }
-  
-  // Update all four states using the full series (allows index access needed by focus_arp_one_iter_cpp)
-  focus_arp_one_iter_cpp(series, i, arp_states->right_pos, rho, p, n, buf_max, known_prechange, true);
-  focus_arp_one_iter_cpp(series, i, arp_states->left_pos,  rho, p, n, buf_max, known_prechange, false);
-  focus_arp_one_iter_cpp(arp_states->data_neg, i, arp_states->right_neg, rho, p, n, buf_max, known_prechange, true);
-  focus_arp_one_iter_cpp(arp_states->data_neg, i, arp_states->left_neg,  rho, p, n, buf_max, known_prechange, false);
+  // Update all four states using the current observation
+  focus_arp_one_iter_cpp(obs, i, arp_states->right_pos, rho, p, n, buf_max, known_prechange, true);
+  focus_arp_one_iter_cpp(obs, i, arp_states->left_pos,  rho, p, n, buf_max, known_prechange, false);
+  focus_arp_one_iter_cpp(-obs, i, arp_states->right_neg, rho, p, n, buf_max, known_prechange, true);
+  focus_arp_one_iter_cpp(-obs, i, arp_states->left_neg,  rho, p, n, buf_max, known_prechange, false);
   
   // Take max among all four states
   const double max_vals[4] = {
@@ -884,13 +881,16 @@ Rcpp::List Focus_arp_rcpp(Rcpp::NumericVector data_point_rcpp,
   std::vector<double> stat_history;
 
   while (no_detect && i <= n) {
+    double x_pos = data_point[i - 1];
+    double x_neg = data_neg[i - 1];
+    
     // Positive updates
-    focus_arp_one_iter_cpp(data_point, i, state_right_pos, rho, p, n, buf_max, known_prechange, true);
-    focus_arp_one_iter_cpp(data_point, i, state_left_pos,  rho, p, n, buf_max, known_prechange, false);
+    focus_arp_one_iter_cpp(x_pos, i, state_right_pos, rho, p, n, buf_max, known_prechange, true);
+    focus_arp_one_iter_cpp(x_pos, i, state_left_pos,  rho, p, n, buf_max, known_prechange, false);
 
     // Negative updates
-    focus_arp_one_iter_cpp(data_neg,   i, state_right_neg, rho, p, n, buf_max, known_prechange, true);
-    focus_arp_one_iter_cpp(data_neg,   i, state_left_neg,  rho, p, n, buf_max, known_prechange, false);
+    focus_arp_one_iter_cpp(x_neg, i, state_right_neg, rho, p, n, buf_max, known_prechange, true);
+    focus_arp_one_iter_cpp(x_neg, i, state_left_neg,  rho, p, n, buf_max, known_prechange, false);
 
     // // print the max_vals for debugging to output
     // Rcout << "i=" << i << ": "
@@ -990,13 +990,15 @@ Rcpp::List Focus_arp_rcpp_up_only(Rcpp::NumericVector data_point_rcpp,
   std::vector<double> stat_history;
 
   while (no_detect && i <= n) {
-    // Positive updates
-    focus_arp_one_iter_cpp(data_point, i, state_right_pos, rho, p, n, buf_max, known_prechange, true);
-    //focus_arp_one_iter_cpp(data_point, i, state_left_pos,  rho, p, n, buf_max, known_prechange, false);
+    double x_pos = data_point[i - 1];
+    
+    // Positive updates (up-only)
+    focus_arp_one_iter_cpp(x_pos, i, state_right_pos, rho, p, n, buf_max, known_prechange, true);
+    //focus_arp_one_iter_cpp(x_pos, i, state_left_pos,  rho, p, n, buf_max, known_prechange, false);
 
-    // Negative updates
-    //focus_arp_one_iter_cpp(data_neg,   i, state_right_neg, rho, p, n, buf_max, known_prechange, true);
-    //focus_arp_one_iter_cpp(data_neg,   i, state_left_neg,  rho, p, n, buf_max, known_prechange, false);
+    // Negative updates (disabled for up-only)
+    //focus_arp_one_iter_cpp(x_neg, i, state_right_neg, rho, p, n, buf_max, known_prechange, true);
+    //focus_arp_one_iter_cpp(x_neg, i, state_left_neg,  rho, p, n, buf_max, known_prechange, false);
 
     // // print the max_vals for debugging to output
     // Rcout << "i=" << i << ": "

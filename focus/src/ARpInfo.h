@@ -21,7 +21,7 @@ namespace changepoint {
 
 // Forward declaration from focus_ARp.cpp
 // This function will be implemented in focus_ARp.cpp and handles the actual state updates
-void arp_detector_update_impl(const std::vector<double>& series,
+void arp_detector_update_impl(double obs,
                                const std::vector<double>& rho,
                                int p,
                                int buf_max,
@@ -69,17 +69,14 @@ public:
     }
 
     double obs = y[0];
-    series_.push_back(obs);
-    n_ = (int)series_.size();
+    n_ = n_ + 1;
     cumsum_ += obs;
     
     // Update is only meaningful after the first observation
     if (n_ >= 2) {
       // Call the implementation function to update all four states
-      // Note: The underlying focus_arp_one_iter_cpp function requires indexing into the full
-      // historical series, which means O(n) memory complexity. For true streaming with O(p)
-      // memory, the algorithm would need deeper refactoring to avoid index-based lookups.
-      changepoint::arp_detector_update_impl(series_, rho_, p_, buf_max_,
+      // Now passes only the current observation, buffer is maintained internally in States
+      changepoint::arp_detector_update_impl(obs, rho_, p_, buf_max_,
                                              known_prechange_, n_,
                                              opaque_states_,
                                              max_stat_, cpt_);
@@ -114,7 +111,6 @@ private:
 
   // Data
   double cumsum_;                 // Cumulative sum of all observations
-  std::vector<double> series_;    // Full series data (needed for focus_arp_one_iter_cpp index access)
   
   // Dummy candidates (required by interface but not used for ARP)
   mutable std::vector<Candidate> dummy_candidates_;
