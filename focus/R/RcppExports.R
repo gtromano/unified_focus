@@ -22,6 +22,7 @@ Focus_arp_rcpp_up_only <- function(data_point_rcpp, rho_rcpp, lambda, pre_change
 #'     \item \code{"univariate_one_sided"}: One-sided univariate detection
 #'     \item \code{"multivariate"}: Multivariate detection with projections
 #'     \item \code{"npfocus"}: Nonparametric detection (NP-FOCuS). See details.
+#'     \item \code{"arp"}: AutoRegressive Process detection. Requires \code{rho} parameter.
 #'   }
 #' @param dim_indexes List of integer vectors specifying projection index sets
 #'   for high-dimensional multivariate detectors. Not required for sequences of dimentions less than 5.
@@ -39,6 +40,12 @@ Focus_arp_rcpp_up_only <- function(data_point_rcpp, rho_rcpp, lambda, pre_change
 #' @param anomaly_intensity Numeric scalar. Anomaly intensity threshold for
 #'   pruning candidates. Only candidates with sufficient signal magnitude are
 #'   retained. Default is \code{NULL} (disabled).
+#' @param rho Numeric vector. AR coefficients for AutoRegressive Process (ARP)
+#'   detectors. Required when \code{type = "arp"}. Default is \code{NULL}.
+#' @param mu0_arp Numeric scalar. Pre-change mean for ARP detectors (optional).
+#'   When provided, enables more efficient pruning by filtering candidates based on
+#'   the known pre-change parameter. Only used when \code{type = "arp"}.
+#'   Default is \code{NULL}.
 #'
 #' @return An external pointer (SEXP) to the detector object. This should be
 #'   passed to other detector functions like \code{\link{detector_update}()} and
@@ -48,6 +55,15 @@ Focus_arp_rcpp_up_only <- function(data_point_rcpp, rho_rcpp, lambda, pre_change
 #' The detector maintains sufficient statistics internally and uses pruning
 #' to efficiently track candidate changepoints. The \code{pruning_mult} and
 #' \code{pruning_offset} parameters control the pruning strategy.
+#'
+#' AutoRegressive Process (ARP):
+#' When \code{type = "arp"}, the \code{rho} parameter must be provided as a numeric
+#' vector of AR coefficients (lag-1, lag-2, ..., lag-p). The detector then computes
+#' statistics optimal for detecting changepoints in AR(p) processes. Use
+#' \code{get_statistics(family = "arp")} to retrieve the test statistics.
+#' The optional \code{theta0} parameter specifies the pre-change mean and is tied
+#' to the pruning logic: if provided, it enables more efficient pruning by allowing
+#' the algorithm to filter candidates based on the known pre-change parameter.
 #'
 #' High-dimentional multivariate detectors:
 #' For high-dimensional multivariate detection, computing the full hull would be too prohibitive.
@@ -102,8 +118,8 @@ Focus_arp_rcpp_up_only <- function(data_point_rcpp, rho_rcpp, lambda, pre_change
 #' }
 #'
 #' @export
-detector_create <- function(type, dim_indexes = NULL, quantiles = NULL, pruning_mult = 2L, pruning_offset = 1L, side = "right", anomaly_intensity = NULL, rho = NULL, known_prechange = FALSE) {
-    .Call(`_focus_detector_create`, type, dim_indexes, quantiles, pruning_mult, pruning_offset, side, anomaly_intensity, rho, known_prechange)
+detector_create <- function(type, dim_indexes = NULL, quantiles = NULL, pruning_mult = 2L, pruning_offset = 1L, side = "right", anomaly_intensity = NULL, rho = NULL, mu0_arp = NULL) {
+    .Call(`_focus_detector_create`, type, dim_indexes, quantiles, pruning_mult, pruning_offset, side, anomaly_intensity, rho, mu0_arp)
 }
 
 #' Update detector with new observation(s)
@@ -174,6 +190,7 @@ detector_update <- function(info_ptr, y) {
 #'     \item \code{"bernoulli"}: Bernoulli (binary) distribution
 #'     \item \code{"gamma"}: Gamma distribution (requires \code{shape} parameter)
 #'     \item \code{"npfocus"}: Nonparametric detection (see details)
+#'     \item \code{"arp"}: AutoRegressive Process detection (requires detector created with \code{type = "arp"})
 #'   }
 #' @param theta0 Numeric vector specifying the null hypothesis parameter.
 #'   For univariate detectors: scalar (length-1 vector).
@@ -198,7 +215,6 @@ detector_update <- function(info_ptr, y) {
 #' location). The statistic is typically compared against a threshold to
 #' determine if a changepoint should be declared.
 #'
-#'
 #' Gamma family:
 #' When \code{family = "gamma"} a positive \code{shape} parameter must
 #' be provided; otherwise an error is raised. Passing \code{shape} for a
@@ -210,6 +226,14 @@ detector_update <- function(info_ptr, y) {
 #'   The \code{quantiles} vector argument is required. NPFOCuS returns two
 #' statistics (sum and max over quantiles) as a vector; in the offline interface
 #' \code{stat} will be a matrix with two columns.
+#'
+#' AutoRegressive Process (ARP):
+#' For ARP detection, use \code{family = "arp"} with a detector created via
+#' \code{detector_create(type = "arp", rho = ...)}. The AR coefficients (rho)
+#' are already built into the detector at creation time. The optional \code{theta0}
+#' parameter specifies the pre-change mean (if known) and is used for pruning logic;
+#' if not provided (\code{NULL}), pruning operates without this information.
+#' Returns a scalar test statistic optimized for detecting changepoints in AR processes.
 #'
 #' @examples
 #' \dontrun{
@@ -430,6 +454,11 @@ generate_projection_indexes <- function(D, p) {
 #' @param anomaly_intensity Numeric scalar. Anomaly intensity threshold for
 #'   pruning candidates. Only candidates with sufficient signal magnitude are
 #'   retained. Default is \code{NULL} (disabled).
+#' @param rho Numeric vector. AR coefficients for AutoRegressive Process (ARP)
+#'   detectors. Required when \code{type = "arp"}. Default is \code{NULL}.
+#' @param mu0_arp Numeric scalar. Pre-change mean for ARP detectors (optional). 
+#'   Only used when \code{type = "arp"}.
+#'   Default is \code{NULL}.
 #'
 #' @return A list with components:
 #'   \item{stat}{Numeric matrix. Test statistics over time (n_obs × n_stats).
@@ -488,7 +517,7 @@ generate_projection_indexes <- function(D, p) {
 #' }
 #'
 #' @export
-focus_offline <- function(Y, threshold, type = "univariate", family = "gaussian", theta0 = NULL, dim_indexes = NULL, quantiles = NULL, pruning_mult = 2L, pruning_offset = 1L, side = "right", shape = NULL, anomaly_intensity = NULL) {
-    .Call(`_focus_focus_offline`, Y, threshold, type, family, theta0, dim_indexes, quantiles, pruning_mult, pruning_offset, side, shape, anomaly_intensity)
+focus_offline <- function(Y, threshold, type = "univariate", family = "gaussian", theta0 = NULL, dim_indexes = NULL, quantiles = NULL, pruning_mult = 2L, pruning_offset = 1L, side = "right", shape = NULL, anomaly_intensity = NULL, rho = NULL, mu0_arp = NULL) {
+    .Call(`_focus_focus_offline`, Y, threshold, type, family, theta0, dim_indexes, quantiles, pruning_mult, pruning_offset, side, shape, anomaly_intensity, rho, mu0_arp)
 }
 

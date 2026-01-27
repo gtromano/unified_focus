@@ -787,17 +787,22 @@ void arp_detector_update_impl(double obs,
                                int& out_cpt) {
   int i = n;  // Current iteration index
   
-  // Initialize opaque_states on first call (when n == 2)
+  // Initialize opaque_states on first call (when n == 1)
   if (!opaque_states) {
     ARpStates* arp_states = new ARpStates();
-    arp_states->right_pos = init_state(0.0);  // Will get first real value shortly
-    arp_states->left_pos  = init_state(0.0);
-    arp_states->right_neg = init_state(0.0);
-    arp_states->left_neg  = init_state(0.0);
+    arp_states->right_pos = init_state(obs);  // Initialize with first observation
+    arp_states->left_pos  = init_state(obs);
+    arp_states->right_neg = init_state(-obs);
+    arp_states->left_neg  = init_state(-obs);
     
     opaque_states = static_cast<void*>(arp_states);
+    // Return the initial stat (-1.0) to match offline behavior
+    out_max_stat = -1.0;
+    out_cpt = -1;
+    return;
   }
   
+  // Update and compute stats starting from n >= 2
   ARpStates* arp_states = static_cast<ARpStates*>(opaque_states);
   
   // Update all four states using the current observation

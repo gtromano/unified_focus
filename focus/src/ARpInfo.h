@@ -72,15 +72,11 @@ public:
     n_ = n_ + 1;
     cumsum_ += obs;
     
-    // Update is only meaningful after the first observation
-    if (n_ >= 2) {
-      // Call the implementation function to update all four states
-      // Now passes only the current observation, buffer is maintained internally in States
-      changepoint::arp_detector_update_impl(obs, rho_, p_, buf_max_,
-                                             known_prechange_, n_,
-                                             opaque_states_,
-                                             max_stat_, cpt_);
-    }
+    // Call implementation for all observations starting from n==1
+    changepoint::arp_detector_update_impl(obs, rho_, p_, buf_max_,
+                                           known_prechange_, n_,
+                                           opaque_states_,
+                                           max_stat_, cpt_);
 
     // Sync parent sn_ with cumulative sum
     sn_.assign(1, cumsum_);

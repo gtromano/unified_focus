@@ -13,7 +13,7 @@ detector_create(
   side = "right",
   anomaly_intensity = NULL,
   rho = NULL,
-  known_prechange = FALSE
+  mu0_arp = NULL
 )
 }
 \arguments{
@@ -23,6 +23,7 @@ detector_create(
   \item \code{"univariate_one_sided"}: One-sided univariate detection
   \item \code{"multivariate"}: Multivariate detection with projections
   \item \code{"npfocus"}: Nonparametric detection (NP-FOCuS). See details.
+  \item \code{"arp"}: AutoRegressive Process detection. Requires \code{rho} parameter.
 }}
 
 \item{dim_indexes}{List of integer vectors specifying projection index sets
@@ -46,6 +47,14 @@ Default is 1.}
 \item{anomaly_intensity}{Numeric scalar. Anomaly intensity threshold for
 pruning candidates. Only candidates with sufficient signal magnitude are
 retained. Default is \code{NULL} (disabled).}
+
+\item{rho}{Numeric vector. AR coefficients for AutoRegressive Process (ARP)
+detectors. Required when \code{type = "arp"}. Default is \code{NULL}.}
+
+\item{mu0_arp}{Numeric scalar. Pre-change mean for ARP detectors (optional).
+When provided, enables more efficient pruning by filtering candidates based on
+the known pre-change parameter. Only used when \code{type = "arp"}.
+Default is \code{NULL}.}
 }
 \value{
 An external pointer (SEXP) to the detector object. This should be
@@ -62,6 +71,15 @@ the current test statistic and detection result.
 The detector maintains sufficient statistics internally and uses pruning
 to efficiently track candidate changepoints. The \code{pruning_mult} and
 \code{pruning_offset} parameters control the pruning strategy.
+
+AutoRegressive Process (ARP):
+When \code{type = "arp"}, the \code{rho} parameter must be provided as a numeric
+vector of AR coefficients (lag-1, lag-2, ..., lag-p). The detector then computes
+statistics optimal for detecting changepoints in AR(p) processes. Use
+\code{get_statistics(family = "arp")} to retrieve the test statistics.
+The optional \code{theta0} parameter specifies the pre-change mean and is tied
+to the pruning logic: if provided, it enables more efficient pruning by allowing
+the algorithm to filter candidates based on the known pre-change parameter.
 
 High-dimentional multivariate detectors:
 For high-dimensional multivariate detection, computing the full hull would be too prohibitive.

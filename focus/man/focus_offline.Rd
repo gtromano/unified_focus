@@ -16,7 +16,9 @@ focus_offline(
   pruning_offset = 1L,
   side = "right",
   shape = NULL,
-  anomaly_intensity = NULL
+  anomaly_intensity = NULL,
+  rho = NULL,
+  mu0_arp = NULL
 )
 }
 \arguments{
@@ -59,6 +61,13 @@ Default is \code{NULL}.}
 \item{anomaly_intensity}{Numeric scalar. Anomaly intensity threshold for
 pruning candidates. Only candidates with sufficient signal magnitude are
 retained. Default is \code{NULL} (disabled).}
+
+\item{rho}{Numeric vector. AR coefficients for AutoRegressive Process (ARP)
+detectors. Required when \code{type = "arp"}. Default is \code{NULL}.}
+
+\item{mu0_arp}{Numeric scalar. Pre-change mean for ARP detectors (optional). 
+Only used when \code{type = "arp"}.
+Default is \code{NULL}.}
 }
 \value{
 A list with components:

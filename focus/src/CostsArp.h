@@ -34,20 +34,20 @@ inline ChangepointResult compute_costs_arp_typed(const ARpInfo& arp_info) {
   double stat = arp_info.max_stat();
   int cpt = arp_info.cpt();
   
-  if (stat < 0.0 || cpt < 0) {
-    out.stat = std::nullopt;
-    out.changepoint = std::nullopt;
-  } else {
-    out.stat = stat;
-    out.changepoint = cpt;
-  }
+  out.stat = stat;
+  out.changepoint = (cpt < 0) ? std::nullopt : std::optional<int>(cpt);
   
   return out;
 }
 
 // Wrapper matching the generic CostFunction signature that enforces the typed input.
+// NOTE: theta0 parameter passed here is actually mu0_arp (pre-change mean for ARP).
+// It is used by the pruning logic: if provided at detector creation time via mu0_arp,
+// it enables more efficient candidate filtering. Unlike gaussian/poisson/bernoulli
+// families which use theta0 for null hypothesis parameters, ARP's pre-change parameter
+// is tied to pruning and specified at detector creation time as mu0_arp.
 inline ChangepointResult compute_costs_arp(const Info& cs,
-                                           const std::vector<double>& /* theta0 unused */) {
+                                           const std::vector<double>& /* theta0/mu0_arp unused */) {
   const ARpInfo* arp = dynamic_cast<const ARpInfo*>(&cs);
   if (!arp) {
     throw std::invalid_argument("compute_costs_arp: Info must be an ARpInfo (use family='arp').");
