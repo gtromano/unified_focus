@@ -11,7 +11,9 @@ detector_create(
   pruning_mult = 2L,
   pruning_offset = 1L,
   side = "right",
-  anomaly_intensity = NULL
+  anomaly_intensity = NULL,
+  rho = NULL,
+  known_prechange = FALSE
 )
 }
 \arguments{

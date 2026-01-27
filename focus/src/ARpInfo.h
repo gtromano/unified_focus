@@ -21,11 +21,12 @@ namespace changepoint {
 
 // Forward declaration from focus_ARp.cpp
 // This function will be implemented in focus_ARp.cpp and handles the actual state updates
-void arp_detector_update_impl(std::vector<double>& series,
+void arp_detector_update_impl(const std::vector<double>& series,
                                const std::vector<double>& rho,
                                int p,
                                int buf_max,
                                bool known_prechange,
+                               int n,
                                void*& opaque_states,  // Opaque pointer to hold the four State objects
                                double& out_max_stat,
                                int& out_cpt);
@@ -45,9 +46,8 @@ public:
       buf_max_(std::max(2 * p_, p_ + 1)),
       max_stat_(-1.0),
       cpt_(-1),
-      series_(),
+      cumsum_(0.0),
       opaque_states_(nullptr) {
-    series_.reserve(1000); // Pre-allocate some space
   }
 
   virtual ~ARpInfo() {
@@ -71,21 +71,22 @@ public:
     double obs = y[0];
     series_.push_back(obs);
     n_ = (int)series_.size();
-
+    cumsum_ += obs;
+    
     // Update is only meaningful after the first observation
     if (n_ >= 2) {
       // Call the implementation function to update all four states
+      // Note: The underlying focus_arp_one_iter_cpp function requires indexing into the full
+      // historical series, which means O(n) memory complexity. For true streaming with O(p)
+      // memory, the algorithm would need deeper refactoring to avoid index-based lookups.
       changepoint::arp_detector_update_impl(series_, rho_, p_, buf_max_,
-                                             known_prechange_,
+                                             known_prechange_, n_,
                                              opaque_states_,
                                              max_stat_, cpt_);
     }
 
-    // Sync parent sn_ with sum of series
-    sn_.assign(1, 0.0);
-    for (double v : series_) {
-      sn_[0] += v;
-    }
+    // Sync parent sn_ with cumulative sum
+    sn_.assign(1, cumsum_);
   }
 
   // candidates: Return dummy candidates (actual computation in cost function)
@@ -112,8 +113,9 @@ private:
   int cpt_;                       // Corresponding changepoint
 
   // Data
-  std::vector<double> series_;    // Full time series collected so far
-
+  double cumsum_;                 // Cumulative sum of all observations
+  std::vector<double> series_;    // Full series data (needed for focus_arp_one_iter_cpp index access)
+  
   // Dummy candidates (required by interface but not used for ARP)
   mutable std::vector<Candidate> dummy_candidates_;
 

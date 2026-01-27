@@ -768,15 +768,15 @@ struct ARpStates {
 namespace changepoint {
 
 // Implementation function called from ARpInfo::update
-void arp_detector_update_impl(std::vector<double>& series,
+void arp_detector_update_impl(const std::vector<double>& series,
                                const std::vector<double>& rho,
                                int p,
                                int buf_max,
                                bool known_prechange,
+                               int n,
                                void*& opaque_states,
                                double& out_max_stat,
                                int& out_cpt) {
-  int n = (int)series.size();
   int i = n;  // Current iteration index
   
   // Initialize opaque_states on first call (when n == 2)
@@ -785,7 +785,7 @@ void arp_detector_update_impl(std::vector<double>& series,
     arp_states->right_pos = init_state(series[0]);
     arp_states->left_pos  = init_state(series[0]);
     
-    // Prepare negative data
+    // Prepare negative data from series
     arp_states->data_neg.assign(series.begin(), series.end());
     for (double &v : arp_states->data_neg) v = -v;
     
@@ -803,7 +803,7 @@ void arp_detector_update_impl(std::vector<double>& series,
     for (double &v : arp_states->data_neg) v = -v;
   }
   
-  // Update all four states
+  // Update all four states using the full series (allows index access needed by focus_arp_one_iter_cpp)
   focus_arp_one_iter_cpp(series, i, arp_states->right_pos, rho, p, n, buf_max, known_prechange, true);
   focus_arp_one_iter_cpp(series, i, arp_states->left_pos,  rho, p, n, buf_max, known_prechange, false);
   focus_arp_one_iter_cpp(arp_states->data_neg, i, arp_states->right_neg, rho, p, n, buf_max, known_prechange, true);
