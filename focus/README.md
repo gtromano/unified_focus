@@ -449,7 +449,7 @@ system.time(
 ```
 
        user  system elapsed 
-      8.135   0.103   8.240 
+      8.554   0.108   8.663 
 
 ``` r
 # Low-dimensional projection approximation
@@ -592,7 +592,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.003   0.000   0.003 
+      0.003   0.000   0.002 
 
 ``` r
 plot(res_bern$stat, main = "Bernoulli (univariate): change in success probability")
@@ -670,7 +670,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.003   0.000   0.002 
+      0.003   0.000   0.003 
 
 ``` r
 plot(res_gamma$stat, main = "Gamma: change in scale (shape = 2)")
@@ -883,7 +883,7 @@ rho_est <- ar_model$ar  # Estimated AR coefficients
 # Run offline ARP detection
 res <- focus_offline(
   Y = Y,
-  threshold = Inf,
+  threshold = 15,
   type = "arp",
   rho = rho_est
 )
@@ -897,27 +897,27 @@ abline(v = n_pre, col = "red", lty = 2, lwd = 2)  # True changepoint
 plot(res$stat[, 1], type = "l", main = "ARP Detection Statistic",
      xlab = "Time", ylab = "Statistic", lwd = 2)
 abline(h = res$threshold, col = "blue", lty = 2)
+if (!is.null(res$detection_time)) {
+  abline(v = res$detection_time, col = "red", lty = 2, lwd = 2)
+}
 ```
 
 ![](generate_README_files/figure-commonmark/unnamed-chunk-17-1.png)
 
 ``` r
-if (!is.null(res$detection_time)) {
-  abline(v = res$detection_time, col = "red", lty = 2, lwd = 2)
-}
 par(mfrow = c(1, 1))
 
 # Show detection results
 cat("Detection time:", res$detection_time, "\n")
 ```
 
-    Detection time: 
+    Detection time: 504 
 
 ``` r
 cat("Estimated changepoint:", res$detected_changepoint, "\n")
 ```
 
-    Estimated changepoint: 
+    Estimated changepoint: 500 
 
 ``` r
 cat("True changepoint:", n_pre, "\n")
@@ -974,7 +974,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.151   0.003   0.149 
+      0.159   0.021   0.155 
 
 ``` r
 # Benchmark online mode
@@ -998,7 +998,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.338   0.000   0.338 
+      0.337   0.000   0.338 
 
 ``` r
 # Verify both produce identical results
@@ -1014,7 +1014,7 @@ speedup <- time_online["elapsed"] / time_offline["elapsed"]
 cat("Offline mode is", round(speedup, 1), "x faster\n")
 ```
 
-    Offline mode is 2.3 x faster
+    Offline mode is 2.2 x faster
 
 ## C++ Integration
 

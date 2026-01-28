@@ -613,7 +613,7 @@ rho_est <- ar_model$ar  # Estimated AR coefficients
 # Run offline ARP detection
 res <- focus_offline(
   Y = Y,
-  threshold = Inf,
+  threshold = 20,
   type = "arp",
   rho = rho_est
 )
@@ -652,6 +652,14 @@ for (i in seq_along(Y)) {
   detector_update(det, Y[i])
   result <- get_statistics(det, family = "arp")
   stat_trace[i] <- result$stat
+
+  if (result$stat > 20) {
+    cat("Detection at time", i, "with changepoint estimate τ =", result$changepoint, "\n")
+    stat_trace <- stat_trace[1:i]  # trucate the trace
+    break
+  }    
+    
+
 }
 
 # Plot results
