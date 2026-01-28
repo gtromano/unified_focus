@@ -10,34 +10,6 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// Focus_arp_rcpp
-Rcpp::List Focus_arp_rcpp(Rcpp::NumericVector data_point_rcpp, Rcpp::NumericVector rho_rcpp, double lambda, Rcpp::Nullable<Rcpp::NumericVector> pre_change_mean);
-RcppExport SEXP _focus_Focus_arp_rcpp(SEXP data_point_rcppSEXP, SEXP rho_rcppSEXP, SEXP lambdaSEXP, SEXP pre_change_meanSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type data_point_rcpp(data_point_rcppSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type rho_rcpp(rho_rcppSEXP);
-    Rcpp::traits::input_parameter< double >::type lambda(lambdaSEXP);
-    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type pre_change_mean(pre_change_meanSEXP);
-    rcpp_result_gen = Rcpp::wrap(Focus_arp_rcpp(data_point_rcpp, rho_rcpp, lambda, pre_change_mean));
-    return rcpp_result_gen;
-END_RCPP
-}
-// Focus_arp_rcpp_up_only
-Rcpp::List Focus_arp_rcpp_up_only(Rcpp::NumericVector data_point_rcpp, Rcpp::NumericVector rho_rcpp, double lambda, Rcpp::Nullable<Rcpp::NumericVector> pre_change_mean);
-RcppExport SEXP _focus_Focus_arp_rcpp_up_only(SEXP data_point_rcppSEXP, SEXP rho_rcppSEXP, SEXP lambdaSEXP, SEXP pre_change_meanSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type data_point_rcpp(data_point_rcppSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type rho_rcpp(rho_rcppSEXP);
-    Rcpp::traits::input_parameter< double >::type lambda(lambdaSEXP);
-    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type pre_change_mean(pre_change_meanSEXP);
-    rcpp_result_gen = Rcpp::wrap(Focus_arp_rcpp_up_only(data_point_rcpp, rho_rcpp, lambda, pre_change_mean));
-    return rcpp_result_gen;
-END_RCPP
-}
 // detector_create
 SEXP detector_create(std::string type, Nullable<List> dim_indexes, Nullable<NumericVector> quantiles, int pruning_mult, int pruning_offset, std::string side, Nullable<NumericVector> anomaly_intensity, Nullable<NumericVector> rho, Nullable<NumericVector> mu0_arp);
 RcppExport SEXP _focus_detector_create(SEXP typeSEXP, SEXP dim_indexesSEXP, SEXP quantilesSEXP, SEXP pruning_multSEXP, SEXP pruning_offsetSEXP, SEXP sideSEXP, SEXP anomaly_intensitySEXP, SEXP rhoSEXP, SEXP mu0_arpSEXP) {
@@ -165,8 +137,6 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_focus_Focus_arp_rcpp", (DL_FUNC) &_focus_Focus_arp_rcpp, 4},
-    {"_focus_Focus_arp_rcpp_up_only", (DL_FUNC) &_focus_Focus_arp_rcpp_up_only, 4},
     {"_focus_detector_create", (DL_FUNC) &_focus_detector_create, 9},
     {"_focus_detector_update", (DL_FUNC) &_focus_detector_update, 2},
     {"_focus_get_statistics", (DL_FUNC) &_focus_get_statistics, 4},

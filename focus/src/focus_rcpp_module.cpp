@@ -864,6 +864,10 @@ List focus_offline(SEXP Y,
     stop("`quantiles` parameter provided but will be ignored unless type == \"npfocus\".");
   }
 
+  // Auto-set family to "arp" when type == "arp"
+  if (type == "arp" && family == "gaussian") {
+    family = "arp";
+  }
 
   // Warning for ARP: if both theta0 and mu0_arp are specified, or one is missing
   if (type == "arp" && (!theta0.isNull() || !mu0_arp.isNull())) {
@@ -1040,6 +1044,14 @@ List focus_offline(SEXP Y,
     }
   }
 
+  // For ARP, remove the first observation (initialization only, no stat computed)
+  if (type == "arp" && !stats_per_time.empty()) {
+    stats_per_time.erase(stats_per_time.begin());
+    changepoints.erase(changepoints.begin());
+    actual_length--;
+    if (detection_time != NA_INTEGER) detection_time--;
+  }
+
   // ---- Convert stats to matrix ----
   NumericMatrix stat_mat(actual_length, n_stats);
   for (int t = 0; t < actual_length; ++t) {
@@ -1051,13 +1063,22 @@ List focus_offline(SEXP Y,
   // ---- Convert changepoints to R vector ----
   IntegerVector changepoint_vec = wrap(changepoints);
 
+  // ---- Get candidates ----
+  // For ARP, skip candidates extraction since it doesn't use the candidate structure
+  List candidates_list;
+  if (type == "arp") {
+    candidates_list = List::create();  // Empty list
+  } else {
+    candidates_list = detector_candidates(detector_ptr);
+  }
+
   // ---- Return results ----
   return List::create(
     Named("stat") = stat_mat,
     Named("changepoint") = changepoint_vec,
     Named("detection_time") = detection_time == NA_INTEGER ? R_NilValue : wrap(detection_time),
     Named("detected_changepoint") = detected_changepoint == NA_INTEGER ? R_NilValue : wrap(detected_changepoint),
-    Named("candidates") = detector_candidates(detector_ptr),
+    Named("candidates") = candidates_list,
     Named("threshold") = wrap(threshold_vec),
     Named("n") = actual_length,
     Named("type") = type,

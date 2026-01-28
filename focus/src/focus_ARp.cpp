@@ -841,7 +841,7 @@ void cleanup_arp_states(void* opaque_states) {
 
 } // namespace changepoint
 
-// [[Rcpp::export]]
+// old offline version
 Rcpp::List Focus_arp_rcpp(Rcpp::NumericVector data_point_rcpp,
                           Rcpp::NumericVector rho_rcpp,
                           double lambda,
@@ -950,7 +950,7 @@ Rcpp::List Focus_arp_rcpp(Rcpp::NumericVector data_point_rcpp,
   );
 }
 
-// [[Rcpp::export]]
+// old constrained offline version
 Rcpp::List Focus_arp_rcpp_up_only(Rcpp::NumericVector data_point_rcpp,
                           Rcpp::NumericVector rho_rcpp,
                           double lambda,
