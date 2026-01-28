@@ -590,6 +590,75 @@ det <- det |>
 det |> get_statistics(family="npfocus")
 ```
 
+### AutoRegressive Process (ARP) changepoint detection
+
+The library also supports changepoint detection in AutoRegressive (AR) processes. This is useful for detecting changes in the mean of AR(p) processes while accounting for the temporal dependencies. The AR coefficients can be specified (or estimated from data). As in the iid cases, the pre-change mean can be provided if known, however this has to be done when creating the detector (as the parameter is necessary for pruning logic).
+
+```{r}
+set.seed(123)
+
+# Generate AR(2) process with changepoint
+n_pre <- 500
+n_post <- 500
+ar_coefs <- c(0.7, -0.3)  # AR(2) coefficients
+
+Y_pre <- arima.sim(n = n_pre, model = list(ar = ar_coefs), sd = 1)
+Y_post <- 2 + arima.sim(n = n_post, model = list(ar = ar_coefs), sd = 1)
+Y <- c(Y_pre, Y_post)
+
+# Estimate AR parameters from pre-change data (in practice, use historical data)
+ar_model <- ar(arima.sim(n = 300, model = list(ar = ar_coefs), sd = 1), order.max = 2, method = "mle")
+rho_est <- ar_model$ar  # Estimated AR coefficients
+
+# Run offline ARP detection
+res <- focus_offline(
+  Y = Y,
+  threshold = Inf,
+  type = "arp",
+  rho = rho_est
+)
+
+# Plot results
+par(mfrow = c(2, 1))
+plot(Y, type = "l", main = "AR(2) Process with Mean Shift",
+     xlab = "Time", ylab = "Value")
+abline(v = n_pre, col = "red", lty = 2, lwd = 2)  # True changepoint
+
+plot(res$stat[, 1], type = "l", main = "ARP Detection Statistic",
+     xlab = "Time", ylab = "Statistic", lwd = 2)
+abline(h = res$threshold, col = "blue", lty = 2)
+if (!is.null(res$detection_time)) {
+  abline(v = res$detection_time, col = "red", lty = 2, lwd = 2)
+}
+par(mfrow = c(1, 1))
+
+# Show detection results
+cat("Detection time:", res$detection_time, "\n")
+cat("Estimated changepoint:", res$detected_changepoint, "\n")
+cat("True changepoint:", n_pre, "\n")
+```
+
+And in the online setting:
+
+```{r}
+set.seed(123)
+
+# Create online ARP detector
+det <- detector_create("arp", rho = rho_est)
+
+stat_trace <- numeric(length(Y))
+
+for (i in seq_along(Y)) {
+  detector_update(det, Y[i])
+  result <- get_statistics(det, family = "arp")
+  stat_trace[i] <- result$stat
+}
+
+# Plot results
+plot(stat_trace, type = "l", main = "Online ARP Detection Statistic", 
+     xlab = "Time", ylab = "Statistic", lwd = 2)
+```
+
 ## Performance Comparison: Offline vs Online
 
 Here's a direct runtime comparison between offline and online modes on the same data:
