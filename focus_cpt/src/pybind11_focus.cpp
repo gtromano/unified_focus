@@ -8,6 +8,8 @@
 #include "Costs.h"
 #include "NonparametricInfo.h"
 #include "CostsNonparametric.h"
+#include "ARpInfo.h"
+#include "CostsArp.h"
 
 namespace py = pybind11;
 using namespace changepoint;
@@ -25,12 +27,19 @@ public:
              int pruning_mult = 2,
              int pruning_offset = 1,
              const std::string& side = "right",
-             const py::object& anomaly_intensity = py::none())
+             const py::object& anomaly_intensity = py::none(),
+             const py::object& rho = py::none(),
+             const py::object& mu0_arp = py::none())
         : type_(type) {
         
         // Warn if quantiles provided but not npfocus
         if (!quantiles.is_none() && type != "npfocus") {
             py::print("Warning: `quantiles` parameter provided but will be ignored unless type == 'npfocus'");
+        }
+        
+        // Warn if rho provided but not arp
+        if (!rho.is_none() && type != "arp") {
+            py::print("Warning: `rho` parameter provided but will be ignored unless type == 'arp'");
         }
         
         // Parse anomaly_intensity (scalar)
@@ -102,9 +111,32 @@ public:
             
             info_ = std::make_shared<NonparametricInfo>(quants);
             
+        } else if (type == "arp") {
+            // ARP (AutoRegressive Process) detector: requires rho vector
+            if (rho.is_none()) {
+                throw std::invalid_argument("type == 'arp' requires a `rho` argument (AR coefficients).");
+            }
+            
+            py::array_t<double> rv = rho.cast<py::array_t<double>>();
+            auto buf = rv.request();
+            if (buf.size < 1) {
+                throw std::invalid_argument("`rho` must be a non-empty array (AR order p >= 1)");
+            }
+            
+            std::vector<double> rho_vec(static_cast<size_t>(buf.size));
+            double* ptr = static_cast<double*>(buf.ptr);
+            for (ssize_t i = 0; i < buf.size; ++i) {
+                rho_vec[i] = ptr[i];
+            }
+            
+            // Determine known_prechange based on whether mu0_arp is provided
+            bool known_prechange = !mu0_arp.is_none();
+            
+            info_ = std::make_shared<ARpInfo>(rho_vec, known_prechange);
+            
         } else {
             throw std::invalid_argument(
-                "type must be one of: 'multivariate', 'univariate', 'univariate_one_sided', 'npfocus'"
+                "type must be one of: 'multivariate', 'univariate', 'univariate_one_sided', 'npfocus', 'arp'"
             );
         }
     }
@@ -158,6 +190,11 @@ public:
             }
         }
         
+        // Warn if theta0 provided for ARP
+        if (!theta0.is_none() && family == "arp") {
+            py::print("Warning: For ARP detection, the pre-change mean should be specified at detector creation time (mu0_arp parameter), not as theta0 in get_statistics. The theta0 parameter is ignored for ARP family.");
+        }
+        
         // Compute costs
         ChangepointResult result;
         
@@ -171,9 +208,11 @@ public:
             result = compute_costs_gamma(*info_, theta0_vec, shape_scalar);
         } else if (family == "npfocus") {
             result = compute_costs_npfocus(*info_, theta0_vec);
+        } else if (family == "arp") {
+            result = compute_costs_arp(*info_, theta0_vec);
         } else {
             throw std::invalid_argument(
-                "Unknown family: must be 'gaussian', 'poisson', 'bernoulli', 'gamma' or 'npfocus'"
+                "Unknown family: must be 'gaussian', 'poisson', 'bernoulli', 'gamma', 'npfocus', or 'arp'"
             );
         }
         
@@ -276,7 +315,9 @@ py::dict focus_offline(const py::array_t<double>& Y,
                       int pruning_offset = 1,
                       const std::string& side = "right",
                       const py::object& shape = py::none(),
-                      const py::object& anomaly_intensity = py::none()) {
+                      const py::object& anomaly_intensity = py::none(),
+                      const py::object& rho = py::none(),
+                      const py::object& mu0_arp = py::none()) {
     
     // Parse input data Y
     auto Y_buf = Y.request();
@@ -336,9 +377,14 @@ py::dict focus_offline(const py::array_t<double>& Y,
     if (!quantiles.is_none() && type != "npfocus") {
         throw std::invalid_argument("`quantiles` parameter provided but will be ignored unless type == 'npfocus'");
     }
+
+    // Warn if rho provided for non-arp
+    if (!rho.is_none() && type != "arp") {
+        throw std::invalid_argument("`rho` parameter provided but will be ignored unless type == 'arp'");
+    }
     
     // Create detector
-    Detector detector(type, dim_indexes, quantiles, pruning_mult, pruning_offset, side, anomaly_intensity);
+    Detector detector(type, dim_indexes, quantiles, pruning_mult, pruning_offset, side, anomaly_intensity, rho, mu0_arp);
     
     // Parse theta0
     std::vector<double> theta0_vec;
@@ -389,8 +435,10 @@ py::dict focus_offline(const py::array_t<double>& Y,
         };
     } else if (family == "npfocus") {
         cost_fn = compute_costs_npfocus;
+    } else if (family == "arp") {
+        cost_fn = compute_costs_arp;
     } else {
-        throw std::invalid_argument("Unknown family: must be 'gaussian', 'poisson', 'bernoulli', 'gamma' or 'npfocus'");
+        throw std::invalid_argument("Unknown family: must be 'gaussian', 'poisson', 'bernoulli', 'gamma', 'npfocus' or 'arp'");
     }
     
     // Prepare containers
@@ -535,7 +583,7 @@ PYBIND11_MODULE(_focus, m) {
     m.doc() = "FOCuS (Focusing on Candidate Segments) changepoint detection library";
     
     py::class_<Detector>(m, "Detector")
-        .def(py::init<const std::string&, const py::object&, const py::object&, int, int, const std::string&, const py::object&>(),
+        .def(py::init<const std::string&, const py::object&, const py::object&, int, int, const std::string&, const py::object&, const py::object&, const py::object&>(),
              py::arg("type"),
              py::arg("dim_indexes") = py::none(),
              py::arg("quantiles") = py::none(),
@@ -543,13 +591,15 @@ PYBIND11_MODULE(_focus, m) {
              py::arg("pruning_offset") = 1,
              py::arg("side") = "right",
              py::arg("anomaly_intensity") = py::none(),
+             py::arg("rho") = py::none(),
+             py::arg("mu0_arp") = py::none(),
              R"pbdoc(
                 Create a new changepoint detector.
                 
                 Parameters
                 ----------
                 type : str
-                    Type of detector: 'multivariate', 'univariate', 'univariate_one_sided', or 'npfocus'
+                    Type of detector: 'multivariate', 'univariate', 'univariate_one_sided', 'npfocus', or 'arp'
                 dim_indexes : list of arrays, optional
                     For multivariate: list of dimension index arrays for projections
                 quantiles : array, optional
@@ -563,6 +613,11 @@ PYBIND11_MODULE(_focus, m) {
                 anomaly_intensity : float, optional
                     Anomaly intensity threshold for pruning candidates. Only candidates with
                     sufficient signal magnitude are retained. Default is None (disabled).
+                rho : array, optional
+                    For arp: AR coefficients (lag-1, lag-2, ..., lag-p)
+                mu0_arp : float, optional
+                    For arp: Pre-change mean for ARP detector. When provided, enables more efficient
+                    pruning based on the known pre-change parameter. Default is None (disabled).
              )pbdoc")
         .def("update", &Detector::update, py::arg("y"),
              "Update detector with new observation(s)")
@@ -576,9 +631,9 @@ PYBIND11_MODULE(_focus, m) {
                 Parameters
                 ----------
                 family : str
-                    Distribution family: 'gaussian', 'poisson', 'bernoulli', 'gamma', or 'npfocus'
+                    Distribution family: 'gaussian', 'poisson', 'bernoulli', 'gamma', 'npfocus', or 'arp'
                 theta0 : array, optional
-                    Null hypothesis parameter
+                    Null hypothesis parameter (not used for 'arp' family)
                 shape : float, optional
                     Shape parameter for gamma distribution
                 
@@ -615,6 +670,8 @@ PYBIND11_MODULE(_focus, m) {
           py::arg("side") = "right",
           py::arg("shape") = py::none(),
           py::arg("anomaly_intensity") = py::none(),
+          py::arg("rho") = py::none(),
+          py::arg("mu0_arp") = py::none(),
           R"pbdoc(
             Run complete offline changepoint detection.
             
@@ -645,6 +702,10 @@ PYBIND11_MODULE(_focus, m) {
             anomaly_intensity : float, optional
                 Anomaly intensity threshold for pruning candidates. Only candidates with
                 sufficient signal magnitude are retained. Default is None (disabled).
+            rho : array, optional
+                AR coefficients for arp detector
+            mu0_arp : float, optional
+                Pre-change mean for arp detector
             
             Returns
             -------

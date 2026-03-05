@@ -117,12 +117,14 @@ Both modes yield the same statistical results. The offline mode is typically **t
   - `threshold`: Detection threshold(s). Can be:
     - Scalar: Single threshold applied to all statistics
     - Vector: (In case of multiple values returned per statistics, see Notes below)
-  - `type`: One of `"univariate"`, `"univariate_one_sided"`, `"multivariate"`, or `"npfocus"`
-  - `family`: Distribution family - `"gaussian"`, `"poisson"`, `"bernoulli"`, `"gamma"`, or `"npfocus"`
+  - `type`: One of `"univariate"`, `"univariate_one_sided"`, `"multivariate"`, `"npfocus"`, or `"arp"`
+  - `family`: Distribution family - `"gaussian"`, `"poisson"`, `"bernoulli"`, `"gamma"`, `"npfocus"`, or `"arp"`
   - `theta0`: (Optional) Baseline parameter vector for cost computation
   - `shape`: (Optional) Shape parameter for `family = "gamma"` (required for gamma)
   - `dim_indexes`: (Optional) List of dimension index vectors for multivariate projections
   - `quantiles`: (Optional) Quantile vector for `type = "npfocus"`
+  - `rho`: (Optional) AR coefficients array for `type = "arp"`
+  - `mu0_arp`: (Optional) Pre-change mean for `type = "arp"`
   - `pruning_mult`, `pruning_offset`: Pruning parameters (default: 2, 1)
   - `side`: Pruning side - `"right"` or `"left"` (default: `"right"`)
   - Returns: dict-like object with `stat` (2D numpy array where each row is a time and each column is a statistic), `changepoint`, `detection_time`, `detected_changepoint`, `candidates`, `threshold`, `n`, `type`, `family`, and `shape` (if gamma)
@@ -131,9 +133,11 @@ Both modes yield the same statistical results. The offline mode is typically **t
 
 - **`Detector(type, ...)`**  
   Create a new online detector object. Returns a Detector instance.
-  - `type`: One of `"univariate"`, `"univariate_one_sided"`, `"multivariate"`, or `"npfocus"`
+  - `type`: One of `"univariate"`, `"univariate_one_sided"`, `"multivariate"`, `"npfocus"`, or `"arp"`
   - `dim_indexes`: (Optional) List of dimension index vectors for multivariate projections
   - `quantiles`: (Optional) Quantile vector for `type = "npfocus"`
+  - `rho`: (Optional) AR coefficients array for `type = "arp"`
+  - `mu0_arp`: (Optional) Pre-change mean for `type = "arp"`
   - `pruning_mult`, `pruning_offset`: Pruning parameters (default: 2, 1)
   - `side`: Pruning side - `"right"` or `"left"` (default: `"right"`)
 
@@ -410,6 +414,93 @@ plt.subplot(3, 1, 3)
 plt.plot(res["stat"][:, 1])
 plt.title("NPFOCuS Statistic (max)")
 plt.tight_layout()
+plt.show()
+```
+
+---
+
+### AutoRegressive Process (ARP) changepoint detection
+
+The library also supports changepoint detection in AutoRegressive (AR) processes. This is useful for detecting changes in the mean of AR(p) processes while accounting for the temporal dependencies. The AR coefficients can be specified (or estimated from data). As in the iid cases, the pre-change mean can be provided if known, however this has to be done when creating the detector (as the parameter is necessary for pruning logic).
+
+```{python}
+np.random.seed(123)
+from statsmodels.tsa.arima_process import ArmaProcess
+
+# Generate AR(2) process with changepoint
+n_pre = 500
+n_post = 500
+ar_coefs = np.array([0.7, -0.3])  # AR(2) coefficients
+
+# Create AR(2) process
+ar_process = ArmaProcess(np.concatenate([np.array([1]), -ar_coefs]), [1])
+
+Y_pre = ar_process.generate_sample(nsample=n_pre)
+Y_post = 2 + ar_process.generate_sample(nsample=n_post)
+Y = np.concatenate([Y_pre, Y_post])
+
+# Estimate AR parameters from pre-change data (in practice, use historical data)
+from statsmodels.tsa.ar_model import AutoReg
+ar_model = AutoReg(ar_process.generate_sample(nsample=300), lags=2).fit()
+rho_est = ar_model.params[1:]  # Estimated AR coefficients
+
+# Run offline ARP detection
+res = focus_offline(
+    Y=Y,
+    threshold=20,
+    type="arp",
+    family="arp",
+    rho=rho_est
+)
+
+# Plot results
+fig, axes = plt.subplots(2, 1, figsize=(10, 6))
+axes[0].plot(Y)
+axes[0].set_title("AR(2) Process with Mean Shift")
+axes[0].set_xlabel("Time")
+axes[0].set_ylabel("Value")
+axes[0].axvline(n_pre, color="red", linestyle="--", lw=2)
+
+axes[1].plot(res["stat"])
+axes[1].set_title("ARP Detection Statistic")
+axes[1].set_xlabel("Time")
+axes[1].set_ylabel("Statistic")
+axes[1].axhline(res["threshold"], color="blue", linestyle="--")
+if res["detection_time"] is not None:
+    axes[1].axvline(res["detection_time"], color="red", linestyle="--", lw=2)
+plt.tight_layout()
+plt.show()
+
+# Show detection results
+print(f"Detection time: {res['detection_time']}")
+print(f"Estimated changepoint: {res['detected_changepoint']}")
+print(f"True changepoint: {n_pre}")
+```
+
+And in the online setting:
+
+```{python}
+np.random.seed(123)
+
+# Create online ARP detector
+detector = Detector(type="arp", rho=rho_est)
+
+stat_trace = []
+
+for i, y in enumerate(Y, start=1):
+    detector.update(y)
+    result = detector.get_statistics(family="arp")
+    stat_trace.append(result["stat"])
+
+    if result["stat"] > 20:
+        print(f"Detection at time {i} with changepoint estimate τ = {result['changepoint']}")
+        break
+
+# Plot results
+plt.plot(stat_trace, lw=2)
+plt.title("Online ARP Detection Statistic")
+plt.xlabel("Time")
+plt.ylabel("Statistic")
 plt.show()
 ```
 
