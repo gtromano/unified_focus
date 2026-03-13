@@ -17,6 +17,7 @@ get_statistics(info_ptr, family, theta0 = NULL, shape = NULL)
   \item \code{"bernoulli"}: Bernoulli (binary) distribution
   \item \code{"gamma"}: Gamma distribution (requires \code{shape} parameter)
   \item \code{"npfocus"}: Nonparametric detection (see details)
+  \item \code{"arp"}: AutoRegressive Process detection (requires detector created with \code{type = "arp"})
 }}
 
 \item{theta0}{Numeric vector specifying the null hypothesis parameter.
@@ -48,7 +49,6 @@ null hypothesis (no change) against the alternative (a change at the optimal
 location). The statistic is typically compared against a threshold to
 determine if a changepoint should be declared.
 
-
 Gamma family:
 When \code{family = "gamma"} a positive \code{shape} parameter must
 be provided; otherwise an error is raised. Passing \code{shape} for a
@@ -60,6 +60,14 @@ NPFOCuS:
   The \code{quantiles} vector argument is required. NPFOCuS returns two
 statistics (sum and max over quantiles) as a vector; in the offline interface
 \code{stat} will be a matrix with two columns.
+
+AutoRegressive Process (ARP):
+For ARP detection, use \code{family = "arp"} with a detector created via
+\code{detector_create(type = "arp", rho = ...)}. The AR coefficients (rho)
+are already built into the detector at creation time. The optional \code{theta0}
+parameter specifies the pre-change mean (if known) and is used for pruning logic;
+if not provided (\code{NULL}), pruning operates without this information.
+Returns a scalar test statistic optimized for detecting changepoints in AR processes.
 }
 \examples{
 \dontrun{

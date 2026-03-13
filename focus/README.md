@@ -22,6 +22,8 @@
     Type](#flexibility-statistics-independent-of-detector-type)
   - [Non-parametric changepoint
     detection](#non-parametric-changepoint-detection)
+  - [AutoRegressive Process (ARP) changepoint
+    detection](#autoregressive-process-arp-changepoint-detection)
 - [Performance Comparison: Offline vs
   Online](#performance-comparison-offline-vs-online)
 - [C++ Integration](#c-integration)
@@ -447,7 +449,7 @@ system.time(
 ```
 
        user  system elapsed 
-      8.145   0.108   8.254 
+      8.554   0.108   8.663 
 
 ``` r
 # Low-dimensional projection approximation
@@ -460,7 +462,7 @@ system.time(
 ```
 
        user  system elapsed 
-      0.129   0.000   0.129 
+      0.128   0.000   0.128 
 
 ``` r
 # Verify similarity
@@ -590,7 +592,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.003 
+      0.003   0.000   0.002 
 
 ``` r
 plot(res_bern$stat, main = "Bernoulli (univariate): change in success probability")
@@ -611,7 +613,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.020   0.000   0.019 
+      0.019   0.000   0.020 
 
 ``` r
 plot(res_bern_multi$stat, main = "Bernoulli (multivariate): two streams")
@@ -636,7 +638,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.003   0.000   0.002 
+      0.002   0.000   0.002 
 
 ``` r
 plot(res_pois$stat, main = "Poisson: change in rate (lambda)")
@@ -668,7 +670,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.003   0.000   0.002 
+      0.003   0.000   0.003 
 
 ``` r
 plot(res_gamma$stat, main = "Gamma: change in scale (shape = 2)")
@@ -852,6 +854,100 @@ det |> get_statistics(family="npfocus")
     $stat
     [1] 3.819085 1.909543
 
+### AutoRegressive Process (ARP) changepoint detection
+
+The library also supports changepoint detection in AutoRegressive (AR)
+processes. This is useful for detecting changes in the mean of AR(p)
+processes while accounting for the temporal dependencies. The AR
+coefficients can be specified (or estimated from data). As in the iid
+cases, the pre-change mean can be provided if known, however this has to
+be done when creating the detector (as the parameter is necessary for
+pruning logic).
+
+``` r
+set.seed(123)
+
+# Generate AR(2) process with changepoint
+n_pre <- 500
+n_post <- 500
+ar_coefs <- c(0.7, -0.3)  # AR(2) coefficients
+
+Y_pre <- arima.sim(n = n_pre, model = list(ar = ar_coefs), sd = 1)
+Y_post <- 2 + arima.sim(n = n_post, model = list(ar = ar_coefs), sd = 1)
+Y <- c(Y_pre, Y_post)
+
+# Estimate AR parameters from pre-change data (in practice, use historical data)
+ar_model <- ar(arima.sim(n = 300, model = list(ar = ar_coefs), sd = 1), order.max = 2, method = "mle")
+rho_est <- ar_model$ar  # Estimated AR coefficients
+
+# Run offline ARP detection
+res <- focus_offline(
+  Y = Y,
+  threshold = 15,
+  type = "arp",
+  rho = rho_est
+)
+
+# Plot results
+par(mfrow = c(2, 1))
+plot(Y, type = "l", main = "AR(2) Process with Mean Shift",
+     xlab = "Time", ylab = "Value")
+abline(v = n_pre, col = "red", lty = 2, lwd = 2)  # True changepoint
+
+plot(res$stat[, 1], type = "l", main = "ARP Detection Statistic",
+     xlab = "Time", ylab = "Statistic", lwd = 2)
+abline(h = res$threshold, col = "blue", lty = 2)
+if (!is.null(res$detection_time)) {
+  abline(v = res$detection_time, col = "red", lty = 2, lwd = 2)
+}
+```
+
+![](generate_README_files/figure-commonmark/unnamed-chunk-17-1.png)
+
+``` r
+par(mfrow = c(1, 1))
+
+# Show detection results
+cat("Detection time:", res$detection_time, "\n")
+```
+
+    Detection time: 504 
+
+``` r
+cat("Estimated changepoint:", res$detected_changepoint, "\n")
+```
+
+    Estimated changepoint: 500 
+
+``` r
+cat("True changepoint:", n_pre, "\n")
+```
+
+    True changepoint: 500 
+
+And in the online setting:
+
+``` r
+set.seed(123)
+
+# Create online ARP detector
+det <- detector_create("arp", rho = rho_est)
+
+stat_trace <- numeric(length(Y))
+
+for (i in seq_along(Y)) {
+  detector_update(det, Y[i])
+  result <- get_statistics(det, family = "arp")
+  stat_trace[i] <- result$stat
+}
+
+# Plot results
+plot(stat_trace, type = "l", main = "Online ARP Detection Statistic", 
+     xlab = "Time", ylab = "Statistic", lwd = 2)
+```
+
+![](generate_README_files/figure-commonmark/unnamed-chunk-18-1.png)
+
 ## Performance Comparison: Offline vs Online
 
 Here’s a direct runtime comparison between offline and online modes on
@@ -878,7 +974,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.147   0.000   0.147 
+      0.159   0.021   0.155 
 
 ``` r
 # Benchmark online mode
@@ -902,7 +998,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.345   0.000   0.344 
+      0.337   0.000   0.338 
 
 ``` r
 # Verify both produce identical results
@@ -918,7 +1014,7 @@ speedup <- time_online["elapsed"] / time_offline["elapsed"]
 cat("Offline mode is", round(speedup, 1), "x faster\n")
 ```
 
-    Offline mode is 2.3 x faster
+    Offline mode is 2.2 x faster
 
 ## C++ Integration
 

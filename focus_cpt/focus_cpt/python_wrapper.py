@@ -37,6 +37,7 @@ class Detector:
         - ``"univariate_one_sided"``: one-sided univariate detection
         - ``"multivariate"``: multivariate detection using projection sets
         - ``"npfocus"``: nonparametric NP-FOCuS detector (requires ``quantiles``)
+        - ``"arp"``: AutoRegressive Process detection (requires ``rho``)
     dim_indexes : list of array-like, optional
         For ``type='multivariate'``, a list of index arrays (0-based) giving
         which dimensions to use for each projection. See
@@ -54,12 +55,28 @@ class Detector:
         Optional anomaly intensity threshold used to discard candidate
         segments with too-small signal magnitude. ``None`` (default) disables
         this behaviour.
+    rho : array-like, optional
+        For ``type='arp'``, this numeric vector of AR coefficients (lag-1, lag-2, ..., lag-p)
+        is required.
+    mu0_arp : float, optional
+        For ``type='arp'``, optional pre-change mean parameter. When provided,
+        enables more efficient pruning by filtering candidates based on the known
+        pre-change parameter. ``None`` (default) disables this behaviour.
 
     Notes
     -----
     The Python API mirrors the R bindings and the underlying C++ behaviour.
     Multivariate detection with many dimensions can be approximated by using
     projections (subsets of dimensions) supplied via ``dim_indexes``.
+    
+    AutoRegressive Process (ARP):
+    When ``type = "arp"``, the ``rho`` parameter must be provided as a numeric
+    vector of AR coefficients. The detector then computes statistics optimal for
+    detecting changepoints in AR(p) processes. Use ``get_statistics(family = "arp")``
+    to retrieve the test statistics. The optional ``mu0_arp`` parameter specifies
+    the pre-change mean and is tied to the pruning logic: if provided, it enables
+    more efficient pruning by allowing the algorithm to filter candidates based on
+    the known pre-change parameter.
 
     Examples
     --------
@@ -80,6 +97,10 @@ class Detector:
     >>> import numpy as np
     >>> quants = np.percentile(np.random.randn(1000), [25, 50, 75])
     >>> det_np = Detector(type='npfocus', quantiles=quants)
+    
+    >>> # AutoRegressive Process (ARP) detector
+    >>> rho = np.array([0.7, 0.2])  # AR(2) coefficients
+    >>> det_arp = Detector(type='arp', rho=rho)
     """
 
     def __init__(
@@ -91,6 +112,8 @@ class Detector:
         pruning_offset: int = 1,
         side: str = "right",
         anomaly_intensity: Optional[float] = None,
+        rho: Optional[Union[List[float], np.ndarray]] = None,
+        mu0_arp: Optional[float] = None,
     ):
         if dim_indexes is not None:
             dim_indexes = [np.asarray(idx, dtype=np.int32) for idx in dim_indexes]
@@ -98,6 +121,10 @@ class Detector:
             quantiles = np.asarray(quantiles, dtype=np.float64)
         if anomaly_intensity is not None:
             anomaly_intensity = np.array([anomaly_intensity], dtype=np.float64)
+        if rho is not None:
+            rho = np.asarray(rho, dtype=np.float64)
+        if mu0_arp is not None:
+            mu0_arp = np.array([mu0_arp], dtype=np.float64)
 
         self._detector = _focus.Detector(
             type=type,
@@ -107,6 +134,8 @@ class Detector:
             pruning_offset=pruning_offset,
             side=side,
             anomaly_intensity=anomaly_intensity,
+            rho=rho,
+            mu0_arp=mu0_arp,
         )
         self._type = type
 
@@ -140,10 +169,14 @@ class Detector:
             - ``'gamma'``: Gamma cost (requires positive ``shape``)
             - ``'npfocus'``: Nonparametric NP-FOCuS (only valid when the detector
               was created with ``type='npfocus'`` and ``quantiles`` provided)
+            - ``'arp'``: AutoRegressive Process cost (only valid when the detector
+              was created with ``type='arp'`` and ``rho`` provided)
         theta0 : float, list, or array, optional
             Null-hypothesis parameter(s). For univariate detectors supply a
             scalar; for multivariate detectors supply a vector matching the
-            number of dimensions.
+            number of dimensions. Note: for ``family='arp'``, the pre-change
+            mean should be specified at detector creation time via ``mu0_arp``,
+            not here.
         shape : float, optional
             Shape parameter for the gamma family. Must be provided and
             positive when ``family=='gamma'``; otherwise it is ignored.
@@ -163,6 +196,10 @@ class Detector:
           ``type='npfocus'`` and given ``quantiles``; NP-FOCuS returns two
           statistics (sum and max across quantiles) for which the returned
           ``'stat'`` can be an array.
+        - For ``family=='arp'`` the detector must have been created with
+          ``type='arp'`` and given ``rho``; the ARP cost function computes
+          the test statistic optimal for AR(p) processes. The ``theta0``
+          parameter is ignored for ARP; use ``mu0_arp`` at creation time instead.
         """
         if theta0 is not None:
             theta0 = np.atleast_1d(np.asarray(theta0, dtype=np.float64))
@@ -255,6 +292,8 @@ def focus_offline(
     side: str = "right",
     shape: Optional[float] = None,
     anomaly_intensity: Optional[float] = None,
+    rho: Optional[Union[List[float], np.ndarray]] = None,
+    mu0_arp: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
     Run the FOCuS detector in batch/offline mode (entirely in C++).
@@ -269,9 +308,9 @@ def focus_offline(
         Detection threshold(s). Can be a scalar (applied to all statistics) or
         an array matching the number of statistics. Use np.inf for no thresholding.
     type : str
-        Detector type: 'multivariate', 'univariate', 'univariate_one_sided', 'npfocus'.
+        Detector type: 'multivariate', 'univariate', 'univariate_one_sided', 'npfocus', 'arp'.
     family : str
-        Distribution family: 'gaussian', 'poisson', 'bernoulli', 'gamma', 'npfocus'.
+        Distribution family: 'gaussian', 'poisson', 'bernoulli', 'gamma', 'npfocus', 'arp'.
     theta0 : float or array-like, optional
         Null hypothesis parameter.
     dim_indexes : list of array-like, optional
@@ -289,19 +328,26 @@ def focus_offline(
     anomaly_intensity : float, optional
         Anomaly intensity threshold for pruning candidates. Only candidates with
         sufficient signal magnitude are retained. Default is None (disabled).
+    rho : array-like, optional
+        For arp detector: AR coefficients (lag-1, lag-2, ..., lag-p).
+    mu0_arp : float, optional
+        For arp detector: Pre-change mean parameter. When provided,
+        enables more efficient pruning based on the known pre-change parameter.
     
-        Notes
-        -----
-        - For multivariate data the detector computes a statistic per projection.
-            Detection occurs when any statistic exceeds its corresponding threshold.
-        - If ``quantiles`` are provided but ``type!='npfocus'``, a ``ValueError``
-            is raised.
+    Notes
+    -----
+    - For multivariate data the detector computes a statistic per projection.
+        Detection occurs when any statistic exceeds its corresponding threshold.
+    - If ``quantiles`` are provided but ``type!='npfocus'``, a ``ValueError``
+        is raised.
+    - If ``rho`` is provided but ``type!='arp'``, a ``ValueError`` is raised.
+    
     Returns
     -------
     dict
         Detection results with keys:
         - 'stat': array, test statistics over time (n_obs x n_stats)
-        - 'changepoint': array, detected changepoints at each time (or -1 for None)
+        - 'changepoint': array, detected changepoints at each time (or None for None)
         - 'detection_time': int or None, time of first detection
         - 'detected_changepoint': int or None, changepoint at detection time
         - 'candidates': dict, candidate segments
@@ -323,6 +369,11 @@ def focus_offline(
     >>> Y = np.random.randn(200, 3)
     >>> Y[100:, :] += 1.0  # Add mean shift
     >>> result = focus_offline(Y, threshold=15.0, type='multivariate', family='gaussian')
+    
+    >>> # ARP detection
+    >>> Y = np.concatenate([np.random.randn(100), np.random.randn(100) + 1.0])
+    >>> rho = np.array([0.7, 0.2])  # AR(2) coefficients
+    >>> result = focus_offline(Y, threshold=10.0, type='arp', family='arp', rho=rho)
     """
     # Convert inputs to numpy arrays
     Y = np.ascontiguousarray(Y, dtype=np.float64)
@@ -337,6 +388,10 @@ def focus_offline(
         shape = np.array([shape], dtype=np.float64)
     if anomaly_intensity is not None:
         anomaly_intensity = np.array([anomaly_intensity], dtype=np.float64)
+    if rho is not None:
+        rho = np.asarray(rho, dtype=np.float64)
+    if mu0_arp is not None:
+        mu0_arp = np.array([mu0_arp], dtype=np.float64)
 
     result = _focus.focus_offline(
         Y=Y,
@@ -351,6 +406,8 @@ def focus_offline(
         side=side,
         shape=shape,
         anomaly_intensity=anomaly_intensity,
+        rho=rho,
+        mu0_arp=mu0_arp,
     )
 
     cp = result["changepoint"]

@@ -73,7 +73,10 @@ else()
 endif()
 
 # Create the Python extension module
-pybind11_add_module(_focus MODULE src/pybind11_focus.cpp)
+pybind11_add_module(_focus MODULE 
+    src/pybind11_focus.cpp
+    include/focus_ARp.cpp
+)
 
 # Set include directories
 target_include_directories(_focus PRIVATE
