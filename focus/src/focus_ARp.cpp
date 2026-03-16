@@ -1,10 +1,9 @@
-// [[Rcpp::depends(Rcpp)]]
-#include <Rcpp.h>
+// ARP (AutoRegressive Process) implementation for FOCuS C++ backend
 #include <vector>
 #include <numeric>
 #include <algorithm>
 #include <cmath>
-using namespace Rcpp;
+#include <limits>
 
 // ---------- helpers ----------
 inline double dot_vec(const std::vector<double>& a, const std::vector<double>& b){
@@ -34,15 +33,21 @@ inline std::vector<double> build_y_tau(const std::vector<double>& x_tau, const s
   return y_tau;
 }
 
+// ---------- Result struct to replace Rcpp::List ----------
+struct MaxValResult {
+  int cpt;
+  double opt_max_val;
+};
+
 // ---------- Triple struct ----------
 struct Triple {
   int tau;
   std::vector<double> S_tau;
   double l;
   double A, B, C, D, E, f;
-  Triple(): tau(0), l(NA_REAL), A(NA_REAL), B(NA_REAL), C(NA_REAL), D(NA_REAL), E(NA_REAL), f(NA_REAL) {}
-  Triple(int tau_, const std::vector<double>& S_tau_, double l_ = NA_REAL)
-    : tau(tau_), S_tau(S_tau_), l(l_), A(NA_REAL), B(NA_REAL), C(NA_REAL), D(NA_REAL), E(NA_REAL), f(NA_REAL) {}
+  Triple(): tau(0), l(std::nan("")), A(std::nan("")), B(std::nan("")), C(std::nan("")), D(std::nan("")), E(std::nan("")), f(std::nan("")) {}
+  Triple(int tau_, const std::vector<double>& S_tau_, double l_ = std::nan(""))
+    : tau(tau_), S_tau(S_tau_), l(l_), A(std::nan("")), B(std::nan("")), C(std::nan("")), D(std::nan("")), E(std::nan("")), f(std::nan("")) {}
 };
 
 // ---------- forward declarations ----------
@@ -63,8 +68,8 @@ double Q_n_mu_arp_unified(std::vector<Triple>& triples,
                                const std::vector<double>& y_start,
                                bool right_side);
 std::vector<Triple> coef_update_arp(std::vector<Triple> new_triples, const std::vector<double>& rho, double y_new, bool known_prechange);
-List max_val_compute_arp(const std::vector<Triple>& triples, int current_n, const std::vector<double>& rho, double sum_square, const std::vector<double>& y_start);
-List max_val_compute_pre0(const std::vector<Triple>& triples);
+MaxValResult max_val_compute_arp(const std::vector<Triple>& triples, int current_n, const std::vector<double>& rho, double sum_square, const std::vector<double>& y_start);
+MaxValResult max_val_compute_pre0(const std::vector<Triple>& triples);
 
 struct State; // forward-declare struct if defined later
 
@@ -505,9 +510,9 @@ std::vector<Triple> coef_update_arp(std::vector<Triple> new_triples, const std::
   return new_triples;
 }
 
-List max_val_compute_arp(const std::vector<Triple>& triples, int current_n, const std::vector<double>& rho, double sum_square, const std::vector<double>& y_start){
+MaxValResult max_val_compute_arp(const std::vector<Triple>& triples, int current_n, const std::vector<double>& rho, double sum_square, const std::vector<double>& y_start){
   int p = (int)rho.size();
-  if (triples.empty()) return List::create(Named("cpt") = -1, Named("opt_max_val") = -INFINITY);
+  if (triples.empty()) return MaxValResult{-1, -std::numeric_limits<double>::infinity()};
 
   const std::vector<double>& S_new = triples.back().S_tau;
   double S_new_last = S_new[2*p];
@@ -535,13 +540,13 @@ List max_val_compute_arp(const std::vector<Triple>& triples, int current_n, cons
   double max_val_no = a_no * opt_no * opt_no + b_no * opt_no + c_no;
 
   int K = (int)triples.size();
-  std::vector<double> max_vals(K, -INFINITY);
+  std::vector<double> max_vals(K, -std::numeric_limits<double>::infinity());
   std::vector<int> cpts(K, -1);
   for (int k = 0; k < K; ++k){
     const Triple& tr = triples[k];
     double A = tr.A, B = tr.B, C = tr.C, D = tr.D, E = tr.E, f = tr.f;
     double denom = (4.0 * A * B - C * C);
-    double max_val_change = -INFINITY;
+    double max_val_change = -std::numeric_limits<double>::infinity();
     if (denom != 0.0){
       double inv = 1.0 / denom;
       double m00 = 2.0 * B * inv;
@@ -565,14 +570,14 @@ List max_val_compute_arp(const std::vector<Triple>& triples, int current_n, cons
     }
   }
 
-  return List::create(Named("cpt") = cpts[opt_index], Named("opt_max_val") = best);
+  return MaxValResult{cpts[opt_index], best};
 }
 
-List max_val_compute_pre0(const std::vector<Triple>& triples){
+MaxValResult max_val_compute_pre0(const std::vector<Triple>& triples){
   int K = (int)triples.size();
-  if (K == 0) return List::create(Named("cpt") = -1, Named("opt_max_val") = -INFINITY);
+  if (K == 0) return MaxValResult{-1, -std::numeric_limits<double>::infinity()};
 
-  std::vector<double> max_vals(K, -INFINITY);
+  std::vector<double> max_vals(K, -std::numeric_limits<double>::infinity());
   std::vector<int> cpts(K, -1);
   for (int k = 0; k < K; ++k){
     const Triple& tr = triples[k];
@@ -591,7 +596,7 @@ List max_val_compute_pre0(const std::vector<Triple>& triples){
       opt_index = k;
     }
   }
-  return List::create(Named("cpt") = cpts[opt_index], Named("opt_max_val") = best);
+  return MaxValResult{cpts[opt_index], best};
 }
 
 struct State {
@@ -730,13 +735,13 @@ void focus_arp_one_iter_cpp(double x_new,
   // Evaluate statistic
   if (!st.triples.empty()) {
     if (!known_prechange) {
-      Rcpp::List max_info = max_val_compute_arp(st.triples, i, rho, st.sum_square, st.y_start);
-      st.max_val = Rcpp::as<double>(max_info["opt_max_val"]);
-      st.cpt     = Rcpp::as<int>(max_info["cpt"]);
+      MaxValResult max_info = max_val_compute_arp(st.triples, i, rho, st.sum_square, st.y_start);
+      st.max_val = max_info.opt_max_val;
+      st.cpt     = max_info.cpt;
     } else {
-      Rcpp::List max_info = max_val_compute_pre0(st.triples);
-      st.max_val = Rcpp::as<double>(max_info["opt_max_val"]);
-      st.cpt     = Rcpp::as<int>(max_info["cpt"]);
+      MaxValResult max_info = max_val_compute_pre0(st.triples);
+      st.max_val = max_info.opt_max_val;
+      st.cpt     = max_info.cpt;
     }
   } else {
     st.max_val = -1.0;
@@ -840,220 +845,3 @@ void cleanup_arp_states(void* opaque_states) {
 }
 
 } // namespace changepoint
-
-// old offline version
-Rcpp::List Focus_arp_rcpp(Rcpp::NumericVector data_point_rcpp,
-                          Rcpp::NumericVector rho_rcpp,
-                          double lambda,
-                          Rcpp::Nullable<Rcpp::NumericVector> pre_change_mean = R_NilValue) {
-
-  // --- Inputs & pre-change mean handling ---
-  std::vector<double> data_point = Rcpp::as<std::vector<double>>(data_point_rcpp);
-  std::vector<double> rho        = Rcpp::as<std::vector<double>>(rho_rcpp);
-
-  bool   known_prechange = false;
-  double pre_mean = 0.0;
-  if (pre_change_mean.isNotNull()) {
-    Rcpp::NumericVector tmp(pre_change_mean.get());
-    if (tmp.size() > 0) {
-      pre_mean = tmp[0];
-      known_prechange = true;
-    }
-  }
-  if (known_prechange) {
-    for (double &v : data_point) v -= pre_mean;
-  }
-
-  const int n = (int)data_point.size();
-  const int p = (int)rho.size();
-  const int buf_max = std::max(2 * p, p + 1);
-
-  // Negative version of the data
-  std::vector<double> data_neg(data_point.size());
-  for (size_t ii = 0; ii < data_point.size(); ++ii) data_neg[ii] = -data_point[ii];
-
-  // Initialise states (right/left × pos/neg)
-  State state_right_pos = init_state(data_point.empty() ? 0.0 : data_point[0]);
-  State state_left_pos  = init_state(data_point.empty() ? 0.0 : data_point[0]);
-  State state_right_neg = init_state(data_neg.empty()   ? 0.0 : data_neg[0]);
-  State state_left_neg  = init_state(data_neg.empty()   ? 0.0 : data_neg[0]);
-
-  // Iteration loop
-  int i = 2;
-  bool no_detect = true;
-  int stop_point = (n >= 2 ? 2 : n);
-  int cpt = -1;
-  std::vector<double> stat_history;
-
-  while (no_detect && i <= n) {
-    double x_pos = data_point[i - 1];
-    double x_neg = data_neg[i - 1];
-    
-    // Positive updates
-    focus_arp_one_iter_cpp(x_pos, i, state_right_pos, rho, p, n, buf_max, known_prechange, true);
-    focus_arp_one_iter_cpp(x_pos, i, state_left_pos,  rho, p, n, buf_max, known_prechange, false);
-
-    // Negative updates
-    focus_arp_one_iter_cpp(x_neg, i, state_right_neg, rho, p, n, buf_max, known_prechange, true);
-    focus_arp_one_iter_cpp(x_neg, i, state_left_neg,  rho, p, n, buf_max, known_prechange, false);
-
-    // // print the max_vals for debugging to output
-    // Rcout << "i=" << i << ": "
-    //       << "right_pos=" << state_right_pos.max_val << ", "
-    //       << "left_pos="  << state_left_pos.max_val  << ", "
-    //       << "right_neg=" << state_right_neg.max_val << ", "
-    //       << "left_neg="  << state_left_neg.max_val  << "\n";
-
-    // // print the number of triples for debugging to output
-    // Rcout << "  #triples: "
-    //       << "right_pos=" << state_right_pos.triples.size() << ", "
-    //       << "left_pos="  << state_left_pos.triples.size()  << ", "
-    //       << "right_neg=" << state_right_neg.triples.size() << ", "
-    //       << "left_neg="  << state_left_neg.triples.size()  << "\n";
-
-    // Take max among all four states
-    const double max_vals[4] = {
-      state_right_pos.max_val, state_left_pos.max_val,
-      state_right_neg.max_val, state_left_neg.max_val
-    };
-    const int cpt_vals[4] = {
-      state_right_pos.cpt, state_left_pos.cpt,
-      state_right_neg.cpt, state_left_neg.cpt
-    };
-
-    int argmax = 0;
-    double best = max_vals[0];
-    for (int k = 1; k < 4; ++k) {
-      if (max_vals[k] > best) { best = max_vals[k]; argmax = k; }
-    }
-    double max_val = best;
-    int    cpt_local = cpt_vals[argmax];
-
-    stat_history.push_back(max_val);
-
-    if (max_val >= lambda) {
-      no_detect = false;
-      stop_point = i;
-      cpt = cpt_local;
-    } else {
-      ++i;
-      stop_point = i;
-    }
-  }
-
-  if (no_detect) cpt = -1;
-
-  return Rcpp::List::create(
-    Rcpp::Named("cpt") = cpt,
-    Rcpp::Named("stop_point") = stop_point,
-    Rcpp::Named("stat_history") = Rcpp::wrap(stat_history)
-  );
-}
-
-// old constrained offline version
-Rcpp::List Focus_arp_rcpp_up_only(Rcpp::NumericVector data_point_rcpp,
-                          Rcpp::NumericVector rho_rcpp,
-                          double lambda,
-                          Rcpp::Nullable<Rcpp::NumericVector> pre_change_mean = R_NilValue) {
-
-  // --- Inputs & pre-change mean handling ---
-  std::vector<double> data_point = Rcpp::as<std::vector<double>>(data_point_rcpp);
-  std::vector<double> rho        = Rcpp::as<std::vector<double>>(rho_rcpp);
-
-  bool   known_prechange = false;
-  double pre_mean = 0.0;
-  if (pre_change_mean.isNotNull()) {
-    Rcpp::NumericVector tmp(pre_change_mean.get());
-    if (tmp.size() > 0) {
-      pre_mean = tmp[0];
-      known_prechange = true;
-    }
-  }
-  if (known_prechange) {
-    for (double &v : data_point) v -= pre_mean;
-  }
-
-  const int n = (int)data_point.size();
-  const int p = (int)rho.size();
-  const int buf_max = std::max(2 * p, p + 1);
-
-  // Negative version of the data
-  std::vector<double> data_neg(data_point.size());
-  for (size_t ii = 0; ii < data_point.size(); ++ii) data_neg[ii] = -data_point[ii];
-
-  // Initialise states (right/left × pos/neg)
-  State state_right_pos = init_state(data_point.empty() ? 0.0 : data_point[0]);
-  State state_left_pos  = init_state(data_point.empty() ? 0.0 : data_point[0]);
-  State state_right_neg = init_state(data_neg.empty()   ? 0.0 : data_neg[0]);
-  State state_left_neg  = init_state(data_neg.empty()   ? 0.0 : data_neg[0]);
-
-  // Iteration loop
-  int i = 2;
-  bool no_detect = true;
-  int stop_point = (n >= 2 ? 2 : n);
-  int cpt = -1;
-  std::vector<double> stat_history;
-
-  while (no_detect && i <= n) {
-    double x_pos = data_point[i - 1];
-    
-    // Positive updates (up-only)
-    focus_arp_one_iter_cpp(x_pos, i, state_right_pos, rho, p, n, buf_max, known_prechange, true);
-    //focus_arp_one_iter_cpp(x_pos, i, state_left_pos,  rho, p, n, buf_max, known_prechange, false);
-
-    // Negative updates (disabled for up-only)
-    //focus_arp_one_iter_cpp(x_neg, i, state_right_neg, rho, p, n, buf_max, known_prechange, true);
-    //focus_arp_one_iter_cpp(x_neg, i, state_left_neg,  rho, p, n, buf_max, known_prechange, false);
-
-    // // print the max_vals for debugging to output
-    // Rcout << "i=" << i << ": "
-    //       << "right_pos=" << state_right_pos.max_val << ", "
-    //       << "left_pos="  << state_left_pos.max_val  << ", "
-    //       << "right_neg=" << state_right_neg.max_val << ", "
-    //       << "left_neg="  << state_left_neg.max_val  << "\n";
-
-    // // print the number of triples for debugging to output
-    // Rcout << "  #triples: "
-    //       << "right_pos=" << state_right_pos.triples.size() << ", "
-    //       << "left_pos="  << state_left_pos.triples.size()  << ", "
-    //       << "right_neg=" << state_right_neg.triples.size() << ", "
-    //       << "left_neg="  << state_left_neg.triples.size()  << "\n";
-
-    // Take max among all four states
-    const double max_vals[4] = {
-      state_right_pos.max_val, state_left_pos.max_val,
-      state_right_neg.max_val, state_left_neg.max_val
-    };
-    const int cpt_vals[4] = {
-      state_right_pos.cpt, state_left_pos.cpt,
-      state_right_neg.cpt, state_left_neg.cpt
-    };
-
-    int argmax = 0;
-    double best = max_vals[0];
-    for (int k = 1; k < 4; ++k) {
-      if (max_vals[k] > best) { best = max_vals[k]; argmax = k; }
-    }
-    double max_val = best;
-    int    cpt_local = cpt_vals[argmax];
-
-    stat_history.push_back(max_val);
-
-    if (max_val >= lambda) {
-      no_detect = false;
-      stop_point = i;
-      cpt = cpt_local;
-    } else {
-      ++i;
-      stop_point = i;
-    }
-  }
-
-  if (no_detect) cpt = -1;
-
-  return Rcpp::List::create(
-    Rcpp::Named("cpt") = cpt,
-    Rcpp::Named("stop_point") = stop_point,
-    Rcpp::Named("stat_history") = Rcpp::wrap(stat_history)
-  );
-}

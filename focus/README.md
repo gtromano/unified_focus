@@ -449,7 +449,7 @@ system.time(
 ```
 
        user  system elapsed 
-      8.554   0.108   8.663 
+     13.387   0.176  13.569 
 
 ``` r
 # Low-dimensional projection approximation
@@ -462,7 +462,7 @@ system.time(
 ```
 
        user  system elapsed 
-      0.128   0.000   0.128 
+      0.174   0.000   0.175 
 
 ``` r
 # Verify similarity
@@ -592,7 +592,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.003   0.000   0.002 
+      0.004   0.000   0.004 
 
 ``` r
 plot(res_bern$stat, main = "Bernoulli (univariate): change in success probability")
@@ -613,7 +613,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.019   0.000   0.020 
+      0.027   0.000   0.027 
 
 ``` r
 plot(res_bern_multi$stat, main = "Bernoulli (multivariate): two streams")
@@ -638,7 +638,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.002 
+      0.003   0.000   0.003 
 
 ``` r
 plot(res_pois$stat, main = "Poisson: change in rate (lambda)")
@@ -670,7 +670,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.003   0.000   0.003 
+      0.004   0.000   0.003 
 
 ``` r
 plot(res_gamma$stat, main = "Gamma: change in scale (shape = 2)")
@@ -883,7 +883,7 @@ rho_est <- ar_model$ar  # Estimated AR coefficients
 # Run offline ARP detection
 res <- focus_offline(
   Y = Y,
-  threshold = 15,
+  threshold = 20,
   type = "arp",
   rho = rho_est
 )
@@ -911,7 +911,7 @@ par(mfrow = c(1, 1))
 cat("Detection time:", res$detection_time, "\n")
 ```
 
-    Detection time: 504 
+    Detection time: 510 
 
 ``` r
 cat("Estimated changepoint:", res$detected_changepoint, "\n")
@@ -939,8 +939,20 @@ for (i in seq_along(Y)) {
   detector_update(det, Y[i])
   result <- get_statistics(det, family = "arp")
   stat_trace[i] <- result$stat
-}
 
+  if (result$stat > 20) {
+    cat("Detection at time", i, "with changepoint estimate τ =", result$changepoint, "\n")
+    stat_trace <- stat_trace[1:i]  # trucate the trace
+    break
+  }    
+    
+
+}
+```
+
+    Detection at time 511 with changepoint estimate τ = 500 
+
+``` r
 # Plot results
 plot(stat_trace, type = "l", main = "Online ARP Detection Statistic", 
      xlab = "Time", ylab = "Statistic", lwd = 2)
@@ -974,7 +986,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.159   0.021   0.155 
+      0.195   0.000   0.195 
 
 ``` r
 # Benchmark online mode
@@ -998,7 +1010,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.337   0.000   0.338 
+      0.446   0.000   0.446 
 
 ``` r
 # Verify both produce identical results
@@ -1014,7 +1026,7 @@ speedup <- time_online["elapsed"] / time_offline["elapsed"]
 cat("Offline mode is", round(speedup, 1), "x faster\n")
 ```
 
-    Offline mode is 2.2 x faster
+    Offline mode is 2.3 x faster
 
 ## C++ Integration
 
