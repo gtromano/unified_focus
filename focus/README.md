@@ -449,7 +449,7 @@ system.time(
 ```
 
        user  system elapsed 
-     13.387   0.176  13.569 
+      9.515   0.116   9.633 
 
 ``` r
 # Low-dimensional projection approximation
@@ -462,7 +462,7 @@ system.time(
 ```
 
        user  system elapsed 
-      0.174   0.000   0.175 
+      0.128   0.000   0.128 
 
 ``` r
 # Verify similarity
@@ -592,7 +592,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.004   0.000   0.004 
+      0.003   0.000   0.003 
 
 ``` r
 plot(res_bern$stat, main = "Bernoulli (univariate): change in success probability")
@@ -613,7 +613,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.027   0.000   0.027 
+      0.021   0.000   0.021 
 
 ``` r
 plot(res_bern_multi$stat, main = "Bernoulli (multivariate): two streams")
@@ -638,7 +638,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.003   0.000   0.003 
+      0.003   0.001   0.002 
 
 ``` r
 plot(res_pois$stat, main = "Poisson: change in rate (lambda)")
@@ -670,7 +670,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.004   0.000   0.003 
+      0.002   0.000   0.003 
 
 ``` r
 plot(res_gamma$stat, main = "Gamma: change in scale (shape = 2)")
@@ -986,7 +986,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.195   0.000   0.195 
+      0.166   0.000   0.166 
 
 ``` r
 # Benchmark online mode
@@ -1010,7 +1010,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.446   0.000   0.446 
+      0.344   0.000   0.345 
 
 ``` r
 # Verify both produce identical results
@@ -1026,7 +1026,7 @@ speedup <- time_online["elapsed"] / time_offline["elapsed"]
 cat("Offline mode is", round(speedup, 1), "x faster\n")
 ```
 
-    Offline mode is 2.3 x faster
+    Offline mode is 2.1 x faster
 
 ## C++ Integration
 
@@ -1105,9 +1105,6 @@ Detection for Exponential Family Models.” *Statistics and Computing* 34
   (**Maintainer**) (**Creator**) (**Translator**)
 
 - Kes Ward: [email](mailto:k.ward4@lancaster.ac.uk) (**Author**)
-
-- Liudmila Pishchagina:
-  [email](mailto:liudmila.pishchagina@univ-evry.fr) (**Author**)
 
 - Guillem Rigaill: [email](mailto:guillem.rigaill@inrae.fr) (**Author**)
   (**Thesis Advisor**)

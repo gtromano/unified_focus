@@ -1,17 +1,14 @@
 Package: focus
 Type: Package
 Title: Online Changepoint Detection in Univariate and Multivariate Data Streams
-Version: 0.0.1
-Date: 2025-10-23
+Version: 0.0.2
+Date: 2026-03-17
 Authors@R: c(
     person("Gaetano", "Romano", 
            email = "g.romano@lancaster.ac.uk",
            role = c("aut", "cre", "trl")),
     person("Kes", "Ward", 
            email = "k.ward4@lancaster.ac.uk",
-           role = "aut"),
-    person("Liudmila", "Pishchagina", 
-           email = "liudmila.pishchagina@univ-evry.fr",
            role = "aut"),
     person("Guillem", "Rigaill", 
            email = "guillem.rigaill@inrae.fr",
