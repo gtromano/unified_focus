@@ -8,12 +8,17 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "focus_cpt"
 version = "0.1.0"
-description = "focus changepoint detection library"
+description = "Online Changepoint Detection in Univariate and Multivariate Data Streams using FOCUS algorithms"
 readme = "README.md"
 requires-python = ">=3.8"
-license = {text = "GPL-3.0-or-later"}  # Adjust as needed
+license = {text = "GPL-3.0-or-later"}
 authors = [
-    {name = "Your Name", email = "your.email@example.com"}
+    {name = "Gaetano Romano", email = "g.romano@lancaster.ac.uk"},
+    {name = "Kes Ward", email = "k.ward4@lancaster.ac.uk"},
+    {name = "Guillem Rigaill", email = "guillem.rigaill@inrae.fr"},
+    {name = "Vincent Runge", email = "vincent.runge@univ-evry.fr"},
+    {name = "Paul Fearnhead", email = "p.fearnhead@lancaster.ac.uk"},
+    {name = "Idris A. Eckley", email = "i.eckley@lancaster.ac.uk"}
 ]
 keywords = ["changepoint", "detection", "statistics", "time-series"]
 classifiers = [
@@ -46,10 +51,10 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/focus"
-Documentation = "https://focus.readthedocs.io"
-Repository = "https://github.com/yourusername/focus"
-Issues = "https://github.com/yourusername/focus/issues"
+Homepage = "https://github.com/gtromano/unified_focus"
+Documentation = "https://github.com/gtromano/unified_focus"
+Repository = "https://github.com/gtromano/unified_focus"
+Issues = "https://github.com/gtromano/unified_focus/issues"
 
 [tool.scikit-build]
 # Minimum required CMake version

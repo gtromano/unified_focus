@@ -88,8 +88,6 @@ print("Estimated changepoint:", res["detected_changepoint"])
 
 * Kes Ward: [email](mailto:k.ward4@lancaster.ac.uk) (**Author**)
 
-* Liudmila Pishchagina: [email](mailto:liudmila.pishchagina@univ-evry.fr) (**Author**)
-
 * Guillem Rigaill: [email](mailto:guillem.rigaill@inrae.fr) (**Author**) (**Thesis Advisor**)
 
 * Vincent Runge: [email](mailto:vincent.runge@univ-evry.fr) (**Author**) (**Thesis Advisor**)
