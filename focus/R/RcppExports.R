@@ -513,3 +513,57 @@ focus_offline <- function(Y, threshold, type = "univariate", family = "gaussian"
     .Call(`_focus_focus_offline`, Y, threshold, type, family, theta0, dim_indexes, quantiles, pruning_mult, pruning_offset, side, shape, anomaly_intensity, rho, mu0_arp)
 }
 
+#' Prune Candidates using Convex Hull in Multivariate Space
+#'
+#' This function applies the pruning algorithm from MultivariateInfo to a set of candidate
+#' changepoints. The pruning uses Qhull to compute the convex hull of candidate points in
+#' the space of (tau, st_1, st_2, ..., st_d), retaining only the extreme points.
+#'
+#' @param candidates_df A data.frame with columns:
+#'   - `tau`: integer column with time indices of candidates
+#'   - `dim_1`, `dim_2`, ..., `dim_d`: numeric columns for each dimension
+#'   - `side` (optional): character column with "right" or "left" (defaults to "right")
+#'
+#' @return A data.frame with the same structure as `candidates_df` but containing only the
+#'   pruned candidates (extreme points on the convex hull), sorted by tau.
+#'
+#' @details
+#' The pruning algorithm works as follows:
+#' 1. Constructs points in (tau, st_1, ..., st_d) space
+#' 2. Identifies numerically independent dimensions using Modified Gram-Schmidt
+#' 3. Computes the convex hull using Qhull with numerical stability guards
+#' 4. Returns only the vertices of the convex hull, sorted by tau
+#'
+#' If fewer than `target_dim + 2` candidates are provided, all candidates are returned.
+#'
+#' For univariate analysis, the function still requires the multivariate format (e.g., `dim_1`).
+#'
+#' @examples
+#' # Simple univariate example
+#' candidates <- data.frame(
+#'   tau = c(1, 5, 10, 15, 20),
+#'   dim_1 = c(1.0, 5.2, 10.1, 15.0, 20.3)
+#' )
+#' pruned <- rcpp_prune_multivariate(candidates)
+#'
+#' # Bivariate example
+#' candidates <- data.frame(
+#'   tau = c(1, 5, 10, 15, 20),
+#'   dim_1 = c(1.0, 5.2, 10.1, 15.0, 20.3),
+#'   dim_2 = c(2.0, 4.8, 9.9, 14.5, 19.7)
+#' )
+#' pruned <- rcpp_prune_multivariate(candidates)
+#'
+#' # Example with side column (for univariate two-sided tests)
+#' candidates <- data.frame(
+#'   tau = c(1, 5, 10, 15, 20),
+#'   dim_1 = c(1.0, 5.2, 10.1, 15.0, 20.3),
+#'   side = c("right", "left", "right", "right", "left")
+#' )
+#' pruned <- rcpp_prune_multivariate(candidates)
+#'
+#' @export
+rcpp_prune_multivariate <- function(candidates_df) {
+    .Call(`_focus_rcpp_prune_multivariate`, candidates_df)
+}
+

@@ -1,7 +1,7 @@
 Package: focus
 Type: Package
 Title: Online Changepoint Detection in Univariate and Multivariate Data Streams
-Version: 0.1.0
+Version: 0.1.1
 Date: 2026-03-17
 Authors@R: c(
     person("Gaetano", "Romano", 
