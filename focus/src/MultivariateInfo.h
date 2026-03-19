@@ -12,6 +12,7 @@
 #include <cmath>
 #include <limits>
 
+
 namespace changepoint {
 
 // data: K x m (row-major) matrix (data[r*m + c])
@@ -61,7 +62,7 @@ static std::vector<int> find_independent_columns_mgs(const double* data, int K, 
   return keep;
 }
 
-std::vector<std::vector<int>> generate_circular_combinations(int D, int p) {
+inline std::vector<std::vector<int>> generate_circular_combinations(int D, int p) {
     std::vector<std::vector<int>> out;
     if (p <= 0 || p > D) return out;
 
@@ -320,36 +321,36 @@ public:
     // Apply anomaly_intensity pruning if enabled
     if (!std::isnan(anomaly_intensity_) && anomaly_intensity_ > 0.0) {
       std::set<int> intensity_filtered;
-      
+
       for (int idx : hull_indices) {
         const auto& c = candidates[idx];
         int denom = n_ - c.tau;
-        
+
         // Calculate infinity norm: max absolute ratio across all dimensions
         double max_abs_ratio = 0.0;
         bool has_valid_ratio = false;
-        
+
         for (int dim = 0; dim < target_dim; ++dim) {
           if (denom > 0) {
             double st_val = (dim < static_cast<int>(c.st.size())) ? c.st[dim] : 0.0;
             double num = sn_[dim] - st_val;
             double ratio = num / denom;
             double abs_ratio = std::abs(ratio);
-            
+
             if (abs_ratio > max_abs_ratio) {
               max_abs_ratio = abs_ratio;
             }
             has_valid_ratio = true;
           }
         }
-        
+
         // Keep candidate if infinity norm >= anomaly_intensity
         // (i.e., at least one dimension has strong signal)
         if (!has_valid_ratio || max_abs_ratio >= anomaly_intensity_) {
           intensity_filtered.insert(idx);
         }
       }
-      
+
       hull_indices = intensity_filtered;
     }
 
