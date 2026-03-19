@@ -659,13 +659,15 @@ Detection for Exponential Family Models.” *Statistics and Computing* 34
 
 * Kes Ward: [email](mailto:k.ward4@lancaster.ac.uk) (**Author**)
 
-* Guillem Rigaill: [email](mailto:guillem.rigaill@inrae.fr) (**Author**) (**Thesis Advisor**)
+* Yuntang Fan: [email](mailto:y.yuntang@lancaster.ac.uk) (**Author**)
 
-* Vincent Runge: [email](mailto:vincent.runge@univ-evry.fr) (**Author**) (**Thesis Advisor**)
+* Guillem Rigaill: [email](mailto:guillem.rigaill@inrae.fr) (**Author**)
 
-* Paul Fearnhead: [email](mailto:p.fearnhead@lancaster.ac.uk) (**Author**) (**Thesis Advisor**)
+* Vincent Runge: [email](mailto:vincent.runge@univ-evry.fr) (**Author**)
 
-* Idris A. Eckley: [email](mailto:i.eckley@lancaster.ac.uk) (**Author**) (**Thesis Advisor**)
+* Paul Fearnhead: [email](mailto:p.fearnhead@lancaster.ac.uk) (**Author**)
+
+* Idris A. Eckley: [email](mailto:i.eckley@lancaster.ac.uk) (**Author**)
 
 ## License
 
