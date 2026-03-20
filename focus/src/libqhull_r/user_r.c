@@ -66,7 +66,7 @@
   char flags[]= "qhull Tv"; /* option flags for qhull, see html/qh-quick.htm */
   FILE *outfile= stdout;    /* output from qh_produce_output
                                use NULL to skip qh_produce_output */
-  FILE *errfile= stderr;    /* error messages from qhull code */
+  FILE *errfile= qh_FILEstderr;    /* error messages from qhull code */
   int exitcode;             /* 0 if no error from qhull */
   facetT *facet;            /* set by FORALLfacets */
   int curlong, totlong;     /* memory remaining after qh_memfreeshort */
@@ -131,7 +131,7 @@ int qh_new_qhull(qhT *qh, int dim, int numpoints, coordT *points, boolT ismalloc
   coordT *new_points;
 
   if(!errfile){
-    errfile= stderr;
+    errfile= qh_FILEstderr;
   }
   if (!qh->qhmem.ferr) {
     qh_meminit(qh, errfile);

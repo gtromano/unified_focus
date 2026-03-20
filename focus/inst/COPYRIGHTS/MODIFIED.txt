@@ -1,3 +1,9 @@
-modified function       file                          line#       date        by                   reason
-=================       ====                          =====       ====        ==                   ======
-~Qhull (destructor)     libqhullcpp/Qhull.cpp         99-100      2025/11/04  Gaetano Romano       Commented out cerr messages in destructor to silence console output for CRAN compliance
+modified function       file                           line#       date        by                   reason
+=================       ====                           =====       ====        ==                   ======
+~Qhull (destructor)     libqhullcpp/Qhull.cpp           99-100      2025/11/04  Gaetano Romano       Commented out cerr messages in destructor to silence console output for CRAN compliance
+qh_exit                 libqhullcpp/usermem_r-cpp.cpp   37          2026/04/20  Gaetano Romano       Replaced exitcode= exitcode; with (void)exitcode; C++ exception to satisfy noreturn
+qh_fprintf_stderr       libqhullcpp/usermem_r-cpp.cpp   61-62       2026/04/20  Gaetano Romano       Commented out fprintf, vfprintf to silence console output for CRAN compliance
+qh_fprintf_rbox         libqhull_r/userprintf_rbox_r.c  48, 50      2026/04/20  Gaetano Romano       Commented out fprintf, vfprintf to silence console output for CRAN compliance
+qh_meminit              src/libqhull_r/mem_r.c          310,514     2026/04/20  Gaetano Romano       Replaced `stderr` assignments with `qh_FILEstderr` to avoid pulling libc stderr symbol for CRAN compliance
+qh_new_qhull            src/libqhull_r/user_r.c         69,134      2026/04/20  Gaetano Romano       Replaced `stderr` initializations with `qh_FILEstderr`  for CRAN compliance
+qh_fprintf_rbox         libqhullcpp/RboxPoints.cpp      188         2026/04/20  Gaetano Romano       Commented out fprintf to silence console output for CRAN compliance

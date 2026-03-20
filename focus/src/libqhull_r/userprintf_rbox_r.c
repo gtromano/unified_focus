@@ -45,9 +45,9 @@ void qh_fprintf_rbox(qhT *qh, FILE *fp, int msgcode, const char *fmt, ... ) {
       qh_errexit_rbox(qh, qh_ERRqhull);
     }
     if (msgcode >= MSG_ERROR && msgcode < MSG_STDERR)
-      fprintf(fp, "QH%.4d ", msgcode);
+      //fprintf(fp, "QH%.4d ", msgcode);
     va_start(args, fmt);
-    vfprintf(fp, fmt, args);
+    //vfprintf(fp, fmt, args);
     va_end(args);
 } /* qh_fprintf_rbox */
 

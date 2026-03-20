@@ -185,7 +185,7 @@ void qh_fprintf_rbox(qhT *qh, FILE*, int msgcode, const char *fmt, ... ) {
     using namespace orgQhull;
 
     if(!qh->cpp_object){
-        fprintf(stderr, "QH10072 Qhull internal error (qh_fprintf_rbox): qh.cpp_object not defined.  Exit program\n");
+        //fprintf(stderr, "QH10072 Qhull internal error (qh_fprintf_rbox): qh.cpp_object not defined.  Exit program\n");
         qh_errexit_rbox(qh, 72);
         /* never returns */
     }

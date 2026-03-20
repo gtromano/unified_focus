@@ -34,7 +34,7 @@ extern "C" {
     same as exit()
 */
 void qh_exit(int exitcode) {
-    exitcode= exitcode;
+    (void)exitcode;
     throw std::runtime_error("QH10003 Qhull error.  See stderr or errfile.");
 } /* exit */
 
@@ -58,8 +58,8 @@ void qh_fprintf_stderr(int msgcode, const char *fmt, ... ) {
 
     va_start(args, fmt);
     if(msgcode)
-      fprintf(stderr, "QH%.4d ", msgcode);
-    vfprintf(stderr, fmt, args);
+      //fprintf(stderr, "QH%.4d ", msgcode);
+    //vfprintf(stderr, fmt, args);
     va_end(args);
 } /* fprintf_stderr */
 
