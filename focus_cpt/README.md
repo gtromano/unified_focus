@@ -744,8 +744,8 @@ print(f"Offline is {online_time / offline_time:.1f}× faster")
 ```
 
     Offline time: 0.23s
-    Online time:  0.34s
-    Offline is 1.5× faster
+    Online time:  0.33s
+    Offline is 1.4× faster
 
 ------------------------------------------------------------------------
 
@@ -797,17 +797,16 @@ Detection for Exponential Family Models.” *Statistics and Computing* 34
 
 - Kes Ward: [email](mailto:k.ward4@lancaster.ac.uk) (**Author**)
 
+- Yuntang Fan: [email](mailto:y.yuntang@lancaster.ac.uk) (**Author**)
+
 - Guillem Rigaill: [email](mailto:guillem.rigaill@inrae.fr) (**Author**)
-  (**Thesis Advisor**)
 
 - Vincent Runge: [email](mailto:vincent.runge@univ-evry.fr) (**Author**)
-  (**Thesis Advisor**)
 
 - Paul Fearnhead: [email](mailto:p.fearnhead@lancaster.ac.uk)
-  (**Author**) (**Thesis Advisor**)
+  (**Author**)
 
 - Idris A. Eckley: [email](mailto:i.eckley@lancaster.ac.uk) (**Author**)
-  (**Thesis Advisor**)
 
 ## License
 
