@@ -15,8 +15,7 @@ using namespace changepoint;
 //'
 //' @param candidates_df A data.frame with columns:
 //'   - `tau`: integer column with time indices of candidates
-//'   - `dim_1`, `dim_2`, ..., `dim_d`: numeric columns for each dimension
-//'   - `side` (optional): character column with "right" or "left" (defaults to "right")
+//'   - `dim_1`, `dim_2`, ..., `dim_d`: numeric columns for each dimension that needs to be considered for pruning. Note that columns without "dim_" will be excluded
 //'
 //' @return A data.frame with the same structure as `candidates_df` but containing only the
 //'   pruned candidates (extreme points on the convex hull), sorted by tau.
@@ -33,29 +32,14 @@ using namespace changepoint;
 //' For univariate analysis, the function still requires the multivariate format (e.g., `dim_1`).
 //'
 //' @examples
-//' # Simple univariate example
-//' candidates <- data.frame(
-//'   tau = c(1, 5, 10, 15, 20),
-//'   dim_1 = c(1.0, 5.2, 10.1, 15.0, 20.3)
-//' )
-//' pruned <- rcpp_prune_multivariate(candidates)
-//'
-//' # Bivariate example
-//' candidates <- data.frame(
-//'   tau = c(1, 5, 10, 15, 20),
-//'   dim_1 = c(1.0, 5.2, 10.1, 15.0, 20.3),
-//'   dim_2 = c(2.0, 4.8, 9.9, 14.5, 19.7)
-//' )
-//' pruned <- rcpp_prune_multivariate(candidates)
-//'
-//' # Example with side column (for univariate two-sided tests)
-//' candidates <- data.frame(
-//'   tau = c(1, 5, 10, 15, 20),
-//'   dim_1 = c(1.0, 5.2, 10.1, 15.0, 20.3),
-//'   side = c("right", "left", "right", "right", "left")
-//' )
-//' pruned <- rcpp_prune_multivariate(candidates)
-//'
+//' set.seed(123)
+//'  candidates <- data.frame(
+//'      tau = 1:500,
+//'      dim_1 = cumsum(rnorm(500)),
+//'      dim_2 = cumsum(rnorm(500))
+//'  )
+//'  pruned <- rcpp_prune_multivariate(candidates)
+//'  nrow(pruned)
 //' @export
 // [[Rcpp::export]]
 DataFrame rcpp_prune_multivariate(DataFrame candidates_df) {
@@ -131,6 +115,7 @@ DataFrame rcpp_prune_multivariate(DataFrame candidates_df) {
     // n is set to 0 (not used)
     std::vector<double> sn_dummy(num_dims, 0.0);
     MultivariateInfo info(sn_dummy, 0);
+    info.set_pruning_counter_to_zero();
     std::vector<Candidate> pruned_candidates = info.prune(cpp_candidates);
 
     // Convert pruned candidates back to R dataframe

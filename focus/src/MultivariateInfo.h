@@ -105,6 +105,10 @@ public:
     candidates_.insert(candidates_.end(), initial.begin(), initial.end());
   }
 
+  void set_pruning_counter_to_zero() {
+    pruning_in_ = 0;
+  }
+
   std::vector<Candidate> prune(const std::vector<Candidate>& candidates) const override {
     int K = static_cast<int>(candidates.size());
     if (K <= 1 || pruning_in_ > 0) {
