@@ -59,13 +59,13 @@ Issues = "https://github.com/gtromano/unified_focus/issues"
 
 [tool.scikit-build]
 # Minimum required CMake version
-cmake.minimum-version = "3.15"
+cmake.version = ">=3.15"
 
 # Build directory
 build-dir = "build/{wheel_tag}"
 
 # Verbose build output for debugging (optional, can be removed for production)
-cmake.verbose = false
+build.verbose = false
 
 # Wheel settings
 wheel.packages = ["focus_cpt"]
