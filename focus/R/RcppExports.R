@@ -70,7 +70,6 @@
 #'   Any other cost will not work with this detector type. The \code{quantiles} vector argument is required, see \code{\link{get_statistics}()} for details.
 #'
 #' @examples
-#' \dontrun{
 #' # Univariate detector
 #' det <- detector_create(type = "univariate")
 #' detector_update(det, 0.5)
@@ -107,7 +106,6 @@
 #'
 #' # One-sided univariate detector
 #' det_one_sided <- detector_create(type = "univariate_one_sided", side = "left")
-#' }
 #'
 #' @export
 detector_create <- function(type, dim_indexes = NULL, quantiles = NULL, pruning_mult = 2L, pruning_offset = 1L, side = "right", anomaly_intensity = NULL, rho = NULL, mu0_arp = NULL) {
@@ -133,7 +131,6 @@ detector_create <- function(type, dim_indexes = NULL, quantiles = NULL, pruning_
 #' \code{det |> detector_update(y) |> get_statistics()}.
 #'
 #' @examples
-#' \dontrun{
 #' # Univariate example
 #' det <- detector_create(type = "univariate")
 #' detector_update(det, 0.5)
@@ -161,7 +158,6 @@ detector_create <- function(type, dim_indexes = NULL, quantiles = NULL, pruning_
 #'   }
 #' }
 #'
-#' }
 #'
 #' @export
 detector_update <- function(info_ptr, y) {
@@ -228,7 +224,6 @@ detector_update <- function(info_ptr, y) {
 #' Returns a scalar test statistic optimized for detecting changepoints in AR processes.
 #'
 #' @examples
-#' \dontrun{
 #'
 #' ## Online (sequential) example
 #' # Generate data with a changepoint
@@ -251,6 +246,9 @@ detector_update <- function(info_ptr, y) {
 #' ## Note that multiple models can be tested simultaneously on the same detector
 #' # as the statistics is independent of the detector state.
 #' # For example, testing both Gaussian and Poisson costs
+#' set.seed(2024)
+#' # Generate Poisson count data with a rate change
+#' Y_counts <- c(rpois(500, lambda = 10), rpois(500, lambda = 15))
 #' # Compute full trajectories for comparison
 #' det2 <- detector_create(type = "univariate")
 #' stat_gaussian <- numeric(length(Y_counts))
@@ -263,7 +261,7 @@ detector_update <- function(info_ptr, y) {
 #' }
 #'
 #' # Plot comparison
-#' par(mfrow = c(1, 2))
+#' oldpar <- par(mfrow = c(1, 2))
 #' plot(stat_gaussian, type = "l", main = "Gaussian Statistic on Poisson Data",
 #'      xlab = "Time", ylab = "Statistic", lwd = 2, col = "blue")
 #' abline(v = 500, col = "green", lty = 3, lwd = 2)
@@ -271,8 +269,8 @@ detector_update <- function(info_ptr, y) {
 #' plot(stat_poisson, type = "l", main = "Poisson Statistic on Poisson Data",
 #'      xlab = "Time", ylab = "Statistic", lwd = 2, col = "red")
 #' abline(v = 500, col = "green", lty = 3, lwd = 2)
+#' par(oldpar)
 #'
-#' }
 #'
 #' @export
 get_statistics <- function(info_ptr, family, theta0 = NULL, shape = NULL) {
@@ -371,7 +369,7 @@ detector_candidates <- function(info_ptr) {
 #' dimensional space while keeping the number of projections manageable.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Generate 2-dimensional projections from 5 dimensions
 #' proj <- generate_projection_indexes(D = 5, p = 2)
 #' print(proj)
@@ -478,7 +476,6 @@ generate_projection_indexes <- function(D, p) {
 #' projection). Detection occurs when ANY statistic exceeds its threshold.
 #'
 #' @examples
-#' \dontrun{
 #' # Univariate Gaussian detection
 #' set.seed(123)
 #' Y <- c(rnorm(100, mean = 0), rnorm(100, mean = 2))
@@ -506,7 +503,6 @@ generate_projection_indexes <- function(D, p) {
 #' result_poisson <- focus_offline(Y_poisson, threshold = 10,
 #'                                 type = "univariate",
 #'                                 family = "poisson")
-#' }
 #'
 #' @export
 focus_offline <- function(Y, threshold, type = "univariate", family = "gaussian", theta0 = NULL, dim_indexes = NULL, quantiles = NULL, pruning_mult = 2L, pruning_offset = 1L, side = "right", shape = NULL, anomaly_intensity = NULL, rho = NULL, mu0_arp = NULL) {

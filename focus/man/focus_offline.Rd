@@ -101,7 +101,6 @@ For multivariate data, the algorithm computes multiple statistics (one per
 projection). Detection occurs when ANY statistic exceeds its threshold.
 }
 \examples{
-\dontrun{
 # Univariate Gaussian detection
 set.seed(123)
 Y <- c(rnorm(100, mean = 0), rnorm(100, mean = 2))
@@ -129,6 +128,5 @@ Y_poisson <- c(rpois(100, lambda = 2), rpois(100, lambda = 5))
 result_poisson <- focus_offline(Y_poisson, threshold = 10,
                                 type = "univariate",
                                 family = "poisson")
-}
 
 }

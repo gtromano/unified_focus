@@ -26,7 +26,6 @@ Adds new observation(s) to the detector's internal state and updates
 sufficient statistics.
 }
 \examples{
-\dontrun{
 # Univariate example
 det <- detector_create(type = "univariate")
 detector_update(det, 0.5)
@@ -54,6 +53,5 @@ for (i in seq_along(Y)) {
   }
 }
 
-}
 
 }

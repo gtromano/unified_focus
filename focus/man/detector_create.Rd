@@ -94,7 +94,6 @@ NPFOCuS:
   Any other cost will not work with this detector type. The \code{quantiles} vector argument is required, see \code{\link{get_statistics}()} for details.
 }
 \examples{
-\dontrun{
 # Univariate detector
 det <- detector_create(type = "univariate")
 detector_update(det, 0.5)
@@ -131,6 +130,5 @@ det_np <- detector_create(type = "npfocus", quantiles = quants)
 
 # One-sided univariate detector
 det_one_sided <- detector_create(type = "univariate_one_sided", side = "left")
-}
 
 }

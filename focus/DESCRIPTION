@@ -1,8 +1,9 @@
 Package: focus
 Type: Package
-Title: Online Changepoint Detection in Univariate and Multivariate Data Streams
-Version: 0.1.1
-Date: 2026-03-20
+Title: Online Changepoint Detection in Univariate and Multivariate Data
+        Streams
+Version: 0.1.2
+Date: 2026-03-25
 Authors@R: c(
     person("Gaetano", "Romano", 
            email = "g.romano@lancaster.ac.uk",
@@ -12,7 +13,7 @@ Authors@R: c(
            role = "aut"),
     person("Yuntang", "Fan", 
            email = "y.yuntang@lancaster.ac.uk",
-           role = "aut"),           
+           role = "aut"),
     person("Guillem", "Rigaill", 
            email = "guillem.rigaill@inrae.fr",
            role = c("aut")),
@@ -24,13 +25,19 @@ Authors@R: c(
            role = c("aut")),
     person("Idris A.", "Eckley", 
            email = "i.eckley@lancaster.ac.uk",
-           role = c("aut")))
+           role = c("aut")),
+    person("C. B.", "Barber",
+           role = c("ctb", "cph"),
+           comment = "Author of bundled 'Qhull' library"),
+    person("The Geometry Center",
+           role = c("ctb", "cph"),
+           comment = "Copyright holder of bundled 'Qhull' library"))
 Maintainer: Gaetano Romano <g.romano@lancaster.ac.uk>
-Description: This is a package for high-performance online changepoint detection in univariate and multivariate data streams. 
-             It provides efficient C++ implementations of the focus, md-focus and np-focus algorithms, 
-             with an R interface for real-time monitoring and offline analysis.
-             The package bundles code from code from Qhull <http://www.qhull.org/>, from C.B. Barber and The Geometry Center. 
-             See inst/COPYRIGHTS for details.
+Description: Provides high-performance online changepoint detection in univariate and multivariate data
+             streams. Implements efficient 'C++' backends for the 'focus', 'md-focus' and 'np-focus'
+             algorithms, with an 'R' interface for real-time monitoring and offline analysis.
+             The package bundles code from 'Qhull' <http://www.qhull.org/>, by C. B. Barber and
+             The Geometry Center. See 'inst/COPYRIGHTS' for details.
 License: GPL (>= 3)
 Imports: Rcpp (>= 1.1.0)
 LinkingTo: Rcpp

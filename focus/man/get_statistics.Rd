@@ -70,7 +70,6 @@ if not provided (\code{NULL}), pruning operates without this information.
 Returns a scalar test statistic optimized for detecting changepoints in AR processes.
 }
 \examples{
-\dontrun{
 
 ## Online (sequential) example
 # Generate data with a changepoint
@@ -93,6 +92,9 @@ for (i in seq_along(Y)) {
 ## Note that multiple models can be tested simultaneously on the same detector
 # as the statistics is independent of the detector state.
 # For example, testing both Gaussian and Poisson costs
+set.seed(2024)
+# Generate Poisson count data with a rate change
+Y_counts <- c(rpois(500, lambda = 10), rpois(500, lambda = 15))
 # Compute full trajectories for comparison
 det2 <- detector_create(type = "univariate")
 stat_gaussian <- numeric(length(Y_counts))
@@ -105,7 +107,7 @@ for (i in seq_along(Y_counts)) {
 }
 
 # Plot comparison
-par(mfrow = c(1, 2))
+oldpar <- par(mfrow = c(1, 2))
 plot(stat_gaussian, type = "l", main = "Gaussian Statistic on Poisson Data",
      xlab = "Time", ylab = "Statistic", lwd = 2, col = "blue")
 abline(v = 500, col = "green", lty = 3, lwd = 2)
@@ -113,7 +115,7 @@ abline(v = 500, col = "green", lty = 3, lwd = 2)
 plot(stat_poisson, type = "l", main = "Poisson Statistic on Poisson Data",
      xlab = "Time", ylab = "Statistic", lwd = 2, col = "red")
 abline(v = 500, col = "green", lty = 3, lwd = 2)
+par(oldpar)
 
-}
 
 }

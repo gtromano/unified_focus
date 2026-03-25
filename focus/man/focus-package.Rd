@@ -65,7 +65,7 @@
 \author{
   Gaetano Romano [aut, cre], \email{g.romano@lancaster.ac.uk}\\
   Kes Ward [aut], \email{k.ward4@lancaster.ac.uk}\\
-  Liudmila Pishchagina [aut], \email{liudmila.pishchagina@univ-evry.fr}\\
+  Yuntang Fan [aut], \email{y.yuntang@lancaster.ac.uk}\\
   Guillem Rigaill [aut], \email{guillem.rigaill@inrae.fr}\\
   Vincent Runge [aut], \email{vincent.runge@univ-evry.fr}\\
   Paul Fearnhead [aut], \email{p.fearnhead@lancaster.ac.uk}\\
@@ -102,7 +102,7 @@
   \code{\link{detector_candidates}}, \code{\link{generate_projection_indexes}}
 }
 \examples{
-  \dontrun{
+  \donttest{
     ## Offline (batch) example: univariate Gaussian change-in-mean
     set.seed(123)
     Y <- c(rnorm(500, mean = 0), rnorm(500, mean = 2))

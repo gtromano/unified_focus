@@ -95,7 +95,6 @@ using namespace changepoint;
 //'   Any other cost will not work with this detector type. The \code{quantiles} vector argument is required, see \code{\link{get_statistics}()} for details.
 //'
 //' @examples
-//' \dontrun{
 //' # Univariate detector
 //' det <- detector_create(type = "univariate")
 //' detector_update(det, 0.5)
@@ -132,7 +131,6 @@ using namespace changepoint;
 //'
 //' # One-sided univariate detector
 //' det_one_sided <- detector_create(type = "univariate_one_sided", side = "left")
-//' }
 //'
 //' @export
 // [[Rcpp::export]]
@@ -270,7 +268,6 @@ SEXP detector_create(std::string type,
 //' \code{det |> detector_update(y) |> get_statistics()}.
 //'
 //' @examples
-//' \dontrun{
 //' # Univariate example
 //' det <- detector_create(type = "univariate")
 //' detector_update(det, 0.5)
@@ -298,7 +295,6 @@ SEXP detector_create(std::string type,
 //'   }
 //' }
 //'
-//' }
 //'
 //' @export
 // [[Rcpp::export]]
@@ -369,7 +365,6 @@ SEXP detector_update(SEXP info_ptr, NumericVector y) {
 //' Returns a scalar test statistic optimized for detecting changepoints in AR processes.
 //'
 //' @examples
-//' \dontrun{
 //'
 //' ## Online (sequential) example
 //' # Generate data with a changepoint
@@ -392,6 +387,9 @@ SEXP detector_update(SEXP info_ptr, NumericVector y) {
 //' ## Note that multiple models can be tested simultaneously on the same detector
 //' # as the statistics is independent of the detector state.
 //' # For example, testing both Gaussian and Poisson costs
+//' set.seed(2024)
+//' # Generate Poisson count data with a rate change
+//' Y_counts <- c(rpois(500, lambda = 10), rpois(500, lambda = 15))
 //' # Compute full trajectories for comparison
 //' det2 <- detector_create(type = "univariate")
 //' stat_gaussian <- numeric(length(Y_counts))
@@ -404,7 +402,7 @@ SEXP detector_update(SEXP info_ptr, NumericVector y) {
 //' }
 //'
 //' # Plot comparison
-//' par(mfrow = c(1, 2))
+//' oldpar <- par(mfrow = c(1, 2))
 //' plot(stat_gaussian, type = "l", main = "Gaussian Statistic on Poisson Data",
 //'      xlab = "Time", ylab = "Statistic", lwd = 2, col = "blue")
 //' abline(v = 500, col = "green", lty = 3, lwd = 2)
@@ -412,8 +410,8 @@ SEXP detector_update(SEXP info_ptr, NumericVector y) {
 //' plot(stat_poisson, type = "l", main = "Poisson Statistic on Poisson Data",
 //'      xlab = "Time", ylab = "Statistic", lwd = 2, col = "red")
 //' abline(v = 500, col = "green", lty = 3, lwd = 2)
+//' par(oldpar)
 //'
-//' }
 //'
 //' @export
 // [[Rcpp::export]]
@@ -647,7 +645,7 @@ List detector_candidates(SEXP info_ptr) {
 //' dimensional space while keeping the number of projections manageable.
 //'
 //' @examples
-//' \dontrun{
+//' \donttest{
 //' # Generate 2-dimensional projections from 5 dimensions
 //' proj <- generate_projection_indexes(D = 5, p = 2)
 //' print(proj)
@@ -757,7 +755,6 @@ std::vector<std::vector<int>> generate_projection_indexes(int D, int p) {
 //' projection). Detection occurs when ANY statistic exceeds its threshold.
 //'
 //' @examples
-//' \dontrun{
 //' # Univariate Gaussian detection
 //' set.seed(123)
 //' Y <- c(rnorm(100, mean = 0), rnorm(100, mean = 2))
@@ -785,7 +782,6 @@ std::vector<std::vector<int>> generate_projection_indexes(int D, int p) {
 //' result_poisson <- focus_offline(Y_poisson, threshold = 10,
 //'                                 type = "univariate",
 //'                                 family = "poisson")
-//' }
 //'
 //' @export
 // [[Rcpp::export]]

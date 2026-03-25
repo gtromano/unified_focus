@@ -25,7 +25,7 @@ detectors. The circular combination approach ensures good coverage of the
 dimensional space while keeping the number of projections manageable.
 }
 \examples{
-\dontrun{
+\donttest{
 # Generate 2-dimensional projections from 5 dimensions
 proj <- generate_projection_indexes(D = 5, p = 2)
 print(proj)
