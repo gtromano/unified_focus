@@ -28,9 +28,9 @@ Authors@R: c(
            role = c("aut")),
     person("C. B.", "Barber",
            role = c("ctb", "cph"),
-           comment = "Author of bundled 'Qhull' library"),
+           comment = "Author and copyright holder of bundled 'Qhull' library"),
     person("The Geometry Center",
-           role = c("ctb", "cph"),
+           role = c("cph"),
            comment = "Copyright holder of bundled 'Qhull' library"))
 Maintainer: Gaetano Romano <g.romano@lancaster.ac.uk>
 Description: Provides high-performance online changepoint detection in univariate and multivariate data
