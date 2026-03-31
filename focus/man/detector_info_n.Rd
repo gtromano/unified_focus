@@ -4,10 +4,10 @@
 \alias{detector_info_n}
 \title{Get number of observations processed}
 \usage{
-detector_info_n(info_ptr)
+detector_info_n(det_ptr)
 }
 \arguments{
-\item{info_ptr}{External pointer to detector created by
+\item{det_ptr}{External pointer to detector created by
 \code{\link{detector_create}()}.}
 }
 \value{

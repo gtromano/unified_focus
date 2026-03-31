@@ -117,7 +117,7 @@ detector_create <- function(type, dim_indexes = NULL, quantiles = NULL, pruning_
 #' Adds new observation(s) to the detector's internal state and updates
 #' sufficient statistics.
 #'
-#' @param info_ptr External pointer to detector created by
+#' @param det_ptr External pointer to detector created by
 #'   \code{\link{detector_create}()}.
 #' @param y Numeric vector of new observation(s). For univariate detectors,
 #'   this should be a scalar (length-1 vector). For multivariate detectors,
@@ -160,8 +160,8 @@ detector_create <- function(type, dim_indexes = NULL, quantiles = NULL, pruning_
 #'
 #'
 #' @export
-detector_update <- function(info_ptr, y) {
-    .Call(`_focus_detector_update`, info_ptr, y)
+detector_update <- function(det_ptr, y) {
+    .Call(`_focus_detector_update`, det_ptr, y)
 }
 
 #' Compute current changepoint statistics
@@ -169,7 +169,7 @@ detector_update <- function(info_ptr, y) {
 #' Computes the current changepoint test statistic and detection result based
 #' on all observations processed so far.
 #'
-#' @param info_ptr External pointer to detector created by
+#' @param det_ptr External pointer to detector created by
 #'   \code{\link{detector_create}()}.
 #' @param family Character string specifying the distribution family:
 #'   \itemize{
@@ -273,8 +273,8 @@ detector_update <- function(info_ptr, y) {
 #'
 #'
 #' @export
-get_statistics <- function(info_ptr, family, theta0 = NULL, shape = NULL) {
-    .Call(`_focus_get_statistics`, info_ptr, family, theta0, shape)
+get_statistics <- function(det_ptr, family, theta0 = NULL, shape = NULL) {
+    .Call(`_focus_get_statistics`, det_ptr, family, theta0, shape)
 }
 
 #' Get number of candidate segments
@@ -282,7 +282,7 @@ get_statistics <- function(info_ptr, family, theta0 = NULL, shape = NULL) {
 #' Returns the number of candidate changepoint segments currently tracked
 #' by the detector.
 #'
-#' @param info_ptr External pointer to detector created by
+#' @param det_ptr External pointer to detector created by
 #'   \code{\link{detector_create}()}.
 #'
 #' @return Integer. Number of candidate segments.
@@ -293,29 +293,29 @@ get_statistics <- function(info_ptr, family, theta0 = NULL, shape = NULL) {
 #' controlled by the pruning parameters.
 #'
 #' @export
-detector_pieces_len <- function(info_ptr) {
-    .Call(`_focus_detector_pieces_len`, info_ptr)
+detector_pieces_len <- function(det_ptr) {
+    .Call(`_focus_detector_pieces_len`, det_ptr)
 }
 
 #' Get number of observations processed
 #'
 #' Returns the total number of observations processed by the detector.
 #'
-#' @param info_ptr External pointer to detector created by
+#' @param det_ptr External pointer to detector created by
 #'   \code{\link{detector_create}()}.
 #'
 #' @return Integer. Number of observations processed (current time index).
 #'
 #' @export
-detector_info_n <- function(info_ptr) {
-    .Call(`_focus_detector_info_n`, info_ptr)
+detector_info_n <- function(det_ptr) {
+    .Call(`_focus_detector_info_n`, det_ptr)
 }
 
 #' Get cumulative sum statistic
 #'
 #' Returns the current cumulative sum statistic maintained by the detector.
 #'
-#' @param info_ptr External pointer to detector created by
+#' @param det_ptr External pointer to detector created by
 #'   \code{\link{detector_create}()}.
 #'
 #' @return Numeric vector. Cumulative sum statistic. For univariate detectors,
@@ -323,8 +323,8 @@ detector_info_n <- function(info_ptr) {
 #'   length equal to the number of dimensions.
 #'
 #' @export
-detector_info_sn <- function(info_ptr) {
-    .Call(`_focus_detector_info_sn`, info_ptr)
+detector_info_sn <- function(det_ptr) {
+    .Call(`_focus_detector_info_sn`, det_ptr)
 }
 
 #' Get candidate segments
@@ -332,7 +332,7 @@ detector_info_sn <- function(info_ptr) {
 #' Returns detailed information about all candidate changepoint segments
 #' currently tracked by the detector.
 #'
-#' @param info_ptr External pointer to detector created by
+#' @param det_ptr External pointer to detector created by
 #'   \code{\link{detector_create}()}.
 #'
 #' @return A data frame (tibble) with columns:
@@ -348,8 +348,8 @@ detector_info_sn <- function(info_ptr) {
 #' test statistics without reprocessing the data.
 #'
 #' @export
-detector_candidates <- function(info_ptr) {
-    .Call(`_focus_detector_candidates`, info_ptr)
+detector_candidates <- function(det_ptr) {
+    .Call(`_focus_detector_candidates`, det_ptr)
 }
 
 #' Generate projection index sets
@@ -357,7 +357,7 @@ detector_candidates <- function(info_ptr) {
 #' Generates projection index sets for high-dimensional multivariate detectors
 #' using circular combinations.
 #'
-#' @param D Integer. Total number of dimensions.
+#' @param d Integer. Total number of dimensions.
 #' @param p Integer. Projection subset size (number of dimensions per projection).
 #'
 #' @return A list of integer vectors. Each element is a vector of 0-based
@@ -371,18 +371,18 @@ detector_candidates <- function(info_ptr) {
 #' @examples
 #' \donttest{
 #' # Generate 2-dimensional projections from 5 dimensions
-#' proj <- generate_projection_indexes(D = 5, p = 2)
+#' proj <- generate_projection_indexes(d = 5, p = 2)
 #' print(proj)
 #'
 #' # Use with multivariate detector
 #' det <- detector_create(type = "multivariate", dim_indexes = proj)
 #' set.seed(42)
-#' p <- 5
+#' d <- 5
 #'
 #' # Create data: changepoint at t=1000
 #' Y_multi <- rbind(
-#'     matrix(rnorm(1000 * p, mean = -1, 1), ncol = p),
-#'     matrix(rnorm(500 * p, mean = 1.2), ncol = p)
+#'     matrix(rnorm(1000 * d, mean = -1, 1), ncol = d),
+#'     matrix(rnorm(500 * d, mean = 1.2), ncol = d)
 #' )
 #'
 #' # Full multivariate detection
@@ -404,8 +404,8 @@ detector_candidates <- function(info_ptr) {
 #' }
 #'
 #' @export
-generate_projection_indexes <- function(D, p) {
-    .Call(`_focus_generate_projection_indexes`, D, p)
+generate_projection_indexes <- function(d, p) {
+    .Call(`_focus_generate_projection_indexes`, d, p)
 }
 
 #' @name focus_offline
@@ -446,7 +446,7 @@ generate_projection_indexes <- function(D, p) {
 #'   retained. Default is \code{NULL} (disabled).
 #' @param rho Numeric vector. AR coefficients for AutoRegressive Process (ARP)
 #'   detectors. Required when \code{type = "arp"}. Default is \code{NULL}.
-#' @param mu0_arp Numeric scalar. Pre-change mean for ARP detectors (optional). 
+#' @param mu0_arp Numeric scalar. Pre-change mean for ARP detectors (optional).
 #'   Only used when \code{type = "arp"}.
 #'   Default is \code{NULL}.
 #'
@@ -490,13 +490,6 @@ generate_projection_indexes <- function(D, p) {
 #' if (!is.null(result$detection_time)) {
 #'   abline(v = result$detection_time, col = "blue", lty = 2)
 #' }
-#'
-#' # Multivariate detection
-#' Y_multi <- matrix(rnorm(200 * 3), ncol = 3)
-#' Y_multi[101:200, ] <- Y_multi[101:200, ] + 1.5  # Add mean shift
-#' result_multi <- focus_offline(Y_multi, threshold = 15,
-#'                               type = "multivariate",
-#'                               family = "gaussian")
 #'
 #' # Poisson detection
 #' Y_poisson <- c(rpois(100, lambda = 2), rpois(100, lambda = 5))

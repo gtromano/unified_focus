@@ -254,13 +254,13 @@ class Detector:
         return f"Detector(type='{self._type}', n={self.get_n()}, n_candidates={self.get_n_candidates()})"
 
 
-def generate_projection_indexes(D: int, p: int) -> List[np.ndarray]:
+def generate_projection_indexes(d: int, p: int) -> List[np.ndarray]:
     """
     Generate projection index sets for high-dimensional multivariate detectors.
 
     Parameters
     ----------
-    D : int
+    d : int
         Number of total dimensions.
     p : int
         Projection subset size.
@@ -273,10 +273,10 @@ def generate_projection_indexes(D: int, p: int) -> List[np.ndarray]:
     Examples
     --------
     >>> # 2-dim projections from 5 dimensions
-    >>> generate_projection_indexes(D=5, p=2)
+    >>> generate_projection_indexes(d=5, p=2)
     [array([0,1]), array([1,2]), array([2,3]), array([3,4]), array([4,0])]
     """
-    return _focus.generate_projection_indexes(D, p)
+    return _focus.generate_projection_indexes(d, p)
 
 
 def focus_offline(

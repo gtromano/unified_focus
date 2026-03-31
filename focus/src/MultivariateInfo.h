@@ -89,14 +89,14 @@ static std::vector<double> deduplicate_points(const std::vector<double>& data,
   return out;
 }
 
-static std::vector<std::vector<int>> generate_circular_combinations(int D, int p) {
+static std::vector<std::vector<int>> generate_circular_combinations(int d, int p) {
     std::vector<std::vector<int>> out;
-    if (p <= 0 || p > D) return out;
+    if (p <= 0 || p > d) return out;
 
-    for (int start = 0; start < D; ++start) {
+    for (int start = 0; start < d; ++start) {
         std::vector<int> comb(p);
         for (int i = 0; i < p; ++i) {
-            comb[i] = (start + i) % D;
+            comb[i] = (start + i) % d;
         }
         out.push_back(comb);
     }

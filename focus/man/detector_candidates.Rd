@@ -4,10 +4,10 @@
 \alias{detector_candidates}
 \title{Get candidate segments}
 \usage{
-detector_candidates(info_ptr)
+detector_candidates(det_ptr)
 }
 \arguments{
-\item{info_ptr}{External pointer to detector created by
+\item{det_ptr}{External pointer to detector created by
 \code{\link{detector_create}()}.}
 }
 \value{
