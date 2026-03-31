@@ -4,10 +4,10 @@
 \alias{get_statistics}
 \title{Compute current changepoint statistics}
 \usage{
-get_statistics(info_ptr, family, theta0 = NULL, shape = NULL)
+get_statistics(det_ptr, family, theta0 = NULL, shape = NULL)
 }
 \arguments{
-\item{info_ptr}{External pointer to detector created by
+\item{det_ptr}{External pointer to detector created by
 \code{\link{detector_create}()}.}
 
 \item{family}{Character string specifying the distribution family:

@@ -254,7 +254,7 @@ SEXP detector_create(std::string type,
 //' Adds new observation(s) to the detector's internal state and updates
 //' sufficient statistics.
 //'
-//' @param info_ptr External pointer to detector created by
+//' @param det_ptr External pointer to detector created by
 //'   \code{\link{detector_create}()}.
 //' @param y Numeric vector of new observation(s). For univariate detectors,
 //'   this should be a scalar (length-1 vector). For multivariate detectors,
@@ -298,11 +298,11 @@ SEXP detector_create(std::string type,
 //'
 //' @export
 // [[Rcpp::export]]
-SEXP detector_update(SEXP info_ptr, NumericVector y) {
-  XPtr<std::shared_ptr<Info>> ptr(info_ptr);
+SEXP detector_update(SEXP det_ptr, NumericVector y) {
+  XPtr<std::shared_ptr<Info>> ptr(det_ptr);
   if (!ptr || !(*ptr)) stop("Invalid info pointer");
   (*ptr)->update(as<std::vector<double>>(y));
-  return info_ptr;
+  return det_ptr;
 }
 
 //' Compute current changepoint statistics
@@ -310,7 +310,7 @@ SEXP detector_update(SEXP info_ptr, NumericVector y) {
 //' Computes the current changepoint test statistic and detection result based
 //' on all observations processed so far.
 //'
-//' @param info_ptr External pointer to detector created by
+//' @param det_ptr External pointer to detector created by
 //'   \code{\link{detector_create}()}.
 //' @param family Character string specifying the distribution family:
 //'   \itemize{
@@ -415,12 +415,12 @@ SEXP detector_update(SEXP info_ptr, NumericVector y) {
 //'
 //' @export
 // [[Rcpp::export]]
-List get_statistics(SEXP info_ptr,
+List get_statistics(SEXP det_ptr,
                     std::string family,
                     Nullable<NumericVector> theta0 = R_NilValue,
                     Nullable<NumericVector> shape = R_NilValue) {   // <-- added shape
 
-  XPtr<std::shared_ptr<Info>> ptr(info_ptr);
+  XPtr<std::shared_ptr<Info>> ptr(det_ptr);
   if (!ptr || !(*ptr)) stop("Invalid info pointer");
 
   const Info& cs = **ptr;
@@ -508,7 +508,7 @@ List get_statistics(SEXP info_ptr,
 //' Returns the number of candidate changepoint segments currently tracked
 //' by the detector.
 //'
-//' @param info_ptr External pointer to detector created by
+//' @param det_ptr External pointer to detector created by
 //'   \code{\link{detector_create}()}.
 //'
 //' @return Integer. Number of candidate segments.
@@ -520,8 +520,8 @@ List get_statistics(SEXP info_ptr,
 //'
 //' @export
 // [[Rcpp::export]]
-int detector_pieces_len(SEXP info_ptr) {
-  XPtr<std::shared_ptr<Info>> ptr(info_ptr);
+int detector_pieces_len(SEXP det_ptr) {
+  XPtr<std::shared_ptr<Info>> ptr(det_ptr);
   if (!ptr || !(*ptr)) stop("Invalid info pointer");
   return static_cast<int>((*ptr)->candidates().size());
 }
@@ -530,15 +530,15 @@ int detector_pieces_len(SEXP info_ptr) {
 //'
 //' Returns the total number of observations processed by the detector.
 //'
-//' @param info_ptr External pointer to detector created by
+//' @param det_ptr External pointer to detector created by
 //'   \code{\link{detector_create}()}.
 //'
 //' @return Integer. Number of observations processed (current time index).
 //'
 //' @export
 // [[Rcpp::export]]
-int detector_info_n(SEXP info_ptr) {
-  XPtr<std::shared_ptr<Info>> ptr(info_ptr);
+int detector_info_n(SEXP det_ptr) {
+  XPtr<std::shared_ptr<Info>> ptr(det_ptr);
   if (!ptr || !(*ptr)) stop("Invalid info pointer");
   return (*ptr)->n();
 }
@@ -547,7 +547,7 @@ int detector_info_n(SEXP info_ptr) {
 //'
 //' Returns the current cumulative sum statistic maintained by the detector.
 //'
-//' @param info_ptr External pointer to detector created by
+//' @param det_ptr External pointer to detector created by
 //'   \code{\link{detector_create}()}.
 //'
 //' @return Numeric vector. Cumulative sum statistic. For univariate detectors,
@@ -556,8 +556,8 @@ int detector_info_n(SEXP info_ptr) {
 //'
 //' @export
 // [[Rcpp::export]]
-std::vector<double> detector_info_sn(SEXP info_ptr) {
-  XPtr<std::shared_ptr<Info>> ptr(info_ptr);
+std::vector<double> detector_info_sn(SEXP det_ptr) {
+  XPtr<std::shared_ptr<Info>> ptr(det_ptr);
   if (!ptr || !(*ptr)) stop("Invalid info pointer");
   return (*ptr)->sn();
 }
@@ -567,7 +567,7 @@ std::vector<double> detector_info_sn(SEXP info_ptr) {
 //' Returns detailed information about all candidate changepoint segments
 //' currently tracked by the detector.
 //'
-//' @param info_ptr External pointer to detector created by
+//' @param det_ptr External pointer to detector created by
 //'   \code{\link{detector_create}()}.
 //'
 //' @return A data frame (tibble) with columns:
@@ -584,8 +584,8 @@ std::vector<double> detector_info_sn(SEXP info_ptr) {
 //'
 //' @export
 // [[Rcpp::export]]
-List detector_candidates(SEXP info_ptr) {
-  XPtr<std::shared_ptr<Info>> ptr(info_ptr);
+List detector_candidates(SEXP det_ptr) {
+  XPtr<std::shared_ptr<Info>> ptr(det_ptr);
   if (!ptr || !(*ptr)) stop("Invalid info pointer");
 
   const auto& candidates = (*ptr)->candidates();
@@ -633,7 +633,7 @@ List detector_candidates(SEXP info_ptr) {
 //' Generates projection index sets for high-dimensional multivariate detectors
 //' using circular combinations.
 //'
-//' @param D Integer. Total number of dimensions.
+//' @param d Integer. Total number of dimensions.
 //' @param p Integer. Projection subset size (number of dimensions per projection).
 //'
 //' @return A list of integer vectors. Each element is a vector of 0-based
@@ -647,18 +647,18 @@ List detector_candidates(SEXP info_ptr) {
 //' @examples
 //' \donttest{
 //' # Generate 2-dimensional projections from 5 dimensions
-//' proj <- generate_projection_indexes(D = 5, p = 2)
+//' proj <- generate_projection_indexes(d = 5, p = 2)
 //' print(proj)
 //'
 //' # Use with multivariate detector
 //' det <- detector_create(type = "multivariate", dim_indexes = proj)
 //' set.seed(42)
-//' p <- 5
+//' d <- 5
 //'
 //' # Create data: changepoint at t=1000
 //' Y_multi <- rbind(
-//'     matrix(rnorm(1000 * p, mean = -1, 1), ncol = p),
-//'     matrix(rnorm(500 * p, mean = 1.2), ncol = p)
+//'     matrix(rnorm(1000 * d, mean = -1, 1), ncol = d),
+//'     matrix(rnorm(500 * d, mean = 1.2), ncol = d)
 //' )
 //'
 //' # Full multivariate detection
@@ -681,8 +681,8 @@ List detector_candidates(SEXP info_ptr) {
 //'
 //' @export
 // [[Rcpp::export]]
-std::vector<std::vector<int>> generate_projection_indexes(int D, int p) {
-  std::vector<std::vector<int>> combs = generate_circular_combinations(D, p);
+std::vector<std::vector<int>> generate_projection_indexes(int d, int p) {
+  std::vector<std::vector<int>> combs = generate_circular_combinations(d, p);
   return combs;
 }
 
@@ -725,7 +725,7 @@ std::vector<std::vector<int>> generate_projection_indexes(int D, int p) {
 //'   retained. Default is \code{NULL} (disabled).
 //' @param rho Numeric vector. AR coefficients for AutoRegressive Process (ARP)
 //'   detectors. Required when \code{type = "arp"}. Default is \code{NULL}.
-//' @param mu0_arp Numeric scalar. Pre-change mean for ARP detectors (optional). 
+//' @param mu0_arp Numeric scalar. Pre-change mean for ARP detectors (optional).
 //'   Only used when \code{type = "arp"}.
 //'   Default is \code{NULL}.
 //'
@@ -769,13 +769,6 @@ std::vector<std::vector<int>> generate_projection_indexes(int D, int p) {
 //' if (!is.null(result$detection_time)) {
 //'   abline(v = result$detection_time, col = "blue", lty = 2)
 //' }
-//'
-//' # Multivariate detection
-//' Y_multi <- matrix(rnorm(200 * 3), ncol = 3)
-//' Y_multi[101:200, ] <- Y_multi[101:200, ] + 1.5  # Add mean shift
-//' result_multi <- focus_offline(Y_multi, threshold = 15,
-//'                               type = "multivariate",
-//'                               family = "gaussian")
 //'
 //' # Poisson detection
 //' Y_poisson <- c(rpois(100, lambda = 2), rpois(100, lambda = 5))

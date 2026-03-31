@@ -4,10 +4,10 @@
 \alias{detector_update}
 \title{Update detector with new observation(s)}
 \usage{
-detector_update(info_ptr, y)
+detector_update(det_ptr, y)
 }
 \arguments{
-\item{info_ptr}{External pointer to detector created by
+\item{det_ptr}{External pointer to detector created by
 \code{\link{detector_create}()}.}
 
 \item{y}{Numeric vector of new observation(s). For univariate detectors,

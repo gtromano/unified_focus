@@ -65,7 +65,7 @@ retained. Default is \code{NULL} (disabled).}
 \item{rho}{Numeric vector. AR coefficients for AutoRegressive Process (ARP)
 detectors. Required when \code{type = "arp"}. Default is \code{NULL}.}
 
-\item{mu0_arp}{Numeric scalar. Pre-change mean for ARP detectors (optional). 
+\item{mu0_arp}{Numeric scalar. Pre-change mean for ARP detectors (optional).
 Only used when \code{type = "arp"}.
 Default is \code{NULL}.}
 }
@@ -115,13 +115,6 @@ abline(h = result$threshold, col = "red", lty = 2)
 if (!is.null(result$detection_time)) {
   abline(v = result$detection_time, col = "blue", lty = 2)
 }
-
-# Multivariate detection
-Y_multi <- matrix(rnorm(200 * 3), ncol = 3)
-Y_multi[101:200, ] <- Y_multi[101:200, ] + 1.5  # Add mean shift
-result_multi <- focus_offline(Y_multi, threshold = 15,
-                              type = "multivariate",
-                              family = "gaussian")
 
 # Poisson detection
 Y_poisson <- c(rpois(100, lambda = 2), rpois(100, lambda = 5))

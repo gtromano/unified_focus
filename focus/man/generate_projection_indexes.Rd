@@ -4,10 +4,10 @@
 \alias{generate_projection_indexes}
 \title{Generate projection index sets}
 \usage{
-generate_projection_indexes(D, p)
+generate_projection_indexes(d, p)
 }
 \arguments{
-\item{D}{Integer. Total number of dimensions.}
+\item{d}{Integer. Total number of dimensions.}
 
 \item{p}{Integer. Projection subset size (number of dimensions per projection).}
 }
@@ -27,18 +27,18 @@ dimensional space while keeping the number of projections manageable.
 \examples{
 \donttest{
 # Generate 2-dimensional projections from 5 dimensions
-proj <- generate_projection_indexes(D = 5, p = 2)
+proj <- generate_projection_indexes(d = 5, p = 2)
 print(proj)
 
 # Use with multivariate detector
 det <- detector_create(type = "multivariate", dim_indexes = proj)
 set.seed(42)
-p <- 5
+d <- 5
 
 # Create data: changepoint at t=1000
 Y_multi <- rbind(
-    matrix(rnorm(1000 * p, mean = -1, 1), ncol = p),
-    matrix(rnorm(500 * p, mean = 1.2), ncol = p)
+    matrix(rnorm(1000 * d, mean = -1, 1), ncol = d),
+    matrix(rnorm(500 * d, mean = 1.2), ncol = d)
 )
 
 # Full multivariate detection

@@ -4,10 +4,10 @@
 \alias{detector_info_sn}
 \title{Get cumulative sum statistic}
 \usage{
-detector_info_sn(info_ptr)
+detector_info_sn(det_ptr)
 }
 \arguments{
-\item{info_ptr}{External pointer to detector created by
+\item{det_ptr}{External pointer to detector created by
 \code{\link{detector_create}()}.}
 }
 \value{

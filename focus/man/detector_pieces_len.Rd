@@ -4,10 +4,10 @@
 \alias{detector_pieces_len}
 \title{Get number of candidate segments}
 \usage{
-detector_pieces_len(info_ptr)
+detector_pieces_len(det_ptr)
 }
 \arguments{
-\item{info_ptr}{External pointer to detector created by
+\item{det_ptr}{External pointer to detector created by
 \code{\link{detector_create}()}.}
 }
 \value{
