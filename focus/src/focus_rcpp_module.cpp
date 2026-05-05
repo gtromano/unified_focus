@@ -233,11 +233,23 @@ SEXP detector_create(std::string type,
 
     std::vector<double> rho_vec = as<std::vector<double>>(rv);
 
-    // Determine known_prechange based on whether mu0_arp is provided
-    bool known_prechange = !mu0_arp.isNull();
+    // Check mu0_arp: distinguish between NULL (unknown) and NA (user mistake)
+    bool known_prechange = false;
 
-    // ARpInfo constructor
-    cs = std::make_shared<ARpInfo>(rho_vec, known_prechange);
+    if (!mu0_arp.isNull()) {
+      NumericVector mu0_vec(mu0_arp.get());
+
+      if (mu0_vec.size() < 1 || NumericVector::is_na(mu0_vec[0])) {
+        stop("`mu0_arp` is NA. If the pre-change mean is unknown, set `mu0_arp = NULL`.");
+      }
+
+      known_prechange = true;
+      double mu0_val = mu0_vec[0];
+
+      cs = std::make_shared<ARpInfo>(rho_vec, known_prechange, mu0_val);  // <-- pass mu0
+    } else {
+      cs = std::make_shared<ARpInfo>(rho_vec, known_prechange);  // <-- defaults to mu0 = 0.0
+    }
 
   } else {
     stop("type must be one of: 'multivariate', 'univariate', 'univariate_one_sided', 'npfocus', 'arp'");
