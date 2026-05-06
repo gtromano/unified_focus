@@ -131,8 +131,14 @@ public:
             
             // Determine known_prechange based on whether mu0_arp is provided
             bool known_prechange = !mu0_arp.is_none();
-            
-            info_ = std::make_shared<ARpInfo>(rho_vec, known_prechange);
+
+            if (known_prechange) {
+                // create a info_ with mu0_arp as the known pre-change mean
+                info_ = std::make_shared<ARpInfo>(rho_vec, known_prechange, mu0_arp.cast<double>());
+            } else {
+                // create a info_ without known pre-change mean (mu0_arp will be ignored)
+                info_ = std::make_shared<ARpInfo>(rho_vec, known_prechange);
+            }
             
         } else {
             throw std::invalid_argument(

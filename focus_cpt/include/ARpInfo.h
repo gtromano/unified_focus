@@ -38,11 +38,13 @@ class ARpInfo : public Info {
 public:
   // Constructor: Initialize with ARP parameters
   ARpInfo(const std::vector<double>& rho,
-          bool known_prechange = false)
+          bool known_prechange = false,
+          double mu0 = 0.0)              // <-- added
     : Info(std::vector<double>{0.0}, 0),
-      rho_(rho),
+      rho_(normalise_rho(rho)),
       known_prechange_(known_prechange),
-      p_((int)rho.size()),
+      mu0_(mu0),                         // <-- stored
+      p_((int)rho_.size()),
       buf_max_(std::max(2 * p_, p_ + 1)),
       max_stat_(-1.0),
       cpt_(-1),
@@ -68,15 +70,16 @@ public:
       throw std::invalid_argument("ARpInfo::update requires univariate observation (length 1).");
     }
 
-    double obs = y[0];
+    double obs = y[0] - mu0_;   // <-- shift by known pre-change mean
+
     n_ = n_ + 1;
     cumsum_ += obs;
-    
+
     // Call implementation for all observations starting from n==1
     changepoint::arp_detector_update_impl(obs, rho_, p_, buf_max_,
-                                           known_prechange_, n_,
-                                           opaque_states_,
-                                           max_stat_, cpt_);
+                                          known_prechange_, n_,
+                                          opaque_states_,
+                                          max_stat_, cpt_);
 
     // Sync parent sn_ with cumulative sum
     sn_.assign(1, cumsum_);
@@ -88,16 +91,26 @@ public:
   }
 
   // Accessors for external cost function
-  double max_stat() const { return max_stat_; }
-  int cpt() const { return cpt_; }
+  double max_stat()        const { return max_stat_; }
+  int cpt()                const { return cpt_; }
   const std::vector<double>& rho() const { return rho_; }
-  int p() const { return p_; }
-  bool known_prechange() const { return known_prechange_; }
+  int p()                  const { return p_; }
+  bool known_prechange()   const { return known_prechange_; }
+  double mu0()             const { return mu0_; }   // <-- accessor if needed
 
 private:
+
+  static std::vector<double> normalise_rho(const std::vector<double>& rho) {
+    if (rho.size() == 1) {
+      return std::vector<double>{rho[0], 0.0};
+    }
+    return rho;
+  }
+
   // ARP parameters
   std::vector<double> rho_;       // AR coefficients
   bool known_prechange_;          // Whether pre-change mean is known
+  double mu0_;                    // Known pre-change mean (if applicable)
   int p_;                         // AR order
   int buf_max_;                   // Buffer size
 
@@ -107,15 +120,12 @@ private:
 
   // Data
   double cumsum_;                 // Cumulative sum of all observations
-  
+
   // Dummy candidates (required by interface but not used for ARP)
   mutable std::vector<Candidate> dummy_candidates_;
 
   // Opaque pointer to hold the four State objects (implementation detail in focus_ARp.cpp)
   void* opaque_states_;
-
-
-
 };
 
 } // namespace changepoint
