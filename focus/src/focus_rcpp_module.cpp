@@ -271,6 +271,9 @@ SEXP detector_create(std::string type,
 //' @param y Numeric vector of new observation(s). For univariate detectors,
 //'   this should be a scalar (length-1 vector). For multivariate detectors,
 //'   this should be a vector matching the number of dimensions.
+//' @param lambda Numeric scalar. Rate parameter for background process (default: 1.0).
+//'   Allows for non-fixed background rate. For example, use \code{lambda_i} for observation-specific rates.
+//'   Default is \code{1.0} (standard CUSUM, one observation per update).
 //'
 //' @return
 //' An external pointer to the detector (the same object that was passed in).
@@ -310,10 +313,10 @@ SEXP detector_create(std::string type,
 //'
 //' @export
 // [[Rcpp::export]]
-SEXP detector_update(SEXP det_ptr, NumericVector y) {
+SEXP detector_update(SEXP det_ptr, NumericVector y, double lambda = 1.0) {
   XPtr<std::shared_ptr<Info>> ptr(det_ptr);
   if (!ptr || !(*ptr)) stop("Invalid info pointer");
-  (*ptr)->update(as<std::vector<double>>(y));
+  (*ptr)->update(as<std::vector<double>>(y), lambda);
   return det_ptr;
 }
 
@@ -603,7 +606,7 @@ List detector_candidates(SEXP det_ptr) {
   const auto& candidates = (*ptr)->candidates();
   const size_t K = candidates.size();
 
-  IntegerVector tau(K);
+  NumericVector tau(K);
   CharacterVector side(K);
   List st_list(K);      // each element: NumericVector for candidate.st
 

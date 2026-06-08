@@ -30,14 +30,15 @@ BEGIN_RCPP
 END_RCPP
 }
 // detector_update
-SEXP detector_update(SEXP det_ptr, NumericVector y);
-RcppExport SEXP _focus_detector_update(SEXP det_ptrSEXP, SEXP ySEXP) {
+SEXP detector_update(SEXP det_ptr, NumericVector y, double lambda);
+RcppExport SEXP _focus_detector_update(SEXP det_ptrSEXP, SEXP ySEXP, SEXP lambdaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type det_ptr(det_ptrSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
-    rcpp_result_gen = Rcpp::wrap(detector_update(det_ptr, y));
+    Rcpp::traits::input_parameter< double >::type lambda(lambdaSEXP);
+    rcpp_result_gen = Rcpp::wrap(detector_update(det_ptr, y, lambda));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -138,7 +139,7 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_focus_detector_create", (DL_FUNC) &_focus_detector_create, 9},
-    {"_focus_detector_update", (DL_FUNC) &_focus_detector_update, 2},
+    {"_focus_detector_update", (DL_FUNC) &_focus_detector_update, 3},
     {"_focus_get_statistics", (DL_FUNC) &_focus_get_statistics, 4},
     {"_focus_detector_pieces_len", (DL_FUNC) &_focus_detector_pieces_len, 1},
     {"_focus_detector_info_n", (DL_FUNC) &_focus_detector_info_n, 1},

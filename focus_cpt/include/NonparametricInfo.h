@@ -63,7 +63,7 @@ public:
   }
 
   // update: preprocess y into indicators y <= q_i and forward to each UnivariateInfo
-  void update(const std::vector<double>& y) override {
+  void update(const std::vector<double>& y, double lambda = 1.0) override {
     if (y.size() != 1) {
       throw std::invalid_argument("NonparametricInfo::update requires univariate observation (length 1).");
     }
@@ -72,7 +72,7 @@ public:
     for (size_t i = 0; i < sub_infos_.size(); ++i) {
       double indicator = (raw <= quants_[i]) ? 1.0 : 0.0;
       std::vector<double> single = { indicator };
-      sub_infos_[i]->update(single);
+      sub_infos_[i]->update(single, lambda);
     }
 
     // sync parent sn_ and n_ with sub-detectors (they should all have same n)

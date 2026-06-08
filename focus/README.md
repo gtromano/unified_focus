@@ -449,7 +449,7 @@ system.time(
 ```
 
        user  system elapsed 
-      6.156   0.085   6.241 
+      6.486   0.096   6.582 
 
 ``` r
 # Low-dimensional projection approximation
@@ -462,7 +462,7 @@ system.time(
 ```
 
        user  system elapsed 
-      0.148   0.000   0.148 
+      0.151   0.000   0.150 
 
 ``` r
 # Verify similarity
@@ -613,7 +613,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.021   0.000   0.021 
+      0.022   0.000   0.021 
 
 ``` r
 plot(res_bern_multi$stat, main = "Bernoulli (multivariate): two streams")
@@ -670,7 +670,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.003 
+      0.003   0.000   0.002 
 
 ``` r
 plot(res_gamma$stat, main = "Gamma: change in scale (shape = 2)")
@@ -986,7 +986,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.155   0.031   0.147 
+      0.162   0.025   0.154 
 
 ``` r
 # Benchmark online mode
@@ -1010,7 +1010,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.343   0.000   0.343 
+      0.362   0.000   0.363 
 
 ``` r
 # Verify both produce identical results
@@ -1026,7 +1026,7 @@ speedup <- time_online["elapsed"] / time_offline["elapsed"]
 cat("Offline mode is", round(speedup, 1), "x faster\n")
 ```
 
-    Offline mode is 2.3 x faster
+    Offline mode is 2.4 x faster
 
 ## C++ Integration
 

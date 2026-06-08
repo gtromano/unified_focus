@@ -26,7 +26,7 @@ void arp_detector_update_impl(double obs,
                                int p,
                                int buf_max,
                                bool known_prechange,
-                               int n,
+                               double n,
                                void*& opaque_states,  // Opaque pointer to hold the four State objects
                                double& out_max_stat,
                                int& out_cpt);
@@ -65,14 +65,14 @@ public:
   ARpInfo& operator=(const ARpInfo&) = delete;
 
   // update: Process a new observation (univariate scalar)
-  void update(const std::vector<double>& y) override {
+  void update(const std::vector<double>& y, double lambda = 1.0) override {
     if (y.size() != 1) {
       throw std::invalid_argument("ARpInfo::update requires univariate observation (length 1).");
     }
 
     double obs = y[0] - mu0_;   // <-- shift by known pre-change mean
 
-    n_ = n_ + 1;
+    n_ += lambda;
     cumsum_ += obs;
 
     // Call implementation for all observations starting from n==1

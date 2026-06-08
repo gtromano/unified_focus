@@ -147,14 +147,14 @@ public:
         }
     }
     
-    void update(const py::array_t<double>& y) {
+    void update(const py::array_t<double>& y, double lambda = 1.0) {
         auto buf = y.request();
         std::vector<double> y_vec(static_cast<size_t>(buf.size));
         double* ptr = static_cast<double*>(buf.ptr);
         for (ssize_t i = 0; i < buf.size; ++i) {
             y_vec[i] = ptr[i];
         }
-        info_->update(y_vec);
+        info_->update(y_vec, lambda);
     }
     
     py::dict get_statistics(const std::string& family,
@@ -265,7 +265,7 @@ public:
         const auto& candidates = info_->candidates();
         const size_t K = candidates.size();
         
-        std::vector<int> tau_vec;
+        std::vector<double> tau_vec;
         std::vector<std::string> side_vec;
         py::list st_list;
         
@@ -285,7 +285,7 @@ public:
         }
         
         py::dict out;
-        out["tau"] = py::array_t<int>(tau_vec.size(), tau_vec.data());
+        out["tau"] = py::array_t<double>(tau_vec.size(), tau_vec.data());
         out["side"] = side_vec;
         out["st"] = st_list;
         
@@ -625,7 +625,7 @@ PYBIND11_MODULE(_focus, m) {
                     For arp: Pre-change mean for ARP detector. When provided, enables more efficient
                     pruning based on the known pre-change parameter. Default is None (disabled).
              )pbdoc")
-        .def("update", &Detector::update, py::arg("y"),
+        .def("update", &Detector::update, py::arg("y"), py::arg("lambda") = 1.0,
              "Update detector with new observation(s)")
         .def("get_statistics", &Detector::get_statistics,
              py::arg("family"),

@@ -65,9 +65,10 @@ class Detector:
 
     Notes
     -----
-    The Python API mirrors the R bindings and the underlying C++ behaviour.
     Multivariate detection with many dimensions can be approximated by using
     projections (subsets of dimensions) supplied via ``dim_indexes``.
+    
+    
     
     AutoRegressive Process (ARP):
     When ``type = "arp"``, the ``rho`` parameter must be provided as a numeric
@@ -139,7 +140,7 @@ class Detector:
         )
         self._type = type
 
-    def update(self, y: Union[float, List[float], np.ndarray]) -> None:
+    def update(self, y: Union[float, List[float], np.ndarray], lambda_: float = 1.0) -> None:
         """
         Update the detector with new observation(s).
 
@@ -147,9 +148,17 @@ class Detector:
         ----------
         y : float, list, or array
             New observation(s). Must match the detector's dimensionality.
+        lambda_ : float, default 1.0
+            Observation weight (scaling factor for the observation count increment).
+            Allows for non-fixed background rates by weighting observations. When
+            ``lambda_ = 1.0`` (default), behaves as standard CUSUM with unit
+            increments. For ``lambda_ < 1.0``, observations are weighted less;
+            for ``lambda_ > 1.0``, observations are weighted more heavily.
+            Useful for modeling variable background rates or importance weighting
+            of observations.
         """
         y = np.ascontiguousarray(y, dtype=np.float64)
-        self._detector.update(y)
+        self._detector.update(y, lambda_)
 
     def get_statistics(
         self,
