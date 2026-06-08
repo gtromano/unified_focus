@@ -124,7 +124,7 @@ Both modes yield the same statistical results. The offline mode is typically **t
   - `dim_indexes`: (Optional) List of dimension index vectors for multivariate projections
   - `quantiles`: (Optional) Quantile vector for `type = "npfocus"`
   - `rho`: (Optional) AR coefficients array for `type = "arp"`
-  - `mu0_arp`: (Optional) Pre-change mean for `type = "arp"`
+  - `mu0_arp`: Pre-change mean for `type = "arp"`
   - `pruning_mult`, `pruning_offset`: Pruning parameters (default: 2, 1)
   - `side`: Pruning side - `"right"` or `"left"` (default: `"right"`)
   - Returns: dict-like object with `stat` (2D numpy array where each row is a time and each column is a statistic), `changepoint`, `detection_time`, `detected_changepoint`, `candidates`, `threshold`, `n`, `type`, `family`, and `shape` (if gamma)
@@ -137,7 +137,7 @@ Both modes yield the same statistical results. The offline mode is typically **t
   - `dim_indexes`: (Optional) List of dimension index vectors for multivariate projections
   - `quantiles`: (Optional) Quantile vector for `type = "npfocus"`
   - `rho`: (Optional) AR coefficients array for `type = "arp"`
-  - `mu0_arp`: (Optional) Pre-change mean for `type = "arp"`
+  - `mu0_arp`: Pre-change mean for `type = "arp"`
   - `pruning_mult`, `pruning_offset`: Pruning parameters (default: 2, 1)
   - `side`: Pruning side - `"right"` or `"left"` (default: `"right"`)
 
@@ -450,7 +450,8 @@ res = focus_offline(
     threshold=20,
     type="arp",
     family="arp",
-    rho=rho_est
+    rho=rho_est,
+    mu0_arp=0.0
 )
 
 # Plot results
@@ -483,7 +484,7 @@ And in the online setting:
 np.random.seed(123)
 
 # Create online ARP detector
-detector = Detector(type="arp", rho=rho_est)
+detector = Detector(type="arp", rho=rho_est, mu0_arp=0.0)
 
 stat_trace = []
 

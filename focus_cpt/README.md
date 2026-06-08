@@ -172,7 +172,7 @@ typically **tens to hundreds of times faster**.
     multivariate projections
   - `quantiles`: (Optional) Quantile vector for `type = "npfocus"`
   - `rho`: (Optional) AR coefficients array for `type = "arp"`
-  - `mu0_arp`: (Optional) Pre-change mean for `type = "arp"`
+  - `mu0_arp`: Pre-change mean for `type = "arp"`
   - `pruning_mult`, `pruning_offset`: Pruning parameters (default: 2, 1)
   - `side`: Pruning side - `"right"` or `"left"` (default: `"right"`)
   - Returns: dict-like object with `stat` (2D numpy array where each row
@@ -191,7 +191,7 @@ typically **tens to hundreds of times faster**.
     multivariate projections
   - `quantiles`: (Optional) Quantile vector for `type = "npfocus"`
   - `rho`: (Optional) AR coefficients array for `type = "arp"`
-  - `mu0_arp`: (Optional) Pre-change mean for `type = "arp"`
+  - `mu0_arp`: Pre-change mean for `type = "arp"`
   - `pruning_mult`, `pruning_offset`: Pruning parameters (default: 2, 1)
   - `side`: Pruning side - `"right"` or `"left"` (default: `"right"`)
 
@@ -563,7 +563,8 @@ res = focus_offline(
     threshold=20,
     type="arp",
     family="arp",
-    rho=rho_est
+    rho=rho_est,
+    mu0_arp=0.0
 )
 
 # Plot results
@@ -592,7 +593,7 @@ print(f"True changepoint: {n_pre}")
 
 ![](generate_README_python_files/figure-commonmark/cell-14-output-1.png)
 
-    Detection time: 505
+    Detection time: 517
     Estimated changepoint: 500
     True changepoint: 500
 
@@ -602,7 +603,7 @@ And in the online setting:
 np.random.seed(123)
 
 # Create online ARP detector
-detector = Detector(type="arp", rho=rho_est)
+detector = Detector(type="arp", rho=rho_est, mu0_arp=0.0)
 
 stat_trace = []
 
@@ -623,7 +624,7 @@ plt.ylabel("Statistic")
 plt.show()
 ```
 
-    Detection at time 505 with changepoint estimate τ = 500
+    Detection at time 517 with changepoint estimate τ = 500
 
 ![](generate_README_python_files/figure-commonmark/cell-15-output-2.png)
 
@@ -743,8 +744,8 @@ print(f"Online time:  {online_time:.2f}s")
 print(f"Offline is {online_time / offline_time:.1f}× faster")
 ```
 
-    Offline time: 0.20s
-    Online time:  0.33s
+    Offline time: 0.22s
+    Online time:  0.34s
     Offline is 1.6× faster
 
 ------------------------------------------------------------------------

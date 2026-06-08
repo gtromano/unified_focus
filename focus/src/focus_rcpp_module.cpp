@@ -248,6 +248,7 @@ SEXP detector_create(std::string type,
 
       cs = std::make_shared<ARpInfo>(rho_vec, known_prechange, mu0_val);  // <-- pass mu0
     } else {
+      stop("The mu0_arp unknown case is still under development, please specify a parameter `mu0_arp` when using type='arp'.");
       cs = std::make_shared<ARpInfo>(rho_vec, known_prechange);  // <-- defaults to mu0 = 0.0
     }
 
