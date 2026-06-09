@@ -14,10 +14,10 @@ namespace changepoint {
 class Info {
 protected:
   std::vector<double> sn_;      // Cumulative sum
-  int n_;                       // Number of observations
+  double n_;                     // Effective number of observations (accounting for lambda)
 
 public:
-  Info(const std::vector<double>& sn = {0.0}, int n = 0)
+  Info(const std::vector<double>& sn = {0.0}, double n = 0.0)
     : sn_(sn), n_(n) {}
 
   virtual ~Info() = default;
@@ -27,8 +27,8 @@ public:
     return {Candidate(sn_, n_, "right")};
   }
 
-  virtual void add_new_point(const std::vector<double>& y) {
-    n_++;
+  virtual void add_new_point(const std::vector<double>& y, double lambda = 1.0) {
+    n_ += lambda;
     if (sn_.size() != y.size()) {
       sn_.resize(y.size(), 0.0);
     }
@@ -37,12 +37,12 @@ public:
     }
   }
 
-  virtual void update(const std::vector<double>& y) = 0;
+  virtual void update(const std::vector<double>& y, double lambda = 1.0) = 0;
   virtual const std::vector<Candidate>& candidates() const = 0;
 
   // Accessors for common state
   const std::vector<double>& sn() const { return sn_; }
-  int n() const { return n_; }
+  double n() const { return n_; }
 };
 
 // ---------------------------------------------------------------------------
@@ -53,7 +53,7 @@ protected:
   std::vector<Candidate> candidates_;
 
 public:
-  CandidateListInfo(const std::vector<double>& sn = {0.0}, int n = 0)
+  CandidateListInfo(const std::vector<double>& sn = {0.0}, double n = 0.0)
     : Info(sn, n) {
     candidates_.reserve(30);
   }
@@ -68,8 +68,8 @@ public:
     return candidates;
   }
 
-  void update(const std::vector<double>& y) override {
-    add_new_point(y);
+  void update(const std::vector<double>& y, double lambda = 1.0) override {
+    add_new_point(y, lambda);
     candidates_ = prune(candidates_);
     append_new_candidate();
   }
@@ -120,7 +120,7 @@ private:
   }
 
 public:
-  OneSideUnivariateInfo(double sn = 0.0, int n = 0,
+  OneSideUnivariateInfo(double sn = 0.0, double n = 0.0,
                         const std::string& side = "right",
                         double anomaly_intensity = std::numeric_limits<double>::quiet_NaN())
     : Info({sn}, n), side_(side), left_(0), k_(0), 
@@ -145,8 +145,8 @@ public:
     return {Candidate(sn_, n_, side_)};
   }
 
-  void update(const std::vector<double>& y) override {
-    add_new_point(y);
+  void update(const std::vector<double>& y, double lambda = 1.0) override {
+    add_new_point(y, lambda);
     prune_inplace();
     append_new_candidate();
   }
@@ -177,8 +177,8 @@ private:
 
     while (left_ < k_) {
       const auto& c = candidates_[left_];
-      int tau = c.tau;
-      int denom = n_ - tau;
+      double tau = c.tau;
+      double denom = n_ - tau;
       double num = sn_[0] - c.scalar_st();
       
       double ratio = (denom > 0) ? (num / denom) : std::numeric_limits<double>::infinity();
@@ -202,10 +202,10 @@ private:
       const auto& c1 = candidates_[k_ - 1];
       const auto& c0 = candidates_[k_ - 2];
 
-      int tau1 = c1.tau;
-      int tau0 = c0.tau;
-      int denom1 = n_ - tau1;
-      int denom0 = n_ - tau0;
+      double tau1 = c1.tau;
+      double tau0 = c0.tau;
+      double denom1 = n_ - tau1;
+      double denom0 = n_ - tau0;
 
       double num1 = sn_[0] - c1.scalar_st();
       double num0 = sn_[0] - c0.scalar_st();
@@ -252,7 +252,7 @@ private:
   mutable bool cache_valid_;
 
 public:
-  UnivariateInfo(double sn = 0.0, int n = 0, 
+  UnivariateInfo(double sn = 0.0, double n = 0.0, 
                  double anomaly_intensity = std::numeric_limits<double>::quiet_NaN())
     : Info({sn}, n), cache_valid_(false) {
 
@@ -269,16 +269,16 @@ public:
     return result;
   }
 
-  void add_new_point(const std::vector<double>& y) override {
-    right_->add_new_point(y);
-    left_->add_new_point(y);
+  void add_new_point(const std::vector<double>& y, double lambda = 1.0) override {
+    right_->add_new_point(y, lambda);
+    left_->add_new_point(y, lambda);
     n_ = right_->n();
     sn_ = right_->sn();
   }
 
-  void update(const std::vector<double>& y) override {
-    right_->update(y);
-    left_->update(y);
+  void update(const std::vector<double>& y, double lambda = 1.0) override {
+    right_->update(y, lambda);
+    left_->update(y, lambda);
     n_ = right_->n();
     sn_ = right_->sn();
     cache_valid_ = false;

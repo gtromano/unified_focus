@@ -26,7 +26,7 @@ inline std::vector<double> build_y_tau(const std::vector<double>& x_tau, const s
     std::vector<double> tmp;
     tmp.reserve(p);
     for (int k = start_idx; k >= end_idx; --k) {
-      tmp.push_back(x_tau[k]);
+        tmp.push_back(x_tau[k]);
     }
     y_tau[j - 1] = x_tau[p + j - 1] - dot_vec(rho, tmp);
   }
@@ -65,17 +65,17 @@ Triple coef_introduce_pre0(const Triple& q_new, const std::vector<double>& rho);
 std::vector<Triple> coef_introduce_outre(const Triple& q_new, const std::vector<double>& y_start, const std::vector<double>& rho, double sum_square);
 std::vector<Triple> coef_introduce_outre_pre0(const Triple& q_new, const std::vector<double>& rho);
 QnResult Q_n_mu_arp_unified(std::vector<Triple>& triples,
-                            const std::vector<double>& buf,
-                            int buf_start,
-                            double buf_sum_offset,
-                            double xn,
-                            int current_n,
-                            double S_n_1,
-                            const std::vector<double>& rho,
-                            bool known_prechange,
-                            double sum_square,
-                            const std::vector<double>& y_start,
-                            bool right_side);
+                               const std::vector<double>& buf,
+                               int buf_start,
+                               double buf_sum_offset,
+                               double xn,
+                               int current_n,
+                               double S_n_1,
+                               const std::vector<double>& rho,
+                               bool known_prechange,
+                               double sum_square,
+                               const std::vector<double>& y_start,
+                               bool right_side);
 std::vector<Triple> coef_update_arp(std::vector<Triple> new_triples, const std::vector<double>& rho, double y_new, bool known_prechange);
 MaxValResult max_val_compute_arp(const std::vector<Triple>& triples, int current_n, const std::vector<double>& rho, double sum_square, const std::vector<double>& y_start);
 MaxValResult max_val_compute_arp_out(const std::vector<Triple>& triples_out, int current_n, const std::vector<double>& rho, double sum_square, const std::vector<double>& y_start, const Triple& q_new_pre);
@@ -159,84 +159,84 @@ double intersec_point(const Triple& input_triple,
                       const std::vector<double>& S_new,
                       const std::vector<double>& rho,
                       int current_n) {
-  int p = (int)rho.size();
+    int p = (int)rho.size();
 
-  std::vector<double> x_tau(2*p);
-  for (int k = 0; k < 2*p; ++k)
-    x_tau[k] = input_triple.S_tau[k+1] - input_triple.S_tau[k];
+    std::vector<double> x_tau(2*p);
+    for (int k = 0; k < 2*p; ++k)
+        x_tau[k] = input_triple.S_tau[k+1] - input_triple.S_tau[k];
 
-  double S_tau_p = input_triple.S_tau[2*p];
+    double S_tau_p = input_triple.S_tau[2*p];
 
-  std::vector<double> S_tau_vec;
-  S_tau_vec.reserve(p);
-  for (int idx = 2*p - 1; idx >= p; --idx)
-    S_tau_vec.push_back(input_triple.S_tau[idx]); // R order: descending
+    std::vector<double> S_tau_vec;
+    S_tau_vec.reserve(p);
+    for (int idx = 2*p - 1; idx >= p; --idx)
+        S_tau_vec.push_back(input_triple.S_tau[idx]); // R order: descending
 
-  std::vector<double> x_new(2*p);
-  for (int k = 0; k < 2*p; ++k)
-    x_new[k] = S_new[k+1] - S_new[k];
+    std::vector<double> x_new(2*p);
+    for (int k = 0; k < 2*p; ++k)
+        x_new[k] = S_new[k+1] - S_new[k];
 
-  double S_n = S_new[2*p];
+    double S_n = S_new[2*p];
 
-  std::vector<double> S_new_vec;
-  S_new_vec.reserve(p);
-  for (int idx = 2*p - 1; idx >= p; --idx)
-    S_new_vec.push_back(S_new[idx]); // match R's descending slice
+    std::vector<double> S_new_vec;
+    S_new_vec.reserve(p);
+    for (int idx = 2*p - 1; idx >= p; --idx)
+        S_new_vec.push_back(S_new[idx]); // match R's descending slice
 
-  std::vector<double> rho_star;
-  rho_star.reserve(p);
-  rho_star.push_back(1.0);
-  for (int i = 1; i <= p-1; ++i) {
-    double s = 0.0;
-    for (int j = 0; j <= i-1; ++j) s += rho[j];
-    rho_star.push_back(1.0 - s);
-  }
-
-  std::vector<double> x_tau_vec;
-  x_tau_vec.reserve(p);
-  for (int idx = p; idx <= 2*p - 1; ++idx)
-    x_tau_vec.push_back(x_tau[idx]);
-
-  std::vector<double> x_new_vec;
-  x_new_vec.reserve(p);
-  for (int idx = p; idx <= 2*p - 1; ++idx)
-    x_new_vec.push_back(x_new[idx]);
-
-  std::vector<double> m_times_rho(p, 0.0);
-  for (int i = 0; i < p; ++i) {
-    double accum = 0.0;
-    for (int j = 0; j < p; ++j) {
-      int idx = p + i - j - 1; // FIXED: minus 1 to match R indexing
-      double val = 0.0;
-      if (idx >= 0 && idx < 2*p) val += x_tau[idx];
-      if (idx >= 0 && idx < 2*p) val -= x_new[idx];
-      accum += val * rho[j];
+    std::vector<double> rho_star;
+    rho_star.reserve(p);
+    rho_star.push_back(1.0);
+    for (int i = 1; i <= p-1; ++i) {
+        double s = 0.0;
+        for (int j = 0; j <= i-1; ++j) s += rho[j];
+        rho_star.push_back(1.0 - s);
     }
-    m_times_rho[i] = accum;
-  }
 
-  std::vector<double> tmp(p, 0.0);
-  for (int i = 0; i < p; ++i)
-    tmp[i] = x_tau_vec[i] - x_new_vec[i] - m_times_rho[i];
+    std::vector<double> x_tau_vec;
+    x_tau_vec.reserve(p);
+    for (int idx = p; idx <= 2*p - 1; ++idx)
+        x_tau_vec.push_back(x_tau[idx]);
 
-  double part1 = 0.0;
-  for (int i = 0; i < p; ++i)
-    part1 += rho_star[i] * tmp[i];
+    std::vector<double> x_new_vec;
+    x_new_vec.reserve(p);
+    for (int idx = p; idx <= 2*p - 1; ++idx)
+        x_new_vec.push_back(x_new[idx]);
 
-  double sum_rho = sum_vec(rho);
-  double inner = 0.0;
-  for (int i = 0; i < p; ++i)
-    inner += rho[i] * (S_new_vec[i] - S_tau_vec[i]);
+    std::vector<double> m_times_rho(p, 0.0);
+    for (int i = 0; i < p; ++i) {
+        double accum = 0.0;
+        for (int j = 0; j < p; ++j) {
+            int idx = p + i - j - 1; // FIXED: minus 1 to match R indexing
+            double val = 0.0;
+            if (idx >= 0 && idx < 2*p) val += x_tau[idx];
+            if (idx >= 0 && idx < 2*p) val -= x_new[idx];
+            accum += val * rho[j];
+        }
+        m_times_rho[i] = accum;
+    }
 
-  double numer = 2.0 * (part1 + (1.0 - sum_rho) * (S_n - S_tau_p - inner));
-  double denom = (1.0 - sum_rho) * (1.0 - sum_rho) *
-    ( (double)(current_n - p - input_triple.tau) );
+    std::vector<double> tmp(p, 0.0);
+    for (int i = 0; i < p; ++i)
+        tmp[i] = x_tau_vec[i] - x_new_vec[i] - m_times_rho[i];
 
-  double mu_inter = 0.0;
-  if (denom != 0.0) mu_inter = numer / denom;
-  if (mu_inter < 0.0) mu_inter = 0.0;
+    double part1 = 0.0;
+    for (int i = 0; i < p; ++i)
+        part1 += rho_star[i] * tmp[i];
 
-  return mu_inter;
+    double sum_rho = sum_vec(rho);
+    double inner = 0.0;
+    for (int i = 0; i < p; ++i)
+        inner += rho[i] * (S_new_vec[i] - S_tau_vec[i]);
+
+    double numer = 2.0 * (part1 + (1.0 - sum_rho) * (S_n - S_tau_p - inner));
+    double denom = (1.0 - sum_rho) * (1.0 - sum_rho) *
+                   ( (double)(current_n - p - input_triple.tau) );
+
+    double mu_inter = 0.0;
+    if (denom != 0.0) mu_inter = numer / denom;
+    if (mu_inter < 0.0) mu_inter = 0.0;
+
+    return mu_inter;
 }
 
 
@@ -383,9 +383,9 @@ Triple coef_introduce_pre0(const Triple& q_new, const std::vector<double>& rho){
 // For q_new (tau >= 1), produces p-1 "out" triples for tau_out in (tau+1)..(tau+p-1).
 // Mirrors R: coef_introduce_outre
 std::vector<Triple> coef_introduce_outre(const Triple& q_new,
-                                         const std::vector<double>& y_start,
-                                         const std::vector<double>& rho,
-                                         double sum_square)
+                                          const std::vector<double>& y_start,
+                                          const std::vector<double>& rho,
+                                          double sum_square)
 {
   const int p   = (int)rho.size();
   const int tau = q_new.tau;
@@ -445,10 +445,10 @@ std::vector<Triple> coef_introduce_outre(const Triple& q_new,
       B = -0.5 * dot_vec(u_new, u_new);
       C =  dot_vec(u_new, v_new);
       D = -0.5 * (-2.0 * dot_vec(y_start, u)
-                    - 2.0 * (1.0 - sum_rho) * (M_tau - M_p)
-                    + 2.0 * dot_vec(v_new, y_tau_new));
-                    E = -0.5 * (-2.0 * dot_vec(y_tau_new, u_new));
-                    f_val = -0.5 * sum_square;
+                  - 2.0 * (1.0 - sum_rho) * (M_tau - M_p)
+                  + 2.0 * dot_vec(v_new, y_tau_new));
+      E = -0.5 * (-2.0 * dot_vec(y_tau_new, u_new));
+      f_val = -0.5 * sum_square;
     } else {
       // ---- tau < p branch ----
       // y_start2 = y_start[0..tau-1]
@@ -508,7 +508,7 @@ std::vector<Triple> coef_introduce_outre(const Triple& q_new,
 // ---------- coef_introduce_outre_pre0 (known pre-change) ----------
 // Mirrors R: coef_introduce_outre_pre0
 std::vector<Triple> coef_introduce_outre_pre0(const Triple& q_new,
-                                              const std::vector<double>& rho)
+                                               const std::vector<double>& rho)
 {
   const int p   = (int)rho.size();
   const int tau = q_new.tau;
@@ -550,7 +550,7 @@ std::vector<Triple> coef_introduce_outre_pre0(const Triple& q_new,
 // ---------- exact_form_out_start (unknown pre-change, n <= p+1) ----------
 // Mirrors R: exact_form_out_start
 std::vector<Triple> exact_form_out_start(const std::vector<double>& rho,
-                                         const std::vector<double>& y_current)
+                                          const std::vector<double>& y_current)
 {
   const int p          = (int)rho.size();
   const int current_n  = (int)y_current.size();
@@ -611,7 +611,7 @@ std::vector<Triple> exact_form_out_start(const std::vector<double>& rho,
 // ---------- exact_form_out_start_pre0 (known pre-change, n <= p+1) ----------
 // Mirrors R: exact_form_out_start_pre0
 std::vector<Triple> exact_form_out_start_pre0(const std::vector<double>& rho,
-                                              const std::vector<double>& y_current)
+                                               const std::vector<double>& y_current)
 {
   const int p         = (int)rho.size();
   const int current_n = (int)y_current.size();
@@ -650,9 +650,9 @@ std::vector<Triple> exact_form_out_start_pre0(const std::vector<double>& rho,
 // ---------- max_val_compute_arp_out_start (unknown pre-change, n <= p+1) ----------
 // Mirrors R: max_val_compute_arp_out_start
 MaxValResult max_val_compute_arp_out_start(const std::vector<Triple>& triples,
-                                           int current_n,
-                                           const std::vector<double>& rho,
-                                           const std::vector<double>& y_current)
+                                            int current_n,
+                                            const std::vector<double>& rho,
+                                            const std::vector<double>& y_current)
 {
   const int p = (int)rho.size();
 
@@ -705,11 +705,11 @@ MaxValResult max_val_compute_arp_out_start(const std::vector<Triple>& triples,
 // Mirrors R: max_val_compute_arp_out
 // q_new_pre is the last triple introduced (holds S_tau needed for M_n).
 MaxValResult max_val_compute_arp_out(const std::vector<Triple>& triples_out,
-                                     int current_n,
-                                     const std::vector<double>& rho,
-                                     double sum_square,
-                                     const std::vector<double>& y_start,
-                                     const Triple& q_new_pre)
+                                      int current_n,
+                                      const std::vector<double>& rho,
+                                      double sum_square,
+                                      const std::vector<double>& y_start,
+                                      const Triple& q_new_pre)
 {
   const int p = (int)rho.size();
 
@@ -765,17 +765,17 @@ MaxValResult max_val_compute_arp_out(const std::vector<Triple>& triples_out,
 
 // NEW overload with side-control (right=true, left=false). Keeps existing API intact.
 QnResult Q_n_mu_arp_unified(std::vector<Triple>& triples,
-                            const std::vector<double>& buf,
-                            int buf_start,
-                            double buf_sum_offset,
-                            double xn,
-                            int current_n,
-                            double S_n_1,
-                            const std::vector<double>& rho,
-                            bool known_prechange,
-                            double sum_square,
-                            const std::vector<double>& y_start,
-                            bool right_side) {
+                               const std::vector<double>& buf,
+                               int buf_start,
+                               double buf_sum_offset,
+                               double xn,
+                               int current_n,
+                               double S_n_1,
+                               const std::vector<double>& rho,
+                               bool known_prechange,
+                               double sum_square,
+                               const std::vector<double>& y_start,
+                               bool right_side) {
   const int p = (int)rho.size();
   const int len_buf = (int)buf.size();
 
@@ -821,7 +821,7 @@ QnResult Q_n_mu_arp_unified(std::vector<Triple>& triples,
 
     // side-dependent l_0 and monotonicity condition
     const double l_0 = right_side ? -std::numeric_limits<double>::infinity()
-      :  std::numeric_limits<double>::infinity();
+                                  :  std::numeric_limits<double>::infinity();
 
     int ind = 0;
     while (ind == 0 && i >= 1) {
@@ -1104,7 +1104,7 @@ void focus_arp_one_iter_cpp(double x_new,
     // At i == p+2, buf contains observations 0..p+1 (p+2 elements)
     std::vector<double> S_tau; S_tau.reserve(2 * p + 1);
     for (int z = 0; z < p; ++z) S_tau.push_back(0.0);
-
+    
     // Build partial sums from buf[0] to buf[p]
     double cumsum = 0.0;
     for (int k = 0; k <= p && k < (int)st.buf.size(); ++k) {
@@ -1155,18 +1155,18 @@ void focus_arp_one_iter_cpp(double x_new,
     if (!known_prechange) {
       st.sum_square += y_next_n * y_next_n;
       QnResult res = Q_n_mu_arp_unified(st.triples, st.buf, st.buf_start, st.buf_sum_offset,
-                                        x_new, i, st.S_n_1, rho,
-                                        known_prechange, st.sum_square, st.y_start,
-                                        right_side);
+                                         x_new, i, st.S_n_1, rho,
+                                         known_prechange, st.sum_square, st.y_start,
+                                         right_side);
       st.S_n_1      = res.S_n;
       st.triples_out = res.triples_out;
       st.q_new_pre   = res.q_new;
       st.triples = coef_update_arp(st.triples, rho, y_next_n, known_prechange);
     } else {
       QnResult res = Q_n_mu_arp_unified(st.triples, st.buf, st.buf_start, st.buf_sum_offset,
-                                        x_new, i, st.S_n_1, rho,
-                                        known_prechange, 0.0, std::vector<double>(),
-                                        right_side);
+                                         x_new, i, st.S_n_1, rho,
+                                         known_prechange, 0.0, std::vector<double>(),
+                                         right_side);
       st.S_n_1      = res.S_n;
       st.triples_out = res.triples_out;
       st.q_new_pre   = res.q_new;
@@ -1236,16 +1236,16 @@ namespace changepoint {
 
 // Implementation function called from ARpInfo::update
 void arp_detector_update_impl(double obs,
-                              const std::vector<double>& rho,
-                              int p,
-                              int buf_max,
-                              bool known_prechange,
-                              int n,
-                              void*& opaque_states,
-                              double& out_max_stat,
-                              int& out_cpt) {
-  int i = n;  // Current iteration index
-
+                               const std::vector<double>& rho,
+                               int p,
+                               int buf_max,
+                               bool known_prechange,
+                               double n,
+                               void*& opaque_states,
+                               double& out_max_stat,
+                               int& out_cpt) {
+  double i = n;  // Current iteration index
+  
   // Initialize opaque_states on first call (when n == 1)
   if (!opaque_states) {
     ARpStates* arp_states = new ARpStates();
@@ -1253,23 +1253,23 @@ void arp_detector_update_impl(double obs,
     arp_states->left_pos  = init_state(obs);
     arp_states->right_neg = init_state(-obs);
     arp_states->left_neg  = init_state(-obs);
-
+    
     opaque_states = static_cast<void*>(arp_states);
     // Return the initial stat (-1.0) to match offline behavior
     out_max_stat = -1.0;
     out_cpt = -1;
     return;
   }
-
+  
   // Update and compute stats starting from n >= 2
   ARpStates* arp_states = static_cast<ARpStates*>(opaque_states);
-
+  
   // Update all four states using the current observation
   focus_arp_one_iter_cpp(obs, i, arp_states->right_pos, rho, p, n, buf_max, known_prechange, true);
   focus_arp_one_iter_cpp(obs, i, arp_states->left_pos,  rho, p, n, buf_max, known_prechange, false);
   focus_arp_one_iter_cpp(-obs, i, arp_states->right_neg, rho, p, n, buf_max, known_prechange, true);
   focus_arp_one_iter_cpp(-obs, i, arp_states->left_neg,  rho, p, n, buf_max, known_prechange, false);
-
+  
   // Take max among all four states
   const double max_vals[4] = {
     arp_states->right_pos.max_val, arp_states->left_pos.max_val,
@@ -1279,13 +1279,13 @@ void arp_detector_update_impl(double obs,
     arp_states->right_pos.cpt, arp_states->left_pos.cpt,
     arp_states->right_neg.cpt, arp_states->left_neg.cpt
   };
-
+  
   int argmax = 0;
   double best = max_vals[0];
   for (int k = 1; k < 4; ++k) {
     if (max_vals[k] > best) { best = max_vals[k]; argmax = k; }
   }
-
+  
   out_max_stat = best;
   out_cpt = cpt_vals[argmax];
 }

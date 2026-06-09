@@ -65,9 +65,10 @@ class Detector:
 
     Notes
     -----
-    The Python API mirrors the R bindings and the underlying C++ behaviour.
     Multivariate detection with many dimensions can be approximated by using
     projections (subsets of dimensions) supplied via ``dim_indexes``.
+    
+    
     
     AutoRegressive Process (ARP):
     When ``type = "arp"``, the ``rho`` parameter must be provided as a numeric
@@ -123,8 +124,16 @@ class Detector:
             anomaly_intensity = np.array([anomaly_intensity], dtype=np.float64)
         if rho is not None:
             rho = np.asarray(rho, dtype=np.float64)
-        if mu0_arp is not None:
-            mu0_arp = np.array([mu0_arp], dtype=np.float64)
+        
+        # ARP detector requires mu0_arp to be specified
+        if type == "arp" and mu0_arp is None:
+            raise ValueError(
+                "The mu0_arp unknown case is still under development, "
+                "please specify a parameter `mu0_arp` when using type='arp'."
+            )
+        
+        # if mu0_arp is not None:
+        #     mu0_arp = np.array([mu0_arp], dtype=np.float64)
 
         self._detector = _focus.Detector(
             type=type,
@@ -139,7 +148,7 @@ class Detector:
         )
         self._type = type
 
-    def update(self, y: Union[float, List[float], np.ndarray]) -> None:
+    def update(self, y: Union[float, List[float], np.ndarray], lambda_: float = 1.0) -> None:
         """
         Update the detector with new observation(s).
 
@@ -147,9 +156,17 @@ class Detector:
         ----------
         y : float, list, or array
             New observation(s). Must match the detector's dimensionality.
+        lambda_ : float, default 1.0
+            Observation weight (scaling factor for the observation count increment).
+            Allows for non-fixed background rates by weighting observations. When
+            ``lambda_ = 1.0`` (default), behaves as standard CUSUM with unit
+            increments. For ``lambda_ < 1.0``, observations are weighted less;
+            for ``lambda_ > 1.0``, observations are weighted more heavily.
+            Useful for modeling variable background rates or importance weighting
+            of observations.
         """
         y = np.ascontiguousarray(y, dtype=np.float64)
-        self._detector.update(y)
+        self._detector.update(y, lambda_)
 
     def get_statistics(
         self,
@@ -390,8 +407,16 @@ def focus_offline(
         anomaly_intensity = np.array([anomaly_intensity], dtype=np.float64)
     if rho is not None:
         rho = np.asarray(rho, dtype=np.float64)
-    if mu0_arp is not None:
-        mu0_arp = np.array([mu0_arp], dtype=np.float64)
+    
+    # ARP detector requires mu0_arp to be specified
+    if type == "arp" and mu0_arp is None:
+        raise ValueError(
+            "The mu0_arp unknown case is still under development, "
+            "please specify a parameter `mu0_arp` when using type='arp'."
+        )
+    
+    # if mu0_arp is not None:
+    #     mu0_arp = np.array([mu0_arp], dtype=np.float64)
 
     result = _focus.focus_offline(
         Y=Y,

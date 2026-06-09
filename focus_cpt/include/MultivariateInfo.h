@@ -112,7 +112,7 @@ private:
 
 public:
   MultivariateInfo(const std::vector<double>& sn = {0.0},
-                   int n = 0,
+                   double n = 0.0,
                    const std::vector<std::vector<int>>& dim_indexes = {},
                    int pruning_mult = 2,
                    int pruning_offset = 1,

@@ -4,7 +4,7 @@
 \alias{detector_update}
 \title{Update detector with new observation(s)}
 \usage{
-detector_update(det_ptr, y)
+detector_update(det_ptr, y, lambda = 1)
 }
 \arguments{
 \item{det_ptr}{External pointer to detector created by
@@ -13,6 +13,10 @@ detector_update(det_ptr, y)
 \item{y}{Numeric vector of new observation(s). For univariate detectors,
 this should be a scalar (length-1 vector). For multivariate detectors,
 this should be a vector matching the number of dimensions.}
+
+\item{lambda}{Numeric scalar. Rate parameter for background process (default: 1.0).
+Allows for non-fixed background rate. For example, use \code{lambda_i} for observation-specific rates.
+Default is \code{1.0} (standard CUSUM, one observation per update).}
 }
 \value{
 An external pointer to the detector (the same object that was passed in).

@@ -449,7 +449,7 @@ system.time(
 ```
 
        user  system elapsed 
-      6.156   0.085   6.241 
+      5.930   0.079   6.010 
 
 ``` r
 # Low-dimensional projection approximation
@@ -462,7 +462,7 @@ system.time(
 ```
 
        user  system elapsed 
-      0.148   0.000   0.148 
+      0.146   0.001   0.146 
 
 ``` r
 # Verify similarity
@@ -638,7 +638,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.002 
+      0.003   0.000   0.002 
 
 ``` r
 plot(res_pois$stat, main = "Poisson: change in rate (lambda)")
@@ -670,7 +670,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.003 
+      0.003   0.000   0.002 
 
 ``` r
 plot(res_gamma$stat, main = "Gamma: change in scale (shape = 2)")
@@ -885,7 +885,8 @@ res <- focus_offline(
   Y = Y,
   threshold = 20,
   type = "arp",
-  rho = rho_est
+  rho = rho_est,
+  mu0_arp = 0
 )
 
 # Plot results
@@ -911,7 +912,7 @@ par(mfrow = c(1, 1))
 cat("Detection time:", res$detection_time, "\n")
 ```
 
-    Detection time: 510 
+    Detection time: 520 
 
 ``` r
 cat("Estimated changepoint:", res$detected_changepoint, "\n")
@@ -931,7 +932,7 @@ And in the online setting:
 set.seed(123)
 
 # Create online ARP detector
-det <- detector_create("arp", rho = rho_est)
+det <- detector_create("arp", rho = rho_est, mu0_arp = 0)
 
 stat_trace <- numeric(length(Y))
 
@@ -950,7 +951,7 @@ for (i in seq_along(Y)) {
 }
 ```
 
-    Detection at time 511 with changepoint estimate τ = 500 
+    Detection at time 521 with changepoint estimate τ = 500 
 
 ``` r
 # Plot results
@@ -986,7 +987,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.155   0.031   0.147 
+      0.157   0.020   0.147 
 
 ``` r
 # Benchmark online mode
@@ -1010,7 +1011,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.343   0.000   0.343 
+      0.342   0.000   0.342 
 
 ``` r
 # Verify both produce identical results

@@ -615,7 +615,8 @@ res <- focus_offline(
   Y = Y,
   threshold = 20,
   type = "arp",
-  rho = rho_est
+  rho = rho_est,
+  mu0_arp = 0
 )
 
 # Plot results
@@ -644,7 +645,7 @@ And in the online setting:
 set.seed(123)
 
 # Create online ARP detector
-det <- detector_create("arp", rho = rho_est)
+det <- detector_create("arp", rho = rho_est, mu0_arp = 0)
 
 stat_trace <- numeric(length(Y))
 

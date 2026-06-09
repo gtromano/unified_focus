@@ -1240,11 +1240,11 @@ void arp_detector_update_impl(double obs,
                                int p,
                                int buf_max,
                                bool known_prechange,
-                               int n,
+                               double n,
                                void*& opaque_states,
                                double& out_max_stat,
                                int& out_cpt) {
-  int i = n;  // Current iteration index
+  double i = n;  // Current iteration index
   
   // Initialize opaque_states on first call (when n == 1)
   if (!opaque_states) {
