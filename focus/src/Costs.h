@@ -20,7 +20,7 @@ using CostFunction = std::function<ChangepointResult(const Info&, const std::vec
 ////////////////////////////////////////////////////////////////////////////////
 // Generic helper to construct a ChangepointResult from a helper that computes
 // per-candidate costs. 'HelperFn' must have signature:
-//   std::vector<double> helper(const std::vector<Candidate>&, const std::vector<double>& S_n, int n, const std::vector<double>& theta0)
+//   std::vector<double> helper(const std::vector<Candidate>&, const std::vector<double>& S_n, double n, const std::vector<double>& theta0)
 template <typename HelperFn>
 inline ChangepointResult compute_from_helper(const Info& cs,
                                              const std::vector<double>& theta0,
@@ -57,7 +57,7 @@ inline ChangepointResult compute_from_helper(const Info& cs,
 inline std::vector<double> compute_costs_gaussian_helper(
     const std::vector<Candidate>& candidates,
     const std::vector<double>& S_n,
-    int n,
+    double n,
     const std::vector<double>& theta0) {
 
   int K = static_cast<int>(candidates.size());
@@ -73,11 +73,13 @@ inline std::vector<double> compute_costs_gaussian_helper(
 
   for (int i = 0; i < K; ++i) {
     const Candidate& c = candidates[i];
-    int tau = c.tau;
+    double tau = c.tau;
     const auto& S_i = c.st;
-    int right_len = n - tau;
+    auto right_len = n - tau;
 
     if (tau <= 0 || right_len <= 0 || n <= 0) {
+      // print tau and right_len for debugging
+      // Rcpp::Rcout << "Skipping candidate with tau=" << tau << " and right_len=" << right_len << std::endl;
       costs[i] = 0.0;
       continue;
     }
@@ -122,10 +124,10 @@ inline ChangepointResult compute_costs_gaussian(const Info& cs, const std::vecto
 inline std::vector<double> compute_costs_poisson_helper(
     const std::vector<Candidate>& candidates,
     const std::vector<double>& S_n,
-    int n,
+    double n,
     const std::vector<double>& theta0) {
 
-  auto max_l = [](const std::vector<double>& st, int tau) -> double {
+  auto max_l = [](const std::vector<double>& st, double tau) -> double {
     if (tau <= 0) return 0.0;
     double acc = 0.0;
     bool any_nan = false;
@@ -154,9 +156,9 @@ inline std::vector<double> compute_costs_poisson_helper(
 
   for (int i = 0; i < K; ++i) {
     const Candidate& c = candidates[i];
-    int tau = c.tau;
+    double tau = c.tau;
     const auto& S_i = c.st;
-    int right_len = n - tau;
+    auto right_len = n - tau;
 
     if (right_len <= 0) {
       costs[i] = 0.0;
@@ -218,12 +220,12 @@ inline ChangepointResult compute_costs_poisson(const Info& cs, const std::vector
 inline std::vector<double> compute_costs_bernoulli_helper(
     const std::vector<Candidate>& candidates,
     const std::vector<double>& S_n,
-    int n,
+    double n,
     const std::vector<double>& theta0) {
 
   // helper: compute max log-likelihood for a vector of successes `st`
   // where each element is number of successes in a block of length `tau`.
-  auto max_l = [](const std::vector<double>& st, int tau) -> double {
+  auto max_l = [](const std::vector<double>& st, double tau) -> double {
     if (tau <= 0) return 0.0;
     double acc = 0.0;
     bool any_nan = false;
@@ -261,9 +263,9 @@ inline std::vector<double> compute_costs_bernoulli_helper(
 
   for (int i = 0; i < K; ++i) {
     const Candidate& c = candidates[i];
-    int tau = c.tau;
+    double tau = c.tau;
     const auto& S_i = c.st;
-    int right_len = n - tau;
+    auto right_len = n - tau;
 
     if (right_len <= 0) {
       costs[i] = 0.0;
@@ -342,7 +344,7 @@ inline ChangepointResult compute_costs_bernoulli(const Info& cs, const std::vect
 static inline std::vector<double> compute_costs_gamma_impl(
     const std::vector<Candidate>& candidates,
     const std::vector<double>& S_n,
-    int n,
+    double n,
     const std::vector<double>& theta0,
     double shape) {
 
@@ -352,7 +354,7 @@ static inline std::vector<double> compute_costs_gamma_impl(
 
   // helper: compute max log-likelihood (using the MLE for theta) for a vector of sums `st`
   // where each element is the sum of observations in a block of length `tau`.
-  auto max_l = [shape](const std::vector<double>& st, int tau) -> double {
+  auto max_l = [shape](const std::vector<double>& st, double tau) -> double {
     if (tau <= 0) return 0.0;
     double acc = 0.0;
     bool any_nan = false;
@@ -386,9 +388,9 @@ static inline std::vector<double> compute_costs_gamma_impl(
 
   for (int i = 0; i < K; ++i) {
     const Candidate& c = candidates[i];
-    int tau = c.tau;
+    double tau = c.tau;
     const auto& S_i = c.st;
-    int right_len = n - tau;
+    auto right_len = n - tau;
 
     if (right_len <= 0) {
       costs[i] = 0.0;
@@ -452,7 +454,7 @@ inline ChangepointResult compute_costs_gamma(const Info& cs,
   // lambda captures the shape and matches the HelperFn signature expected by compute_from_helper
   auto helper = [shape](const std::vector<Candidate>& candidates,
                         const std::vector<double>& S_n,
-                        int n,
+                        double n,
                         const std::vector<double>& theta0_inner) {
     return compute_costs_gamma_impl(candidates, S_n, n, theta0_inner, shape);
   };
