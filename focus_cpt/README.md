@@ -139,7 +139,7 @@ plt.axhline(threshold, color="red", linestyle="--", linewidth=2)
 plt.show()
 ```
 
-    Detection at time 504 with changepoint estimate τ = 500
+    Detection at time 504 with changepoint estimate τ = 500.0
 
 ![](generate_README_python_files/figure-commonmark/cell-4-output-2.png)
 
@@ -250,8 +250,8 @@ plt.axvline(1000, color="green", linestyle=":")
 plt.show()
 ```
 
-    Detection time: 1023
-    Estimated changepoint: 1008
+    Detection time: 1023.0
+    Estimated changepoint: 1008.0
 
 ![](generate_README_python_files/figure-commonmark/cell-5-output-2.png)
 
@@ -315,7 +315,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-    Right-sided detection: 817
+    Right-sided detection: 817.0
     Left-sided detection: None
 
 ![](generate_README_python_files/figure-commonmark/cell-7-output-2.png)
@@ -433,8 +433,8 @@ plt.title("Multivariate FOCuS (p=3)")
 plt.show()
 ```
 
-    Detection time: 1013
-    Estimated changepoint: 1001
+    Detection time: 1013.0
+    Estimated changepoint: 1001.0
 
 ![](generate_README_python_files/figure-commonmark/cell-9-output-2.png)
 
@@ -593,8 +593,8 @@ print(f"True changepoint: {n_pre}")
 
 ![](generate_README_python_files/figure-commonmark/cell-14-output-1.png)
 
-    Detection time: 517
-    Estimated changepoint: 500
+    Detection time: 517.0
+    Estimated changepoint: 500.0
     True changepoint: 500
 
 And in the online setting:
@@ -624,7 +624,7 @@ plt.ylabel("Statistic")
 plt.show()
 ```
 
-    Detection at time 517 with changepoint estimate τ = 500
+    Detection at time 517 with changepoint estimate τ = 500.0
 
 ![](generate_README_python_files/figure-commonmark/cell-15-output-2.png)
 
@@ -681,11 +681,11 @@ plt.show()
 ```
 
     Using Gaussian statistic:
-      Changepoint: 500
+      Changepoint: 500.0
       Statistic: 6922.160999999964
 
     Using Poisson statistic (more appropriate for count data):
-      Changepoint: 500
+      Changepoint: 500.0
       Statistic: 557.7242432563144
 
 ![](generate_README_python_files/figure-commonmark/cell-16-output-2.png)
@@ -744,9 +744,9 @@ print(f"Online time:  {online_time:.2f}s")
 print(f"Offline is {online_time / offline_time:.1f}× faster")
 ```
 
-    Offline time: 0.22s
-    Online time:  0.34s
-    Offline is 1.6× faster
+    Offline time: 0.19s
+    Online time:  0.33s
+    Offline is 1.7× faster
 
 ------------------------------------------------------------------------
 

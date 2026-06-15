@@ -415,8 +415,6 @@ def focus_offline(
             "please specify a parameter `mu0_arp` when using type='arp'."
         )
     
-    # if mu0_arp is not None:
-    #     mu0_arp = np.array([mu0_arp], dtype=np.float64)
 
     result = _focus.focus_offline(
         Y=Y,

@@ -252,7 +252,7 @@ public:
         return static_cast<int>(info_->candidates().size());
     }
     
-    int get_n() const {
+    double get_n() const {
         return info_->n();
     }
     
@@ -449,7 +449,7 @@ py::dict focus_offline(const py::array_t<double>& Y,
     
     // Prepare containers
     std::vector<std::vector<double>> stats_per_time;
-    std::vector<int> changepoints;
+    std::vector<double> changepoints;
     stats_per_time.reserve(n_obs);
     changepoints.reserve(n_obs);
     
@@ -458,8 +458,8 @@ py::dict focus_offline(const py::array_t<double>& Y,
     
     std::vector<double> y_t(p_dim);
     
-    int detection_time = -1;  // Python uses -1 for None
-    int detected_changepoint = -1;
+    double detection_time = -1;  // Python uses -1 for None
+    double detected_changepoint = -1;
     int actual_length = 0;
     
     // Run online detection
@@ -529,7 +529,7 @@ py::dict focus_offline(const py::array_t<double>& Y,
         
         py::object cp_obj = result_dict["changepoint"];
         if (!cp_obj.is_none()) {
-            changepoints.push_back(cp_obj.cast<int>());
+            changepoints.push_back(cp_obj.cast<double>());
         } else {
             changepoints.push_back(-1);  // Use -1 for None in Python
         }
@@ -549,7 +549,7 @@ py::dict focus_offline(const py::array_t<double>& Y,
         if (detected) {
             detection_time = t + 1;  // 1-based for consistency with R
             if (!cp_obj.is_none()) {
-                detected_changepoint = cp_obj.cast<int>();
+                detected_changepoint = cp_obj.cast<double>();
             }
             break;
         }
@@ -566,7 +566,7 @@ py::dict focus_offline(const py::array_t<double>& Y,
     }
     
     // Convert changepoints to numpy array (replace -1 with None later in Python wrapper if needed)
-    py::array_t<int> cp_array(changepoints.size(), changepoints.data());
+    py::array_t<double> cp_array(changepoints.size(), changepoints.data());
     
     // Build result dict
     py::dict result;

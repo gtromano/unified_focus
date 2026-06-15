@@ -6,8 +6,8 @@
 namespace changepoint {
 
 struct ChangepointResult {
-    int stopping_time;
-    std::optional<int> changepoint;
+    double stopping_time;
+    std::optional<double> changepoint;
     std::optional<std::variant<double, std::vector<double>>> stat;
 };
 
