@@ -603,9 +603,18 @@ std::vector<double> detector_info_sn(SEXP det_ptr) {
 List detector_candidates(SEXP det_ptr) {
   XPtr<std::shared_ptr<Info>> ptr(det_ptr);
   if (!ptr || !(*ptr)) stop("Invalid info pointer");
-
+  
   const auto& candidates = (*ptr)->candidates();
   const size_t K = candidates.size();
+
+  // if size is 0, return empty list (as this is arp case)
+  if (K == 0) {
+    return List::create(
+      Named("tau") = IntegerVector(0),
+      Named("st") = List(0),
+      Named("side") = CharacterVector(0)
+    );
+  }
 
   NumericVector tau(K);
   CharacterVector side(K);
@@ -1071,11 +1080,7 @@ List focus_offline(SEXP Y,
   // ---- Get candidates ----
   // For ARP, skip candidates extraction since it doesn't use the candidate structure
   List candidates_list;
-  if (type == "arp") {
-    candidates_list = List::create();  // Empty list
-  } else {
-    candidates_list = detector_candidates(detector_ptr);
-  }
+  candidates_list = detector_candidates(detector_ptr);
 
   // ---- Return results ----
   return List::create(
