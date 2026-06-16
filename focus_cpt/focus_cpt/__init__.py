@@ -11,7 +11,7 @@ from .python_wrapper import (
     focus_offline,
 )
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 
 __all__ = [
     "Detector",
