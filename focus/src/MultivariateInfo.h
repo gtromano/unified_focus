@@ -165,15 +165,23 @@ public:
       if (rank < 2 || K_eff < rank + 1) return;
 
       try {
+        // first try to run qhull normally
         orgQhull::Qhull qh;
-        qh.runQhull("", dims, K_eff, data.data(), "QJ");
-
+        qh.runQhull("", dims, K_eff, data.data(), "");
         for (const auto& v : qh.vertexList())
           hull_indices.insert(v.point().id());
-
       } catch (...) {
-        for (int i = 0; i < K; ++i)
-          hull_indices.insert(i);
+        try {
+          // if this fails try to run qhull with "QJ" option (joggle input)
+          orgQhull::Qhull qh2;
+          qh2.runQhull("", dims, K_eff, data.data(), "QJ");
+          for (const auto& v : qh2.vertexList())
+            hull_indices.insert(v.point().id());
+        } catch (...) {
+          // if this fails again, just return all indices (no pruning)
+          for (int i = 0; i < K; ++i)
+            hull_indices.insert(i);
+        }
       }
     };
 
