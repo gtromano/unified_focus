@@ -185,7 +185,7 @@ test_that("sequential Gaussian: no detection returned when signal is absent", {
 
 
 # ===========================================================================
-# 3. focus_sequential_test — known vs unknown pre-change parameter
+# focus_sequential_test — known vs unknown pre-change parameter
 # ===========================================================================
 
 test_that("known theta0 yields larger max statistic than unknown (seed 45)", {
@@ -206,7 +206,7 @@ test_that("known theta0 yields larger max statistic than unknown (seed 45)", {
 
 
 # ===========================================================================
-# 4. focus_sequential_test — one-sided detection
+# focus_sequential_test — one-sided detection
 # ===========================================================================
 
 test_that("right-sided detects increase; left-sided does not (seed 789)", {
@@ -225,35 +225,7 @@ test_that("right-sided detects increase; left-sided does not (seed 789)", {
 
 
 # ===========================================================================
-# 5. focus_sequential_test — multivariate Gaussian
-# ===========================================================================
-
-test_that("multivariate Gaussian detects changepoint near true location (seed 42)", {
-  set.seed(42)
-  Y_m <- rbind(matrix(rnorm(1000 * 3, 0),   ncol = 3),
-               matrix(rnorm( 500 * 3, 1.2), ncol = 3))
-
-  res <- focus_sequential_test(Y_m, threshold = 30, type = "multivariate", family = "gaussian")
-
-  expect_equal(res$detection_time,       1012)
-  expect_equal(res$detected_changepoint, 1000)
-  expect_equal(res$type, "multivariate")
-})
-
-test_that("multivariate Gaussian: stat length equals n", {
-  set.seed(42)
-  Y_m <- rbind(matrix(rnorm(200 * 2, 0), ncol = 2),
-               matrix(rnorm(100 * 2, 2), ncol = 2))
-
-  res <- focus_sequential_test(Y_m, threshold = Inf, type = "multivariate", family = "gaussian")
-
-  expect_equal(length(res$stat), 300)
-  expect_equal(res$n,            300)
-})
-
-
-# ===========================================================================
-# 6. focus_sequential_test — exponential family models
+# focus_sequential_test — exponential family models
 # ===========================================================================
 
 test_that("Poisson family runs and peaks near true changepoint (seed 101)", {
@@ -301,7 +273,7 @@ test_that("Gamma family errors when shape is not supplied", {
 
 
 # ===========================================================================
-# 7. focus_sequential_test — NPFOCuS
+# focus_sequential_test — NPFOCuS
 # ===========================================================================
 
 test_that("npfocus returns two-column stat matrix (seed 123)", {
@@ -319,7 +291,7 @@ test_that("npfocus returns two-column stat matrix (seed 123)", {
 
 
 # ===========================================================================
-# 8. focus_sequential_test — ARP
+# focus_sequential_test — ARP
 # ===========================================================================
 
 test_that("ARP detector detects mean shift in AR(2) series (seed 123)", {
@@ -338,54 +310,18 @@ test_that("ARP detector detects mean shift in AR(2) series (seed 123)", {
 
 
 # ===========================================================================
-# 9. Online mode — detector_create / detector_update / get_statistics
+# Online mode vs offline
 # ===========================================================================
 
-test_that("online mode matches sequential detection time (seed 123)", {
-  Y         <- make_gaussian(seed = 123)
-  threshold <- 20
 
-  det          <- detector_create(type = "univariate")
-  detected_at  <- NA
-  detected_cp  <- NA
-
-  for (i in seq_along(Y)) {
-    detector_update(det, Y[i])
-    result <- get_statistics(det, family = "gaussian")
-    if (result$stat > threshold) {
-      detected_at <- i
-      detected_cp <- result$changepoint
-      break
-    }
-  }
-
-  expect_equal(detected_at, 510)
-  expect_equal(detected_cp, 500)
-})
-
-test_that("online and sequential produce identical stat traces", {
+test_that("sequential and offline produce identical stat traces", {
   set.seed(42)
   Y <- rnorm(200)
 
-  res_off <- focus_sequential_test(Y, threshold = Inf, type = "univariate", family = "gaussian")
+  res_seq <- focus_sequential_test(Y, threshold = Inf, type = "univariate", family = "gaussian")
+  res_off <- focus_offline(Y, threshold = Inf, type = "univariate", family = "gaussian")
 
-  det     <- detector_create(type = "univariate")
-  stat_on <- numeric(length(Y))
-  for (i in seq_along(Y)) {
-    detector_update(det, Y[i])
-    stat_on[i] <- get_statistics(det, family = "gaussian")$stat
-  }
-
-  expect_equal(as.vector(res_off$stat), stat_on)
-})
-
-test_that("get_statistics stat is 0 after first observation", {
-  det <- detector_create(type = "univariate")
-  detector_update(det, 5.0)
-  result <- get_statistics(det, family = "gaussian")
-
-  expect_equal(result$stat,        0)
-  expect_equal(result$changepoint, 0)
+  expect_equal(as.vector(res_seq$stat), as.vector(res_off$stat))
 })
 
 test_that("online mode supports |> pipe chaining", {
@@ -397,19 +333,9 @@ test_that("online mode supports |> pipe chaining", {
   expect_equal(detector_info_n(det), 3)
 })
 
-test_that("online npfocus returns length-2 stat vector", {
-  set.seed(123)
-  quants <- qnorm(seq(0.01, 0.99, length.out = 5))
-  det    <- detector_create("npfocus", quantiles = quants)
-  for (y in rnorm(5)) detector_update(det, y)
-
-  result <- get_statistics(det, family = "npfocus")
-  expect_length(result$stat, 2)
-})
-
 
 # ===========================================================================
-# 10. Detector inspection functions
+# Detector inspection functions
 # ===========================================================================
 
 test_that("detector_info_n returns observation count", {

@@ -165,15 +165,23 @@ public:
       if (rank < 2 || K_eff < rank + 1) return;
 
       try {
+        // first try to run qhull normally
         orgQhull::Qhull qh;
-        qh.runQhull("", dims, K_eff, data.data(), "QJ");
-
+        qh.runQhull("", dims, K_eff, data.data(), "");
         for (const auto& v : qh.vertexList())
           hull_indices.insert(v.point().id());
-
       } catch (...) {
-        for (int i = 0; i < K; ++i)
-          hull_indices.insert(i);
+        try {
+          // if this fails try to run qhull with "QJ" option (joggle input)
+          orgQhull::Qhull qh2;
+          qh2.runQhull("", dims, K_eff, data.data(), "QJ");
+          for (const auto& v : qh2.vertexList())
+            hull_indices.insert(v.point().id());
+        } catch (...) {
+          // if this fails again, just return all indices (no pruning)
+          for (int i = 0; i < K; ++i)
+            hull_indices.insert(i);
+        }
       }
     };
 
@@ -204,6 +212,42 @@ public:
     if (hull_indices.empty()) {
       for (int i = 0; i < K; ++i)
         hull_indices.insert(i);
+    }
+
+    // Apply anomaly_intensity pruning if enabled
+    if (!std::isnan(anomaly_intensity_) && anomaly_intensity_ > 0.0) {
+      std::set<int> intensity_filtered;
+
+      for (int idx : hull_indices) {
+        const auto& c = candidates[idx];
+
+        const double denom = static_cast<double>(n_) - c.tau;
+
+        // Skip unstable ratios when tau is numerically equal to n_
+        if (denom <= 1e-12) {
+          intensity_filtered.insert(idx);
+          continue;
+        }
+
+        double max_abs_ratio = 0.0;
+
+        for (int dim = 0; dim < target_dim; ++dim) {
+          const double st_val =
+            (dim < static_cast<int>(c.st.size())) ? c.st[dim] : 0.0;
+
+          const double num = sn_[dim] - st_val;
+          const double abs_ratio = std::abs(num / denom);
+
+          max_abs_ratio = std::max(max_abs_ratio, abs_ratio);
+        }
+
+        // Keep candidate if infinity norm exceeds threshold
+        if (max_abs_ratio >= anomaly_intensity_) {
+          intensity_filtered.insert(idx);
+        }
+      }
+
+      hull_indices = std::move(intensity_filtered);
     }
 
     std::vector<Candidate> pruned;
