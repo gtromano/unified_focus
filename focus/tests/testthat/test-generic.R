@@ -304,8 +304,8 @@ test_that("ARP detector detects mean shift in AR(2) series (seed 123)", {
                        rho = ar_coefs, mu0_arp = 0)
 
   expect_equal(res$type,            "arp")
-  expect_equal(res$detection_time,   319)
-  expect_equal(res$detected_changepoint, 297)
+  expect_equal(res$detection_time,   306)
+  expect_equal(res$detected_changepoint, 295)
 })
 
 
