@@ -314,32 +314,37 @@ inline std::vector<Triple> coef_update_arp(std::vector<Triple> new_triples, cons
   return new_triples;
 }
 
-inline std::vector<Triple> prune_triples(const std::vector<Triple>& triples, bool side, bool prune) {
-  if (!prune || triples.size() <= 1) {
+// Only the triples visited while
+// popping from the top of the stack get their `l` (intersection point)
+// recomputed. Triples never reached by the walk keep whatever `l` they were
+// last assigned.
+inline std::vector<Triple> prune_triples(std::vector<Triple> triples, int current_n, const std::vector<double>& rho,
+                                         double M_n, const std::vector<double>& y_buf, bool side, bool prune) {
+  if (triples.empty()) {
     return triples;
   }
 
   int i = static_cast<int>(triples.size());
-  while (i >= 1) {
+  triples[static_cast<std::size_t>(i - 1)].l = intersec_point(triples[static_cast<std::size_t>(i - 1)], current_n, rho, M_n, y_buf);
+  const double l_0 = side ? -std::numeric_limits<double>::infinity() : std::numeric_limits<double>::infinity();
+
+  bool stop = false;
+  while (!stop && i >= 1) {
     const double l_i = triples[static_cast<std::size_t>(i - 1)].l;
-    const double l_i_1 = (i - 1 == 0)
-        ? (side ? -std::numeric_limits<double>::infinity() : std::numeric_limits<double>::infinity())
-        : triples[static_cast<std::size_t>(i - 2)].l;
+    const double l_i_1 = (i - 1 == 0) ? l_0 : triples[static_cast<std::size_t>(i - 2)].l;
     const bool cond = side ? (l_i <= l_i_1) : (l_i >= l_i_1);
     if (cond) {
       --i;
+      if (i > 0) {
+        triples[static_cast<std::size_t>(i - 1)].l = intersec_point(triples[static_cast<std::size_t>(i - 1)], current_n, rho, M_n, y_buf);
+      }
     } else {
-      break;
+      stop = true;
     }
   }
 
-  if (i < static_cast<int>(triples.size())) {
-    std::vector<Triple> kept;
-    kept.reserve(static_cast<std::size_t>(i));
-    for (int idx = 0; idx < i; ++idx) {
-      kept.push_back(triples[static_cast<std::size_t>(idx)]);
-    }
-    return kept;
+  if (prune && i < static_cast<int>(triples.size())) {
+    triples.resize(static_cast<std::size_t>(i));
   }
   return triples;
 }
@@ -434,10 +439,7 @@ inline State focus_arp_one_iter(const std::vector<double>& y_buf, int i, const s
   if (enter_recursion && i <= n) {
     std::vector<Triple> triples = out.triples;
     if (!triples.empty()) {
-      for (std::size_t idx = 0; idx < triples.size(); ++idx) {
-        triples[idx].l = intersec_point(triples[idx], i, rho, M_n, y_buf);
-      }
-      triples = prune_triples(triples, side, prune);
+      triples = prune_triples(std::move(triples), i, rho, M_n, y_buf, side, prune);
     }
 
     std::vector<double> M_tau_new(1, M_n);
