@@ -44,19 +44,17 @@ author:
     
   - name: Guillem Rigaill
     affiliations:
-      - name: |
-          Université Paris-Saclay, INRAE, CNRS,
-          Université d'Évry-Val-d'Essonne
-        address: Bâtiment 630, Avenue des Sciences, Plateau du Moulon
-        city: Gif-sur-Yvette
+      - name: Université Paris-Saclay, CNRS, INRAE, Univ Evry, Institute of Plant Sciences Paris-Saclay (IPS2)\newline & Université Paris-Saclay, AgroParisTech, INRAE, UMR MIA Paris-Saclay
+        address: 23 Bd de France-Georges Pompidou, 91037 Évry-Courcouronnes
+        city: Orsay & Palaiseau
         country: France
-        postal-code: 91190
+        postal-code: 91405 & 91120
     orcid: 0000-0002-7176-7511
     email: guillem.rigaill@inrae.fr            
 
   - name: Vincent Runge
     affiliations:
-      - name: Université Paris-Saclay, Université d'Évry-Val-d'Essonne
+      - name: LaMME, Université Paris-Saclay,\newline CNRS, Univ Evry
         address: 23 Bd de France-Georges Pompidou, 91037 Évry-Courcouronnes
         city: Gif-sur-Yvette
         country: France
@@ -1502,7 +1500,7 @@ options(prompt = "R> ", continue = "+  ")
 
 ## Acknowledgments
 
-I. A. Eckley and P. Fearnhead gratefully acknowledge the support of EPSRC and BT via grants \textit{UKRI2698, EP/Z531327/1}. G. Romano gratefully acknowledges the support of grant \textit{UKRI2698}.
+EPSRC's support via grant UKRI2698 (Fearnhead, Eckley and Romano) and EP/Z531327/1 (Eckley and Fearnhead) is acknowledged. Fan also acknowledges the financial support of EPSRC and BT via an Industrial CASE award.
 
 ## References {.unnumbered}
 
