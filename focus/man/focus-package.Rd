@@ -58,7 +58,7 @@
     \item \code{get_statistics(det, family, theta0 = NULL, shape = NULL)}:
       compute statistics for the current detector state.
     \item Inspection utilities: \code{detector_info_n()}, \code{detector_info_sn()},
-      \code{detector_pieces_len()}, \code{detector_candidates()}.
+      \code{detector_cands_len()}, \code{detector_candidates()}.
   }
 
 }

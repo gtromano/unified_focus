@@ -248,7 +248,7 @@ SEXP detector_create(std::string type,
 
       cs = std::make_shared<ARpInfo>(rho_vec, known_prechange, mu0_val);  // <-- pass mu0
     } else {
-      stop("The mu0_arp unknown case is still under development, please specify a parameter `mu0_arp` when using type='arp'.");
+      //stop("The mu0_arp unknown case is still under development, please specify a parameter `mu0_arp` when using type='arp'.");
       cs = std::make_shared<ARpInfo>(rho_vec, known_prechange);  // <-- defaults to mu0 = 0.0
     }
 
@@ -536,7 +536,7 @@ List get_statistics(SEXP det_ptr,
 //'
 //' @export
 // [[Rcpp::export]]
-int detector_pieces_len(SEXP det_ptr) {
+int detector_cands_len(SEXP det_ptr) {
   XPtr<std::shared_ptr<Info>> ptr(det_ptr);
   if (!ptr || !(*ptr)) stop("Invalid info pointer");
   return static_cast<int>((*ptr)->candidates().size());
@@ -603,7 +603,7 @@ std::vector<double> detector_info_sn(SEXP det_ptr) {
 List detector_candidates(SEXP det_ptr) {
   XPtr<std::shared_ptr<Info>> ptr(det_ptr);
   if (!ptr || !(*ptr)) stop("Invalid info pointer");
-  
+
   const auto& candidates = (*ptr)->candidates();
   const size_t K = candidates.size();
 

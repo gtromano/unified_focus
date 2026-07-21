@@ -296,8 +296,8 @@ get_statistics <- function(det_ptr, family, theta0 = NULL, shape = NULL) {
 #' controlled by the pruning parameters.
 #'
 #' @export
-detector_pieces_len <- function(det_ptr) {
-    .Call(`_focus_detector_pieces_len`, det_ptr)
+detector_cands_len <- function(det_ptr) {
+    .Call(`_focus_detector_cands_len`, det_ptr)
 }
 
 #' Get number of observations processed

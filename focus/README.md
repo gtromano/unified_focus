@@ -223,7 +223,7 @@ Available Functions
 - **`detector_info_n(detector)`** - Get number of observations processed
 - **`detector_info_sn(detector)`** - Get cumulative sum state (vector
   for multivariate)
-- **`detector_pieces_len(detector)`** - Get number of candidate
+- **`detector_cands_len(detector)`** - Get number of candidate
   changepoints
 - **`detector_candidates(detector)`** - Get all candidate changepoints
   as a data frame
@@ -449,7 +449,7 @@ system.time(
 ```
 
        user  system elapsed 
-      5.930   0.079   6.010 
+      8.064   0.095   8.159 
 
 ``` r
 # Low-dimensional projection approximation
@@ -462,7 +462,7 @@ system.time(
 ```
 
        user  system elapsed 
-      0.146   0.001   0.146 
+      0.148   0.000   0.149 
 
 ``` r
 # Verify similarity
@@ -592,7 +592,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.003 
+      0.002   0.000   0.002 
 
 ``` r
 plot(res_bern$stat, main = "Bernoulli (univariate): change in success probability")
@@ -638,7 +638,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.003   0.000   0.002 
+      0.002   0.000   0.002 
 
 ``` r
 plot(res_pois$stat, main = "Poisson: change in rate (lambda)")
@@ -912,13 +912,13 @@ par(mfrow = c(1, 1))
 cat("Detection time:", res$detection_time, "\n")
 ```
 
-    Detection time: 520 
+    Detection time: 510 
 
 ``` r
 cat("Estimated changepoint:", res$detected_changepoint, "\n")
 ```
 
-    Estimated changepoint: 500 
+    Estimated changepoint: 498 
 
 ``` r
 cat("True changepoint:", n_pre, "\n")
@@ -951,7 +951,7 @@ for (i in seq_along(Y)) {
 }
 ```
 
-    Detection at time 521 with changepoint estimate τ = 500 
+    Detection at time 511 with changepoint estimate τ = 498 
 
 ``` r
 # Plot results
@@ -987,7 +987,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.157   0.020   0.147 
+      0.162   0.018   0.151 
 
 ``` r
 # Benchmark online mode
@@ -1011,7 +1011,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-      0.342   0.000   0.342 
+      0.345   0.000   0.344 
 
 ``` r
 # Verify both produce identical results
