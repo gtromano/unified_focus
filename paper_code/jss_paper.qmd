@@ -1,0 +1,1619 @@
+---
+title: "[focus]{.pkg} and [focus-cpt]{.pkg}: Fast Online Changepoint Detection in R and Python"
+format:
+  jss-pdf:
+    keep-tex: true
+    jss-html: default
+    include-in-header:
+      text: |
+        \usepackage{orcidlink}
+        \newtheorem{proposition}{Proposition}
+author:
+  - name: Gaetano Romano
+    affiliations:
+      - name: Lancaster University
+        department: School of Mathematical Sciences
+        address: Fylde College
+        city: Lancaster
+        country: United Kingdom
+        postal-code: LA1 4YF
+    orcid: 0000-0002-7751-9017
+    email: g.romano@lancaster.ac.uk
+    url: https://www.lancaster.ac.uk/maths/people/gaetano-romano
+
+  - name: Kes Ward
+    affiliations:
+      - name: Lancaster University
+        department: School of Mathematical Sciences
+        address: Fylde College
+        city: Lancaster
+        country: United Kingdom
+        postal-code: LA1 4YF
+    email: k.ward@lancaster.ac.uk     
+               
+  - name: Yuntang Fan
+    affiliations:
+      - name: Lancaster University
+        department: School of Mathematical Sciences
+        address: Fylde College
+        city: Lancaster
+        country: United Kingdom
+        postal-code: LA1 4YF
+    orcid: 0009-0001-5958-5002
+    email: y.yuntang@lancaster.ac.uk
+    
+  - name: Guillem Rigaill
+    affiliations:
+      - name: |
+          Université Paris-Saclay, INRAE, CNRS,
+          Université d'Évry-Val-d'Essonne
+        address: Bâtiment 630, Avenue des Sciences, Plateau du Moulon
+        city: Gif-sur-Yvette
+        country: France
+        postal-code: 91190
+    orcid: 0000-0002-7176-7511
+    email: guillem.rigaill@inrae.fr            
+
+  - name: Vincent Runge
+    affiliations:
+      - name: Université Paris-Saclay, Université d'Évry-Val-d'Essonne
+        address: 23 Bd de France-Georges Pompidou, 91037 Évry-Courcouronnes
+        city: Gif-sur-Yvette
+        country: France
+        postal-code: 91190
+    orcid: 0000-0002-4857-1799
+    email: vincent.runge@univ-evry.fr                                               
+                                                                                             
+    
+  - name: Idris A. Eckley
+    affiliations:
+      - name: Lancaster University
+        department: School of Mathematical Sciences
+        address: Fylde College
+        city: Lancaster
+        country: United Kingdom
+        postal-code: LA1 4YF
+    orcid: 0000-0001-9957-2460
+    email: i.eckley@lancaster.ac.uk
+    url: https://www.lancs.ac.uk/~eckley/
+
+  - name: Paul Fearnhead
+    affiliations:
+      - name: Lancaster University
+        department: School of Mathematical Sciences
+        address: Fylde College
+        city: Lancaster
+        country: United Kingdom
+        postal-code: LA1 4YF
+    orcid: 0000-0002-9386-2341
+    email: p.fearnhead@lancs.ac.uk
+    url: https://www.maths.lancs.ac.uk/~fearnhea/
+
+
+abstract: |
+  We present an [R]{.proglang} and [Python]{.proglang} package for fast online changepoint
+  detection in univariate and multivariate data streams for a variety of models. 
+  The package implements the [focus]{.pkg} family of algorithms, which compute the Generalised Likelihood Ratio test for a single changepoint exactly and efficiently, with a per-iteration cost
+  of approximately $\log(n)^d$ for a d-dimensional sequence, without introducing approximations. This is
+  achieved by exploiting a connection between the location of the changepoint
+  candidates and the geometry of the data. The package supports a broad range of models from the natural exponential
+  family, including Gaussian, Poisson, Binomial, Exponential and Gamma distributions, as well as a
+  non-parametric detector based on the empirical cumulative distribution function and 
+  a detector for autoregressive data.
+
+keywords: [changepoint detection, anomaly detection, online algorithms, real-time analysis, functional pruning, R, Python]
+keywords-formatted: [changepoint detection, anomaly detection, online algorithms, real-time analysis, functional pruning, "[R]{.proglang}", "[Python]{.proglang}"]
+
+bibliography: bibliography.bib
+---
+
+## Introduction {#sec_introduction}
+
+In the past decade, we have seen a resurgence of changepoint detection approaches \citep[in particular in the offline scenario, see][]{truong2020selective}. The vast majority of real-world processes happen over time, and methodologies that account for temporal shifts and anomalies in these processes have been proven useful to many real world applications \citep[e.g.,][]{shiryaev2002quickest, alvarez2020flight, xie2019asynchronous}. Nowadays, with the advent of the Internet of Things, and the ubiquity of large sensor networks that are able to monitor processes in real-time, it is common to want to detect anomalies and changes online.
+For example, real-time monitoring from engineering \citep{alvarez2020flight, lobodzinski2025predictive}, cybersecurity \citep{jeske2018statistical}, or self-driving cars \citep{galceran2017multipolicy}, could require analysis of high frequency data from potentially multiple streams to inform timely decisions. Neuroscience \citep{jewell2020fast} and astrophysics \citep{crupi2023searching} problems may involve processing hundreds of observations per second to uncover novel biological and scientific mechanisms.
+
+Motivated by these problems, there has been a range of methodological advances around fast and efficient statistical online changepoint detection approaches, including, but not limited to \cite{aue2024state, xie2023window, yu2023note, chen2022high}. Amongst these, the [focus]{.pkg} algorithm, introduced in \cite{romano2023fast}, has found applications across a range of settings and has prompted several methodological developments. These so far include an extension to univariate exponential family models \citep{ward2022poisson, ward2023constant}, an adaptation to non-parametric settings \citep{romano2023log}, as well as a generalisation to multivariate time series \citep{pishchagina2025online}. 
+
+[focus]{.pkg} detects changes using the Generalised Likelihood
+Ratio (GLR) test \citep{siegmund1995using}. The GLR evaluates whether the underlying distribution generating the observations has changed at a given point in time, by comparing the likelihood of the data under the null hypothesis of no change against the alternative hypothesis of a change at some unknown location, optimising over all possible changepoint locations. This test has shown good statistical properties in terms of detection power and false alarm control for several models \citep[see][]{Lorden, basseville1993detection}. However, when analysing $n$ data points, a naive sequential implementation requires $\mathcal{O}(n)$ operations per time step, leading to an overall $\mathcal{O}(n^2)$ complexity that makes it unfeasible for true real-time applications. The [focus]{.pkg} algorithm addresses this limitation directly: it computes
+the GLR statistic exactly, without any approximation, but does so with a per-iteration cost that grows only logarithmically in the unvariate case with the length of the observed sequence, and more generally at a $\log(n)^d$ rate for a d-dimensional sequence, as we describe in detail in Section \ref{sec_algorithm}.
+
+Methodologies based on [focus]{.pkg} are already being trialled in diverse areas, from detecting astrophysical events on satellites \citep{dilillo2024gamma}, to monitoring IoT networks \citep{yang2024communication} and digital infrastructure \citep{romano2023log}. This paper and software package arise from the need to provide a common interface to the [focus]{.pkg} family, that could be of use to practitioners.
+
+One particular aspect of this implementation is that the [R]{.proglang} and [Python]{.proglang} interfaces share the same underlying [C++]{.proglang} backend, implementing the algorithms, and therefore show parity of functionalities and produce identical results. Across the two interfaces, available on [CRAN](https://cran.r-project.org/web/packages/focus/index.html) as [focus]{.pkg} and on [PyPI](https://pypi.org/project/focus-cpt/0.1.1/) as [focus-cpt]{.pkg}, there are only minor differences in interface design philosophy (e.g., the update mechanism is more functional in [R]{.proglang}, while it is more object-oriented in [Python]{.proglang}). For this reason, in the description of the interface in this article, we will provide code through the [R]{.proglang} interface and highlight differences in the [Python]{.proglang} interface where relevant in bold (as most of the function calls are exactly the same). We will give a detailed overview of what differs in Appendix \ref{sec_python_interface} and have a couple of [Python]{.proglang} examples in Section \ref{sec_real_time_applications}. [Python]{.proglang} users should therefore not be discouraged from reading the main part of the article as well. On the same note, a certain degree of repetition is somewhat unavoidable in the article, as we want to provide examples of several types of detectors across both interfaces. To save space, code dedicated to plotting, printing, some tuning, and data preparation has been hidden from the code chunks; however, it is fully available on GitHub at \url{https://github.com/gtromano/unified_focus/tree/main/paper_code} as a reproducible [Quarto](https://quarto.org/) notebook.
+
+The rest of the article is structured as follows. In Section \ref{sec_algorithm}, we provide a high-level description of the algorithms implemented in the package, and in Section \ref{sec_interface}, we describe the interfaces in detail. In Section \ref{sec_use_cases}, we provide simulated examples of common use cases of the package. Finally, in Section \ref{sec_real_time_applications}, we provide some examples of real-time applications of the package, showcasing its potential in various domains.
+
+### Related Software
+
+A comprehensive overview of \proglang{R} and \proglang{Python} packages for changepoint and anomaly detection is available through the CRAN Task Views for Time Series Analysis \citep{ctv-timeseries} and Anomaly Detection \citep{ctv-anomaly}; we refer the reader to these for a broad survey. Here we restrict attention to statistical packages most closely related to \pkg{focus}, focusing on likelihood-based methods and omitting general-purpose anomaly detection toolkits.
+
+For offline changepoint detection in \proglang{R}, we find \pkg{changepoint} \citep{killick2014changepoint}, which implements the PELT algorithm and binary segmentation for changes in mean, variance, or both, in a univariate setting. For change-in-mean, implementing the fpop and pDPA algorithms \citep{Maidstone, Rigaill}, we find the \pkg{fpopw} package. A broad family of randomised and deterministic localised search strategies is collected in the \pkg{breakfast} package \citep{breakfast_pkg}, which includes wild binary segmentation, WBS2, narrowest-over-threshold, and other methods. A further deterministic alternative achieving near-linear computational cost while retaining minimax-optimal estimation is seeded binary segmentation \citep{kovacs2023seeded}, whose implementation is available on GitHub only at \url{https://github.com/kovacssolt/SeedBinSeg}. The MOSUM-based approach, which uses moving-sum statistics for multiple mean-change estimation, is implemented in the \pkg{mosum} package \citep{Meier2021}. For Bayesian offline analysis, \pkg{bcp} \citep{erdman2008bcp} provides a model for changes in the mean of Gaussian data. In \proglang{Python}, the primary offline library is \pkg{ruptures} \citep{truong2018ruptures}, which offers a modular and well-documented interface covering PELT, binary segmentation, window-based methods, and kernel cost functions across both parametric and non-parametric models.
+
+The above packages are for detecting abrupt unstructured changes (similar to \pkg{focus}). There are also packages that can detect gradual or structured changes in offline data. These include the \pkg{cpop} \citep{fearnhead2024cpop} package and the \texttt{trandfilter} function \citep{kim2009ell_1} in the \pkg{genlasso} \citep{arnold2016efficient} package for detecting changes-in-slope, and the \pkg{gfpop} \citep{runge2020gfpop} package for detecting structured changes.
+
+
+For online (and sequential) changepoint detection in \proglang{R}, \pkg{ocd} \citep{chen2022ocd} implements a multiscale likelihood-ratio procedure for high-dimensional Gaussian mean changes, with storage and per-observation cost independent of the number of past observations, it also provides access to several classical sequential procedures. A Bayesian online changepoint detection algorithm is available through \pkg{ocp} \citep{pagotto2019ocp}, which implements the algorithm of \cite{adams2007bayesian}. In \proglang{Python}, the online changepoint detection ecosystem is currently less consolidated than its offline counterpart. An implementation of the same \cite{adams2007bayesian} algorithm is available as a lightweight package on PyPI (\url{https://pypi.org/project/bocd/}); \pkg{changepoint-online} is a fully pythonic, early implementation of some algorithms included in \pkg{focus-cpt} (available at \url{https://pypi.org/project/changepoint-online/}).
+The proposed implementation therefore occupies a distinct niche relative to this landscape: unlike \pkg{ocd}, which is its closest competitor, it is based on exact GLR statistics and naturally extends to exponential family models and non-parametric settings \cite[a comparison of the statistical performances of \pkg{focus} and \pkg{ocd} is available in][]{romano2023fast, pishchagina2025online}; and, crucially, compared to \pkg{changepoint-online} it provides a unified \proglang{R} and \proglang{Python} interface backed by a shared (and therefore easier to maintain) and faster \proglang{C++} implementation.
+
+## A Description of the Algorithm {#sec_algorithm}
+
+### Model and the GLR Statistics
+
+Consider a stream of observations $\{ y_n\}_{n = 1, 2, \ldots}$, where each $y_n \in \mathbb{R}^d$, and define a subset of this time series $y_{a:b}$ as the data points $\{ y_a, \ldots, y_b \}$ for integers $a < b$.
+We assume our observations follow a one-parameter exponential family with density
+$$
+\label{eq:exponential_family}
+p(y_t \mid \theta) = \prod_{j = 1}^d \exp\!\left\{ -\frac{1}{2} \Big( A(\theta^{(j)}) - 2 \theta^{(j)} T(y_t^{(j)}) + B(y_t^{(j)}) \Big) \right\},
+$$
+where $T(y_t^{(j)}) \in \mathbb{R}$ is a sufficient statistic, $\theta^T = (\theta^{(1)}, \dots, \ \theta^{(d)}) \in \mathbb{R}^d$ is the natural parameter. This formulation assumes independence across the $d$ univariate time series. Here $A(\theta)= (A(\theta^{(1)}),\ldots,A(\theta^{(d)}) ) ^ T \in \mathbb{R}^d$ is a convex function of the natural parameter, and $B(y_t^{(j)})\in \mathbb{R}$ is a function of the data only. The natural parameter, $\theta$, is generally not the mean parameter $\mu$; for example, for Poisson data $\theta = \log(\mu)$. The second column of Table \ref{tab:expfam} shows the relationship $\theta = \theta(\mu)$ for each distribution supported by the package. For the rest of this section, $\langle u, v \rangle = \sum_{k=1}^d u^{(k)} v^{(k)}$ will denote the standard scalar product in $\mathbb{R}^d$. Note that different models can be employed for each dimension, allowing for more flexible multivariate detection scenarios (this capability is illustrated in the application of Section \ref{sec_meanvar}).
+
+\begin{table}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{lllll}
+    \hline
+    Distribution              & $\theta(\mu)$           & $T(y)$ & $A(\theta)$          & $B(y)$ \\
+    \hline
+    Gaussian (change in mean)                  & $\mu$                   & $y$    & $\theta^2$           & $y^2 + \log(2\pi)$      \\
+   Poisson                   & $\log\mu$               & $y$    & $2e^{\theta}$        & $2\log y!$ \\
+    Binomial                  & $\log\frac{\mu}{1-\mu}$ & $y$    & $2m\log(1+e^\theta)$ & $-2\log \binom{m}{y}$   \\
+    Gamma                     & $-k/\mu$                & $y$    & $-2k    \log(-\theta)$ & $-2(k-1) \log y + 2\log\Gamma(k)$ \\    
+    Gaussian (change in var.) & $-1/(2\mu)$ & $y^2$ & $-\log(-\theta)$ & $\log(2\pi)$ \\                      
+    \hline
+  \end{tabular}
+  }
+  \caption{Examples of distributions from the natural exponential family supported by the package. The $\theta(\mu)$ column gives the natural parameter $\theta$ as a function of the mean parameter $\mu$; the remaining columns give the corresponding forms of the sufficient statistic $T(y)$ and the functions $A(\theta)$ and $B(y)$. Without loss of generality, the variance of the Gaussian change in mean model is assumed to be $1$, while the Gaussian change in variance model assumes that the mean is $0$. The number of trials is assumed to be $m$ for all dimensions in the Binomial model. For the Gamma model, the shape parameter $k$ is assumed to be known and equal across dimensions, and it is possible to obtain the Exponential by setting a Gamma with shape $k=1$.}
+  \label{tab:expfam}
+\end{table}
+
+The objective of our algorithm is to, at time $n$, decide whether we have observed a change or not based on the current data $y_{1:n}$ obtained so far. To this end, our model assumes that each data point $y_t$ is drawn i.i.d. from a distribution with density $p(y_t \mid \theta_0)$ before the change and $p(y_t \mid \theta_1)$ after.
+Under this model, for any candidate changepoint $\tau \in \{1,\dots,n-1\}$, define the log-likelihood, assuming a change at time $\tau$, as
+$$
+q_{\tau,n}(\theta_0,\theta_1)
+= \sum_{t=1}^{\tau} \log p(y_t \mid \theta_0) + \sum_{t=\tau+1}^{n} \log p(y_t \mid \theta_1).
+$$
+Then, at time $n$, maximising over all possible changepoint locations yields the envelope
+$$
+\mathcal{Q}_n(\theta_0,\theta_1) = \max_{\tau\in\{1,\dots,n-1\}} q_{\tau,n}(\theta_0,\theta_1).
+$$
+The generalised likelihood ratio (GLR) statistic for testing the presence of a single changepoint in $y_{1:n}$ is then
+$$
+f_{\mathrm{GLR}}(y_{1:n}) = 2\left\{ \max_{\theta_0,\theta_1}\mathcal{Q}_n(\theta_0,\theta_1)
+- \max_{\theta} \sum_{t=1}^{n} \log p(y_t \mid \theta)
+\right\}.
+$$
+The optimisation to obtain $f_{\mathrm{GLR}}$ is over both potential changepoint locations $\tau$ and pre- and post-change parameters $\theta_0$ and $\theta_1$. Notably, it is possible to consider the case where the pre-change parameter $\theta_0$ is known by simply using a plug-in value for $\theta_0$: this version of the optimisation, in the Gaussian case, will lead to the well known Page-CUSUM statistics \citep{Page}.
+
+Evaluating the GLR statistic at every time step naively requires $\mathcal{O}(n)$ operations per step when processing the $n$th observation, due to the maximum operator over $n-1$ candidate change locations, which is infeasible for real-time applications. A key insight from \cite{romano2023fast, pishchagina2025online} is that it is possible to reduce this set of locations without losing optimality, and this operation is often referred to as *pruning*. This is achieved by decoupling the maximisation of the evaluation of the statistics (e.g. $\max_{\theta_0,\theta_1}$) from the search for candidate change locations to consider. These two operations are reflected in the code via the two functions:
+
+1. `detector_update` which processes the new data point and then recovers a set of candidate changepoints $D_n \subseteq \{1,\dots,n-1\}$ that are needed to maximise the GLR statistics.
+ 2. `get_statistics`, that evaluates the GLR statistic across the active candidates $D_n$ for a given cost function from above.
+
+We will describe in the next section how we build and update the set of candidates $D_n$ sequentially, and how this is linked to the geometry of the data.
+
+### Underlying Geometry of the Problem {#sec_update_pruning}
+
+It is possible to relate the possible candidate change-point locations to the location of points on the convex hull of the random walk of the data \citep{romano2023fast,pishchagina2025online}. \pkg{focus} uses this property to obtain $D_n$. The vertices of this hull will be the only points needed to consider for evaluation of $\mathcal{Q}_n(\theta_0,\theta_1)$. We now give a novel, generalised illustration of this link between the geometry of data and the candidate change locations.
+
+We begin by defining
+
+$$
+\hat{\tau}_n = \operatorname*{arg\,max}_{\substack{\tau\in\{1,\dots,n-1\}}} \ \max_{\theta_0,\theta_1} \ q_{\tau,n}(\theta_0,\theta_1),
+$$
+and, for a given value of $\theta_0, \theta_1$, define the maximiser of $\mathcal{Q}_n(\theta_0,\theta_1)$ as:
+
+$$
+\hat{\tau}_n(\theta_0, \theta_1) =  \operatorname*{arg\,max}_{\substack{\tau\in\{1,\dots,n-1\}}} \Big\{ q_{\tau,n}(\theta_0,\theta_1) \Big\}.
+$$
+Intuitively, $\hat{\tau}_n(\theta_0, \theta_1)$ tells us which candidate changepoint location is most supported by the data, given a particular pair of pre- and post-change parameters. As we vary $(\theta_0, \theta_1)$ over all possible values, different candidates $\tau$ will emerge as the maximiser, tracing out a partition of the parameter space. Critically, many indices $\tau \in \{1, \dots, n-1\}$ will never be the maximiser for any value of $(\theta_0, \theta_1)$ as their associated log-likelihood $q_{\tau,n}(\theta_0,\theta_1)$ is everywhere dominated by that of some other candidate. This allow to precisely define the active candidates set
+$$
+D_n = \{\tau \in \{1,\dots,n-1\} : \exists\, (\theta_0, \theta_1) \text{ such that }
+\hat{\tau}_n(\theta_0,\theta_1) = \tau \}.
+$$
+This set collects precisely those candidates that contribute to $\mathcal{Q}_n(\theta_0,\theta_1)$.
+
+At any future time $n+1$, $\hat{\tau}_{n+1}(\theta_0, \theta_1) \in \{\hat{\tau}_{n}(\theta_0, \theta_1), n\}$, e.g. $\hat{\tau}_{n+1}(\theta_0, \theta_1)$ can only be either the current maximiser $\hat{\tau}_n(\theta_0, \theta_1)$ or the new candidate $n$, so any $\tau' \notin D_n$ cannot become a maximiser. This means the active set can only grow by at most one element at each step,
+$$
+D_{n} \subseteq D_{n-1} \cup \{n\},
+$$
+and any $\tau' \in D_{n-1}$ that is not in $D_{n}$ can be permanently discarded from the optimisation.
+
+To understand how we can build the set $D_n$, we now look into the geometry of our optimisation problem.
+Subtracting the constant $q_n(\theta_1) = \sum_{t=1}^{n} \log p(y_t \mid \theta_1)$
+from $q_{\tau,n}(\theta_0,\theta_1)$ does not affect the argmax over $\tau$, and allows us to write
+\begin{align*}
+\hat{\tau}_n(\theta_0, \theta_1) &= \operatorname*{arg\,max}_{\substack{\tau\in\{1,\dots,n-1\}}} \Big\{ q_{\tau,n}(\theta_0,\theta_1) - q_{n}(\theta_1)\Big\} \\
+&= \operatorname*{arg\,max}_{\substack{\tau\in\{1,\dots,n-1\}}} \Big\{ \sum_{t=1}^{\tau} \Big[ \log p(y_t \mid \theta_0) - \log p(y_t \mid \theta_1)  \Big] \Big\} \\
+&= \operatorname*{arg\,max}_{\substack{\tau\in\{1,\dots,n-1\}}} \Big\{ q_\tau(\theta_0, \theta_1) \Big\},
+\end{align*}
+
+Where $q_\tau(\theta_0, \theta_1) = \sum_{t=1}^{\tau} \Big[ \log p(y_t \mid \theta_0) - \log p(y_t \mid \theta_1)  \Big]$. So $q_\tau(\theta_0, \theta_1)$ and consequently $\hat{\tau}_n(\theta_0, \theta_1)$ do not depend on $n$ anymore. By defining: 
+$$
+P(\tau) = \left(\tau, \sum_{t=1}^\tau T(y_t)\right) \in \mathbb{R}^{d+1}
+$$ 
+and
+$$
+\psi(\theta_0, \theta_1) = \left(\frac{A(\theta_1) - A(\theta_0)}{2},\,
+\frac{\theta_0 - \theta_1}{2}\right) \in \mathbb{R}^{d+1},
+$$
+we can now write $q_\tau$ as a product between a data-dependent vector and a model dependent vector:
+$$
+q_\tau(\theta_0, \theta_1) = \langle P(\tau),\, \psi(\theta_0, \theta_1) \rangle.
+$$
+We note that maximising $q_\tau$ over $\tau$ is equivalent to finding which point $P(\tau)$ achieves the largest scalar product with $\psi(\theta_0, \theta_1)$, which brings us to the following proposition.
+
+\begin{proposition}
+For any $\tau' \in \{1,\dots,n-1\}, \ n> d+2$, if $P(\tau')$ lies in the interior of the convex hull of $\{P(\tau)\}_{\tau \in \{1,\dots,n-1\}}$, then $\tau' \notin D_n$
+and can be permanently pruned.
+\end{proposition}
+
+*Proof* Since $P(\tau')$ is in the interior of the convex hull, there exist
+$\tau_1,\dots,\tau_{d+2} \in \{1,\dots,n-1\}$ and weights $\lambda_1,\dots,
+\lambda_{d+2} \geq 0$ with $\sum_{i=1}^{d+2}\lambda_i = 1$ such that
+$$
+P(\tau') = \sum_{i=1}^{d+2} \lambda_i P(\tau_i).
+$$
+For any $(\theta_0, \theta_1)$, taking the scalar product with
+$\psi(\theta_0,\theta_1)$ on both sides and using linearity gives
+\begin{align*}
+q_{\tau'}(\theta_0,\theta_1) &= \langle P(\tau'),\psi(\theta_0,\theta_1)\rangle = \sum_{i=1}^{d+2} \lambda_i \langle P(\tau_i), \psi(\theta_0,\theta_1)\rangle \\
+&< \max_{i \in \{1,\ldots, d+2\}} \langle P(\tau_i), \psi(\theta_0,\theta_1)\rangle \leq \max_{\tau \in \{1,\ldots, n-1\}} q_\tau(\theta_0, \theta_1),
+\end{align*}
+
+
+where the strict inequality holds because $P(\tau')$ is in the interior of the hull. Therefore $q_{\tau'}(\theta_0,\theta_1) < \max_{\tau \in \{1,\dots,n-1\}} q_\tau(\theta_0,\theta_1)$ for all $(\theta_0,\theta_1)$, meaning $\tau'$ can
+never be the maximiser $\hat{\tau}_n(\theta_0,\theta_1)$ and so $\tau' \notin D_n$. \hfill $\Box$
+
+This proposition shows that $D_n$ is contained within the set of the first component (the $\tau$s) of the vertices of the convex hull of $\{P(\tau)\}_{\tau \in \{1,\dots,n-1\}}$, and for some models, such as the Gaussian change-in-mean, they are equivalent; see Theorem 2 of \cite{pishchagina2025online}. It is this geometric structure that we exploit to maintain $D_n$ efficiently.
+
+### Efficient Computations of Convex Hulls
+
+The way we build and update $D_n$ in practice from $D_{n-1}$ is by iteratively integrating a new point $P(n) = \left(n, \sum_{t=1}^{n} T(y_t)\right)$ into the hull and dropping points that lie on the interior of the hull, as they no longer contribute to $\hat{\tau}_n(\theta_0, \theta_1)$  (this is the pruning step). How this is done differs between the univariate and multivariate cases. In the univariate case, we employ the pruning algorithm described in \cite{ward2023constant}, whose per iteration cost is amortised $\mathcal{O}(1)$ on average, and is closely related to the Melkman algorithm \citep{melkman1987line}. This is based on comparisons of the argmax of the component functions $q_{i,n}$ and $q_{i+1,n}$ for pairs of contiguous elements of $D_n$ and is equivalent to updating sequentially a 2-dimensional hull by comparing the slope of contiguous points. As updates of the majorants and minorants of the convex hull can be kept separate, this also allows for constraining the detection to only positive or negative changes; see Section \ref{sec_constrained}.
+
+For multivariate data, standard convex hull algorithms can be applied to prune candidates. As in  \cite{pishchagina2025online}, we employ QuickHull \citep{barber1996quickhull} for reconstructing the set of optimal points. Because running a full convex hull algorithm such as QuickHull at every iteration would itself be costly, the implementation runs it only intermittently. Specifically, the algorithm maintains a working candidate set $T'_n$ that is allowed to grow beyond the true hull vertex set $D_n$; QuickHull is triggered only once $|T'_n|$ exceeds a size threshold, which is itself updated after each pruning step as $\lfloor \alpha |T'_{n}| + \beta \rfloor$ for user-controlled parameters $\alpha \geq 1$, the pruning multiplier, and $\beta \geq 0$, the pruning offset. This means that the algorithm always retains a small number of extra candidates beyond those strictly necessary, trading a small increase in the candidate set size for a significant reduction in the number of times the hull algorithm is called. In practice, setting $\alpha = 2$ and $\beta = 1$ is found to yield good performance across a range of dimensions and sequence lengths, but these values can be overridden as described in Section \ref{sec_detectors}.
+
+One feature of multidimensional sequences, as illustrated in Corollary 1 of \cite{pishchagina2025online}, is that the expected size of $D_n$ grows only as $\mathcal{O}(\log (n)^d )$ in the $d$-dimensional case, rather than linearly with $n$. So for low-dimensional multivariate data, such as $d \leq 5$, one can use the detector corresponding to the full $(d+1)$-dimensional convex hull. For higher-dimensional problems, this becomes computationally impractical due to the $\log(n)^d$ growth in the number of hull vertices, and an approximate algorithm is available: the data are projected onto overlapping subsets of $\tilde{d} \leq 5$ coordinates, a convex hull is computed on each lower-dimensional projection, and the union of the resulting vertex sets is taken as the set of candidates. This approximation stores $\mathcal{O}(d \log(n)^{\tilde{d}})$ candidates rather than $\mathcal{O}(\log(n)^d)$, substantially reducing the computational burden for large $d$ while retaining good statistical performance \citep{pishchagina2025online}. How to use this, and the computational gains obtained from the approximations are briefly exemplified in Section \ref{sec_multi_detectors}.
+
+
+
+
+### Non-Parametric and Autoregressive Detectors
+
+The package also implements two extensions beyond the i.i.d. exponential family framework
+described above. We describe each in turn.
+
+#### Non-Parametric Detector {#sec_nonparametric_method}
+In practice, the underlying distribution of the data or the pre- and post-change distributions are often unknown, making the parametric models of Table \ref{tab:expfam} unsuitable for certain scenarios. For this reason, the package implements the [npfocus]{.pkg} detector of \cite{romano2023log}, which detects changes in the empirical cumulative distribution function (eCDF) of a univariate data stream without any distributional assumptions. The key idea is to approximate the eCDF on a fixed grid of $M$ quantile values $m_1, \dots, m_M$, computed either from historical knowledge or over a training period, and to reduce the problem to $M$ independent
+Binomial changepoint detection problems: for each quantile $m_j$, the original observations $y_t$ are replaced by the binary sequence $z^{(j)}_t = \mathbb{I}(y_t \leq m_j)$, and a Binomial [focus]{.pkg} detector is run on each such sequence. 
+
+Consistent with the general [focus]{.pkg} architecture, we find a separation between pruning the changepoint set and the model evaluation: for each quantile $m_j$, the `detector_update` function independently maintains the set of candidate changepoints $D_n^{(j)}$ based on the binary sequence $z^{(j)}_{1:n}$, using the same convex hull geometry principle described in Section \ref{sec_update_pruning}; the `get_statistics` function then evaluates the Binomial GLR statistic at each of these candidates. 
+A global test statistic is then constructed by aggregating the $M$ individual GLR statistics either through their sum or their maximum. A changepoint is declared at time $n$ if
+$$
+\sum_{j=1}^M f^{(j)}_{\mathrm{GLR}}(z^{(j)}_{1:n}) \geq \xi^{\mathrm{sum}}
+\quad \text{or} \quad
+\max_{j \in \{1,\dots,M\}} f^{(j)}_{\mathrm{GLR}}(z^{(j)}_{1:n}) \geq \xi^{\mathrm{max}},
+$$
+for user-specified thresholds $\xi^{\mathrm{sum}}, \xi^{\mathrm{max}} \in \mathbb{R}$, where $f^{(j)}_{\mathrm{GLR}}(z^{(j)}_{1:n})$ denotes the GLR statistic applied to the $j$-th quantile transformation. The user can choose to perform either both or one of the two tests, depending on what type of changes they wish to detect in the distribution: the sum statistic is more powerful for detecting changes that affect multiple quantiles (e.g., a shift in the scale or location), while the max statistic is more powerful for detecting changes that affect only a few quantiles (such as a change in the tail of the distribution).
+
+#### Autoregressive Detector {#sec_ar_method}
+
+Many real-world time series exhibit temporal dependencies, where observations at time $t$ depend on observations at previous times. Unlike the i.i.d. detectors described above, to deal with temporal dependence in univariate sequences, the package also implements a detector for autoregressive data, based on the work of \cite{fan2026efficientlikelihoodratiotest}.
+
+In this case, we assume the following AR($p$) model:
+$$
+y_t = \mu^{(t)} + \epsilon_t, \quad \text{where} \quad \epsilon_t = \sum_{i=1}^p \rho_i \epsilon_{t-i} + \xi_t,
+$$
+where $\mu^{(t)} = \mu_0$ for $t \leq \tau$ and $\mu^{(t)} = \mu_1$ for $t > \tau$, and $\xi_t \sim \mathcal{N}(0, \sigma_\xi^2)$. The AR coefficients $\rho_1, \ldots, \rho_p$ and the variance $\sigma_\xi^2$ are assumed to be known or estimated over a training period; see Section \ref{sec_ar} for an example of how this can be achieved. 
+
+A crude approximation would be to pre-whiten the data using the AR coefficients and then apply the i.i.d. [focus]{.pkg} algorithm to the residuals $\xi_{1:n}$. However, this approach has a fundamental limitation: it ignores that immediately after a changepoint at time $\tau$, the mean of the pre-whitened data is non-constant over the first $p$ observations. Specifically, the first $p$ observations after a changepoint exhibit transient behaviour because the AR process's lagged dependencies still include pre-change values, and the fitted residuals only become constant once these lags have fully transitioned to post-change values. Ignoring this transient can lead to a loss of power for detecting changes that occur near the end of the stream.
+
+The AR($p$)-[focus]{.pkg} algorithm instead implements the GLR for the AR($p$) model exactly. This is achieved by separately computing the GLR for changepoint locations $\tau$ within the last $p$ observations and for locations beyond $p$ observations before $n$. The algorithm then applies a slightly modified [focus]{.pkg} pruning. For brevity, we do not describe the resulting $\mathcal{Q}_n(\mu_0,\mu_1)$ and pruning in detail, but these come from a direct extension of the original Gaussian algorithm, as described in Section 3 of \cite{fan2026efficientlikelihoodratiotest}.
+The `detector_update` and `get_statistics` functions maintain the same separation by managing the candidate set and evaluating the AR($p$) GLR statistic, respectively. In the case of known pre-change parameters, notably, unlike the i.i.d. case, the decoupling of the cost and pruning is not directly possible, and the pruning step requires knowledge of the pre-change mean $\mu_0$ in addition to the post-change $\mu_1$. For practical details on how this is handled in the interface and for usage examples, see Section \ref{sec_ar}.
+
+## The Interface {#sec_interface}
+
+```{r}
+#| include: false
+
+# needed for the "R> " prompt in the code chunks
+options(prompt = "R> ", continue = "+  ")
+```
+
+We now provide a description of the interface of the [focus]{.pkg} package in [R]{.proglang} (and highlight differences for the [Python]{.proglang} one where relevant, and additionally in Appendix \ref{sec_python_interface}). The package presents two different modes of operation: an online (sequential) mode and an offline (batch) mode. The online mode is designed for real-time applications where data arrives sequentially and offers the possibility to update the changepoint detector with new data points as they arrive, as well as to retrieve the statistics and the current changepoint estimates at every iteration. Where the entire data set is available at once, a special function called `focus_offline` allows to processing a time-series as a whole, and it is intended for scenarios such as training and testing, benchmarking, or retrospective analysis (see Section \ref{sec_offline_interface} for more details). As `focus_offline` is performing the same operations and producing the same results as the online interface, in the following code snippets, and for most of this section, we focus on the online mode, as it is more flexible and more commonly used in real-time applications.
+
+**A Quick Example.** Let us start by generating some Gaussian data with a change in the mean:
+
+```{r}
+#| prompt: true
+
+set.seed(42)
+Y <- c(rnorm(100, mean = 0), rnorm(50, mean = 1))
+```
+
+For running the algorithm online, the first step is to create a detector object using the `detector_create` function. This object will hold the state of the detector and will be updated with new data points as they arrive. In this example, we create a univariate detector, but will provide examples for multivariate detectors in Section \ref{sec_multi_detectors}. For comparison purposes, in the snippet below, we store the trace of the statistics in a vector called `stat_trace`. Finally, we run the main loop of the online interface. In a real-time application, this loop would be running indefinitely, and new data points would be processed as they arrive.
+
+```{r}
+#| prompt: true
+
+library(focus)
+det <- detector_create(type = "univariate")
+for (i in seq_along(Y)) {
+  detector_update(det, Y[i])
+  result <- get_statistics(det, family = "gaussian")
+  if (result$stat > 20)
+    break
+}
+sprintf("Changepoint detected at time %d", i)
+```
+
+Within the `for` loop, we update the detector with a new data point with `detector_update` and retrieve the current statistics `get_statistics`; both functions will be explained in detail below. `get_statistics` returns a list, where `$stat` is our GLR test statistic: we break the cycle as soon as this is over a fixed threshold of 20, and print the stopping time. The online interface supports modern [R]{.proglang} piping, so the update and retrieval of statistics can be chained together in a more concise way. For example, the following snippet is equivalent to the above calls to `detector_update` and `get_statistics`:
+
+```{r, eval=FALSE}
+#| prompt: true
+
+result <- det |>
+  detector_update(Y[i]) |>
+  get_statistics(family = "gaussian")
+```
+
+This is possible thanks to the fact that both functions return the detector object itself, allowing for the chaining of operations. This is a design choice that we made to enhance the usability of the online interface to align with modern [R]{.proglang} programming practices. In practice, `detector_update` updates a smart pointer to the internal state of the detector (see full description below for details), so the overhead of returning the detector object is negligible.
+
+```{r}
+#| include: false
+
+# needed for the python ">>> " prompt in the code chunks
+options(prompt = ">>> ", continue = "... ")
+```
+**For [Python]{.proglang} readers.** The pipe operator `|>` syntax in [R]{.proglang} will be useful as well to aid reading for [Python]{.proglang} users. This is because it is more syntactically similar to the method chaining in [Python]{.proglang}, so most of the code can be directly adapted to [Python]{.proglang} by simply replacing the pipe operator with method calls on the detector object, e.g.:
+```{python, eval=FALSE}
+#| prompt: true
+
+result = (det
+          .detector_update(Y[i])
+          .get_statistics(family="gaussian"))
+```
+
+```{r}
+#| include: false
+
+# needed for the "R> " prompt in the code chunks
+options(prompt = "R> ", continue = "+  ")
+```
+For the rest of the section, we will begin by introducing the different types of detectors and cost functions that are implemented in the package, and then we will describe the offline interface in detail.
+
+### Changepoint Detectors {#sec_detectors}
+
+A detector is the core object of the package, and it holds the current state of the changepoint detection algorithm. The package implements both univariate, multivariate and non-parametric detectors for a large range of models. The detector stores and handles the update of the optimal changepoint locations, while the cost computations are handled by the cost functions, described in the next section. The cost functions are designed to be modular and flexible, allowing for a wide range of models even for the same detector, and in theory, as the detector handles the pruning, it would be possible to extend the method to new models just by implementing new cost functions. Not all detectors are however compatible with all cost functions, but roughly the following combinations are implemented:
+
+-   Detectors for iid data: these work for univariate and multivariate data, and they are compatible with many cost functions for exponential family distribution models.
+-   Non-parametric detector: this is designed for univariate data, and implements the non-parametric cost function described in @romano2023log. An example of this will be specifically described in Section \ref{sec_nonparametric}.
+-   AR(p) detector: this is designed for univariate data, and it is compatible with cost functions for autoregressive models. Again, as this detector is tied to a specific cost function, an example of this will be described in Section \ref{sec_ar}.
+
+#### Initialise a New Detector.
+
+To initialise a detector, one can simply call `detector_create`:
+
+```{r}
+#| eval: false
+detector_create(type, dim_indexes = NULL, quantiles = NULL,
+  pruning_mult = 2L, pruning_offset = 1L, side = "right",
+  anomaly_intensity = NULL, rho = NULL, mu0_arp = NULL
+)
+```
+
+**For [Python]{.proglang} readers.**, the [Python]{.proglang} class leverages a constructor to initialize a detector object. Instead of calling `detector_create(type = "univariate", ...)`, one creates a `Detector` instance with `Detector(type="univariate", ...)`. All arguments are equivalent to the [R]{.proglang} function, but the returned object is a [Python]{.proglang} class instance rather than an external pointer. The other major difference is that the default `NULL` values in [R]{.proglang} are replaced by `None` in [Python]{.proglang}.
+
+The main arguments to `detector_create` are as follows:
+
+-   `type`: Specifies the type of detector to create. Options include:
+    -   `'univariate'`: Standard two-sided (e.g. for both increases and decreases in the parameter signal) univariate detection.
+    -   `'univariate_one_sided'`: One-sided univariate detection (detects only increases or decreases). Which change to detect is determined by the `side` argument (see below).
+    -   `'multivariate'`: Multivariate detection using projections (for higher-dimensional data).
+    -   `'npfocus'`: Nonparametric detection (see Section \ref{sec_nonparametric}).
+    -   `'arp'`: Detection for autoregressive processes (see Section \ref{sec_ar}).
+-   `dim_indexes`: For high-dimensional multivariate detection, a list of integer vectors specifying which dimensions to use for each projection (see example in Section \ref{sec_multi_detectors}). For low-dimensional data (5 dimensions or fewer), this is generally not required.
+-   `quantiles`: Numeric vector of quantiles to track the empirical distribution over, required for nonparametric detectors (`type = 'npfocus'`).
+-   `pruning_mult`, `pruning_offset`: Parameters controlling the number of iterations before multivariate pruning is performed, see Section \ref{sec_update_pruning}
+-   `side`: For `'univariate_one_sided'` detectors only, determines the direction of detection. Use `'right'` to detect increases, or `'left'` to detect decreases. Default is `'right'` (ignored in case of any other detector outside `'univariate_one_sided'`).
+-   `anomaly_intensity`: Numeric threshold for pruning candidates based on signal strength. If set, only candidates with sufficient magnitude are retained. See Section \ref{sec_anomaly_detection} for an example. By default, this is disabled.
+-   `rho`: Numeric vector of AR coefficients, required for autoregressive detectors (`type = 'arp'`).
+-   `mu0_arp`: Optional pre-change mean for AR($p$) detectors. Whilst normally the pruning should be independent of the pre-change parameter (and for all models is passed with `get_statistics`, see Section \ref{sec_statistics}), this is not the case for the AR($p$) model. Therefore, this to be specified here if known. An example is in Section \ref{sec_ar}.
+
+The detector object returned by `detector_create` is passed to subsequent functions to update its state and retrieve statistics.
+
+#### Update the Detector
+
+To update a detector at every iteration, one should call `detector_update` with the new data point, and the detector object from the previous iteration.
+
+```{r}
+#| eval: false
+detector_update(det_ptr, y, lambda=1)
+```
+
+**For [Python]{.proglang} readers.**, the update is performed by calling the `update` method of the detector object, so no detector argument is needed (e.g. `detector.update(y)`). Note that the `lambda` argument is called `lambda_`.
+
+Its arguments are:
+
+-   `det_ptr`: The detector object (an external smart pointer) created by `detector_create`.
+-   `y`: The new observation(s) to add. For univariate detectors, this is a single numeric value. For multivariate detectors, this should be a numeric vector matching the number of dimensions.
+-   `lambda`: A weight for the current observation, defaulting to `1`. Rather than incrementing the internal time counter by 1 at each step, the counter is incremented by `lambda`, so that $P(\tau)$ for all $\tau \in D_n$ (Section \ref{sec_update_pruning}) becomes $\sum_{i=1}^{\tau} \lambda_i$. This enables non-stationary models where the parameter of interest scales with a known covariate: for instance, a Gaussian observation $y_i \sim \mathcal{N}(\lambda_i \theta, \nu_i)$ or a Poisson observation $y_i \sim \text{Poisson}(\lambda_i \theta)$ with a time-varying null (background) rate $\lambda_i$. This may be useful when implementing custom cost functions, see Section \ref{sec_meanvar}.
+
+
+The detector is updated in place, so the same object is returned (allowing for chaining with the pipe operator if desired).
+
+For example, here a detector is initialised and updated with a couple of observations:
+
+```{r}
+#| prompt: true
+
+det_uni <- detector_create(type = "univariate")
+det_uni <- det_uni |> detector_update(0.5) 
+det_uni <- det_uni |> detector_update(0.1)
+print(det_uni)
+```
+
+The output `<pointer: 0x...>` indicates that the detector object is an external pointer to the underlying C++ implementation (printing the hexadecimal address uniquely identifies the detector instance being referenced). It is important to note that detector objects maintain mutable state, meaning that all variables pointing to the same detector instance share that state. For example, if you assign the result of `detector_update` to different variables (e.g., `det_uni1 <- detector_update(det_uni, 0.5)` and `det_uni2 <- detector_update(det_uni1, 0.1)`), both `det_uni1` and `det_uni2` reference the same underlying C++ object. In \proglang{R}, the return is not strictly necessary to update the detector, as the update is performed in place, so one could simply call `detector_update(det_uni, 0.5)` without assignment, and the state of `det_uni` would still be updated. However, we return the detector object for consistency with the pipe operator and to allow for chaining of operations.
+
+### Compute Statistics {#sec_statistics}
+
+As explained in Section \ref{sec_algorithm}, the `get_statistics` function computes the log-likelihood ratio test statistic from the set of optimal changepoints at the current time. Therefore, in a normal workflow, at every iteration, one should call `get_statistics` with the updated detector object and the cost function parameters, and compare the resulting statistic against a threshold to decide whether to declare a changepoint.
+
+```{r}
+#| eval: false
+get_statistics(det_ptr, family, theta0 = NULL, shape = NULL)
+```
+
+**For [Python]{.proglang} readers.**, the statistics are retrieved by calling the `get_statistics` method of the detector object, so no detector argument is needed (e.g. `detector.get_statistics(family, theta0=None, shape=None)`), with the arguments described below.
+
+The main arguments are:
+
+-   `det_ptr`: The detector object created by `detector_create`.
+-   `family`: Character string specifying the distribution family. Options include:
+    -   `'gaussian'`: Gaussian (normal) distribution for continuous data.
+    -   `'poisson'`: Poisson distribution for count data.
+    -   `'bernoulli'`: Bernoulli distribution for binary data.
+    -   `'gamma'`: Gamma distribution (requires `shape` parameter).
+    -   `'npfocus'`: Nonparametric detection (see Section \ref{sec_nonparametric}).
+    -   `'arp'`: AutoRegressive Process detection (see Section \ref{sec_ar}).
+-   `theta0`: Numeric vector specifying the null hypothesis parameter if known (the $\theta_0$ pre-change parameter). For univariate detectors, this is a scalar; for multivariate detectors, a vector matching the number of dimensions. Default is `NULL`, in which case the null parameter is estimated.
+-   `shape`: Numeric scalar for the shape parameter required by the gamma distribution. This is only used when `family = 'gamma'`.
+
+The function returns a list (or a dictionary, in [Python]{.proglang}) with the following components:
+
+-   `stopping_time`: Integer indicating the current time index (number of observations processed).
+-   `changepoint`: The current best estimate of the changepoint location, if there is a change. This is the $\hat\tau_n$ defined in Section \ref{sec_update_pruning}.
+-   `stat`: Numeric scalar or vector. The test statistic(s). This is either a scalar value (e.g. in univariate or multivariate), or a vector (for instance, in case of an `npfocus` detector).
+
+An important aspect of the implementation is that one can test multiple cost functions on the same detector object, as the statistics computation is independent of the detector state. This allows for model comparison without needing to rerun the detector.
+
+For example, on the detector initialised and updated in the previous section, below we compute the Gaussian and Gamma statistics:
+
+```{r}
+#| prompt: true
+
+get_statistics(det_uni, family = "gaussian")$stat
+
+get_statistics(det_uni, family = "gamma", shape = 2)$stat
+```
+
+### Extracting Informations from the Detector Object {#sec_extracting_info}
+
+Beyond computing the test statistics, the package provides several functions to inspect and extract information from the detector object. These functions allow users to access the internal state of the detector, and it can be particularly useful to implement new cost functions without reimplementing the core pruning algorithm. For the rest of this subsection, we will describe the main functions for extracting information from the detector object, but for a practical implementation of a new cost, one should refer to Section \ref{sec_meanvar}, where we provide an example of implementing a custom cost function for Gaussian change in mean and variance detection. To understand the returned values of these functions, it is useful to recall the notation of Section \ref{sec_update_pruning}.
+
+#### Number of Observations and Cumulative Statistics
+
+To retrieve basic information about the detector state, two simple functions are provided:
+
+```{r}
+#| eval: false
+detector_info_n(det_ptr)
+detector_info_sn(det_ptr)
+```
+
+`detector_info_n` returns the current number of observations processed, which corresponds to the time index $n$. This indicates how many data points have been processed since the detector was created.
+
+`detector_info_sn` returns the cumulative sum statistics maintained internally by the detector. These are the sufficient statistics for the full data sequence, and they are used to efficiently compute the log-likelihood values $q_{\tau,n}(\theta_0,\theta_1)$ given candidate changepoints $\tau \in D_n$ without reprocessing the raw data via telescopic sum cancellations. For univariate detectors, this returns a scalar; for multivariate detectors, this returns a vector of length equal to the number of dimensions. These statistics can be useful to compute the telescopic sum cancellations needed for $\mathcal{O}(1)$ cost function computations.
+
+**For [Python]{.proglang} readers.**, these functions are available as methods of the detector object, so they can be called as `detector.get_n()` and `detector.get_sn()`, respectively.
+
+For example:
+
+```{r}
+#| prompt: true
+
+n <- detector_info_n(det)
+cumsum_stat <- detector_info_sn(det)
+sprintf("n")
+sprintf("%.3f", cumsum_stat)
+```
+
+#### Accessing Changepoint Candidates {#sec_accessing_candidates}
+
+The detector maintains a set of candidate changepoint and summary statistics. The number of candidates is controlled by the pruning strategy, but inspecting these candidates can provide valuable insights into how the algorithm is tracking potential changes. Two functions are provided to access this information:
+
+```{r}
+#| eval: false
+detector_candidates(det_ptr)
+detector_cands_len(det_ptr)
+```
+
+`detector_candidates` returns a detailed data frame with information about all candidate segments. To draw a parallel with Section \ref{sec_update_pruning}, at time $n$ this function will expose the internal $P(\tau)$ for all $\tau \in D_n$. It will return a `DataFrame` in [R]{.proglang}  (or a list of lists in [Python]{.proglang}). Each row represents a candidate segment from a changepoint location to the current time. The data frame contains the following columns:
+
+-   `tau`: Integer vector of candidate changepoint locations, e.g. the first component of $P(\tau)$.
+-   `st`: List of numeric vectors containing the sufficient statistics for each candidate segment. These statistics (e.g., cumulative sums, cumulative sum of squares) are used to efficiently compute test statistics without reprocessing the raw data, corresponding to the remaining $d+1$ components of $P(\tau)$.
+-   `side`: Character vector indicating the side for each candidate. This is which side of the univariate hull are the candidates related to, either the convex majorant or minorant. It could be relevant for implementation of one-sided cost functions, but it can be ignored for multivatiate detectors.
+
+**For [Python]{.proglang} readers.**, the candidate information functions are available as methods: `detector.get_candidates()` returns the candidate segments (as a dictionary) and `detector.get_n_candidates()` returns the number of candidate segments.
+
+Here is an example:
+
+```{r}
+#| prompt: true
+
+candidates <- detector_candidates(det)
+n_cand <- detector_cands_len(det)
+print(n_cand)
+print(head(candidates))
+```
+
+`detector_cands_len` returns an integer indicating the number of candidate segments currently tracked by the detector. As the detector processes new observations, this number may grow or shrink depending on the pruning strategy (e.g. in the multivariate case, the number of candidates at a given iteration is controlled by the `pruning_mult` and `pruning_offset` parameters set at detector creation). This could be used to compute worst-case run time scenarios in case of time-sensitive applications.
+
+### The Offline Interface {#sec_offline_interface}
+
+`focus_offline` runs the complete changepoint detection algorithm over a whole data set in a single call. The primary use of `focus_offline` is therefore for retrospective analysis, testing and benchmarking when all observations are available prior to processing. Compared to the online interface, the offline call avoids repeated [R]{.proglang}-to-C++ crossings and is therefore (slightly) more efficient.
+
+```{r}
+#| eval: false
+
+focus_offline(Y, threshold, type = "univariate", family = "gaussian",
+  theta0 = NULL, dim_indexes = NULL, quantiles = NULL,
+  pruning_mult = 2L, pruning_offset = 1L, side = "right",
+  shape = NULL, anomaly_intensity = NULL, rho = NULL, mu0_arp = NULL
+)
+```
+
+**For [Python]{.proglang} readers.**, `focus_offline` is available as a stand-alone function with the same signature and behaviour as in [R]{.proglang}.
+
+The `focus_offline` function takes as input the observed data `Y` (a numeric vector for univariate problems or an $\mathbb{R}^{n \times d}$ matrix for multivariate problems), a detection threshold, and a set of detector configuration and cost function parameters. Since most arguments of `focus_offline` mirror those of the online interface (combining the arguments of `detector_create` and `get_statistics`), we only describe the `threshold` argument. For other detector type and cost function parameters, refer to Sections \ref{sec_detectors} and \ref{sec_statistics}, respectively.
+
+`threshold` specifies detection threshold(s) as either a scalar (applied to all statistics) or a numeric vector (one threshold per statistic). Setting `threshold = Inf` disables early stopping and returns the full statistic traces and changepoint estimates at every time step; with finite threshold(s), the algorithm terminates at the first time any statistic exceeds its corresponding threshold, mirroring the online loop's stopping behaviour. For multivariate detectors, the implementation computes multiple statistics (one per projection or per configured statistic) and triggers a detection when any of these crosses its threshold.
+
+For example, the equivalent of the Gaussian change-in-mean online loop described in the previous section can be achieved in the offline mode by calling `focus_offline` with the same cost function parameters:
+```{r}
+#| prompt: true
+
+result_offline <- focus_offline(Y, threshold = Inf,
+                                type = "univariate",
+                                family = "gaussian")
+```
+
+```{r}
+#| label: fig-r-offline
+#| fig-cap: "The trace of the statistics for one simulated time series using the R `focus_offline` interface."
+#| fig-width: 7
+#| fig-height: 2
+#| echo: false
+
+library(ggplot2)
+ggplot(data.frame(time = seq_along(Y), stat = result_offline$stat)) +
+  aes(x = time, y = stat) +
+  geom_line() +
+  labs(x = "Time", y = "Statistic") +
+  theme_minimal()
+```
+
+By setting the threshold to `Inf`, we disable early stopping and obtain the full trace of the statistics, which can be useful for computation of the threshold, as seen later in the examples of Sections \ref{sec_use_cases}, and for retrospective analysis.
+
+## Common Use Cases of Focus {#sec_use_cases}
+
+Below are a few common examples showing how to create and update different types of detectors. Again, for brevity, we focus on the [R]{.proglang} interface, but the same examples can be easily adapted to the [Python]{.proglang} interface as described above.
+
+### Constrained Detection with One-sided Detectors {#sec_constrained}
+
+There may be some applications where one is only interested in detecting changes in a specific direction, for example, only increases in the mean of a signal. To create a one-sided detector, one can simply set the `side` argument of `detector_create` to either `'right'` (to detect increases) or `'left'` (to detect decreases). We can show how to implement a detector with an example.
+
+To choose an appropriate detection threshold, a common approach is to use Monte Carlo simulation \citep[as in][amongst many]{chen2022high, pishchagina2025online}. There are various statistical criteria that can be used to specify a threshold. Below we show how {\texttt{focus\_offline}} can be used to find a threshold that gives a required false positive probability over a fixed length of data. This example shows how using the {\texttt{threshold=Inf}} setting enables us to do this efficiently without re-running the algorithm for different thresholds.
+
+Obtaining a threshold that gives a require false-positive rate for data of length $n$ is achieved by (i) generating many sequences of data $Y^{(k)}_{1:n}$ ($k = 1, \ldots, K$) under the null hypothesis of no changepoints, (ii) computing the detection statistic $f_{\mathrm{GLR}}(Y^{(k)}_{1:n})$ for each sequence, and taking the maximum over time $\max_n f_{\mathrm{GLR}}(Y^{(k)}_{1:n})$ (as this is the most extreme value that would trigger a detection), and finally (iii) defining the threshold as the empirical quantile $\xi = F^{-1}_K(1 - \alpha)$, where $F_K$ is the empirical distribution of the maxima and $\alpha$ is the desired false positive rate. Specifically, to achieve a $1\%$ false positive rate ($\alpha = 0.01$), we take the 99th percentile of the null statistics as our threshold; approximately 1% of null sequences will then exceed this threshold by chance.
+
+To illustrate, here we obtain such Monte Carlo thresholds for a one-sided detector on sequences of length $10^5$:
+
+```{r}
+#| label: threshold_one_sided
+#| message: false
+#| warning: false
+#| cache: true
+
+library(furrr)
+plan(multisession, workers = 4)
+set.seed(42)
+n_sim <- 500
+runs <- future_map_dbl(
+  1:n_sim, \(i) {
+    Y_sim <- rnorm(1e5)
+    res <- focus_offline(Y_sim, threshold = Inf,
+      type = "univariate_one_sided", side = "right",
+      family = "gaussian"
+    )
+    max(res$stat)
+  },
+  .options = furrr_options(seed = TRUE)
+)
+plan(sequential)
+print(threshold_99 <- quantile(runs, 0.99))
+```
+
+The code simulates 500 null sequences of independent Gaussian data, computes the maximum detection statistic for each using `focus_offline` with `threshold = Inf` (returning all statistics without early stopping), and then takes the 99th percentile of these maxima as the threshold. We parallelise the simulations via the `furrr` package to speed up computation. A similar parallelisation strategy can be employed in the [Python]{.proglang} interface using the `concurrent.futures` module. 
+
+We then generate some data with two changes, a decrease followed by an increase, and we run the one-sided detector on this data with the threshold obtained above:
+
+```{r}
+#| prompt: true
+
+set.seed(123)
+Y <- c(rnorm(1e4, mean = 0), rnorm(1e4, mean = -1), rnorm(1e4, mean = 1))
+det_one_sided <- detector_create(type = "univariate_one_sided",
+                                 side = "right")
+for (i in seq_along(Y)) {
+  det_one_sided <- det_one_sided |> detector_update(Y[i])
+  result <- det_one_sided |> get_statistics(family = "gaussian")
+  if (result$stat > threshold_99)
+    break
+}
+sprintf("Changepoint detected at time %d", i)
+```
+
+We notice how we ignored the first change at time 10000, which corresponds to a decrease in the mean, whilst we detected the second change at time 20000.
+
+### Multivariate Detectors {#sec_multi_detectors}
+
+For multivariate detectors of low-dimensional data (fewer than 5 dimensions), the method prunes via computing the vertices of a convex hull obtained from all dimensions:
+```{r}
+#| prompt: true
+
+set.seed(42)
+n <- 1000
+D <- 3
+Y <- matrix(rnorm(n * D), nrow = n, ncol = D)
+Y[501:1000, ] <- Y[501:1000, ] + 1
+
+det_mv <- detector_create(type = "multivariate")
+stat_trace <- vector("numeric", length = n)
+for (i in seq_len(nrow(Y))) {
+  det_mv <- det_mv |> detector_update(Y[i, ])
+  result <- det_mv |> get_statistics(family = "gaussian")
+  stat_trace[i] <- result$stat
+  
+}
+```
+
+```{r}
+#| prompt: true
+#| label: fig-multivariate
+#| fig-cap: "The trace of the statistics for one simulated 3-dimensional multivariate time series using the R online interface. Dashed red line illustrates the true change location."
+#| fig-width: 7
+#| fig-height: 2
+#| echo: false
+
+ggplot(data.frame(t = seq_len(n), trace = stat_trace)) +
+  aes(x = t, y = trace) +
+  geom_line() +
+  geom_vline(xintercept = 500, color = "red", linetype = "dashed", linewidth = 1) +
+  labs(x = "Time", y = "Statistic") +
+  theme_minimal()
+```
+
+However, for higher-dimensional data, this can be computationally expensive and may not be necessary for effective detection. As mentioned in Section \ref{sec_update_pruning}, the package provides an approximation of the hull by projecting the data onto overlapping subsets of $\tilde{d} \le 5$ coordinates, computing the convex hull on each projection, and taking the union of the vertices. This can be accessed via the `dim_indexes` argument of `detector_create`, which specifies which set of coordinates to project onto. To help generate these projection indexes, the function `generate_projection_indexes` is provided:
+
+```{r}
+dim_idx <- generate_projection_indexes(6, 2)
+head(dim_idx, 2)
+det_mv <- detector_create(type = "multivariate", dim_indexes = dim_idx)
+```
+
+This generates circular sequential projections of 2 dimensions from 6-dimensional data, producing 6 non-overlapping windows. Each row of the output represents one projection and contains the (0-indexed, since C++ uses 0-based indexing) coordinate indices to use. For instance, the first two projections use coordinates (0, 1) and (1, 2), and the last wraps around to (5, 0).
+
+As an example, we can measure how big the approximation is of using the projections by calculating the statistics for a 6-dimensional dataset with both the full hull and the projection-based approximation, and compare both the run time and the resulting statistics. We observe that the projection-based approximation is significantly faster than the full convex hull pruning, while still producing extremely similar results:
+
+```{r}
+#| echo: false
+set.seed(42)
+n <- 1000
+d <- 6
+
+Y_multi <- rbind(
+  matrix(rnorm(5000 * d, mean = -1, 1), ncol = d),
+  matrix(rnorm(500 * d, mean = 1.2), ncol = d)
+)
+```
+
+```{r}
+#| prompt: true
+#| cache: true
+system.time(
+  res_multi <- focus_offline(Y_multi, threshold = Inf,
+                             type = "multivariate", family = "gaussian")
+)
+system.time(
+  res_multi_approx <- focus_offline(Y_multi, threshold = Inf,
+                                    type = "multivariate", family = "gaussian",
+                                    dim_indexes = dim_idx)
+)
+all.equal(res_multi$stat, res_multi_approx$stat)
+```
+
+### Anomaly Detection {#sec_anomaly_detection}
+
+The i.i.d. detector allows for detecting anomalies (sometimes known as epidemic changepoints) and more transient changes, while ignoring longer, less intense variations. This is particularly useful when the background rate is not constant but evolves slowly over time, as such drift can otherwise lead to spurious detections when using a fixed reference value. To address this, when `anomaly_intensity` is set to a positive value, change candidates are retained only if they show sufficient "signal intensity" (i.e., the magnitude of the change relative to the segment length is at least `anomaly_intensity`).
+
+```{r}
+#| prompt: true
+#| echo: false
+
+set.seed(999)
+n <- 1000
+t <- seq_len(3*n/2 + 20)
+mu_t <- 0.8 * sin(2 * pi * t / 400)
+Y_anom <- c(
+  rnorm(n/2, mean = mu_t[1:(n/2)]),  rnorm(10, mean = -3),
+  rnorm(n/2, mean = mu_t[(n/2 + 11):(n + 10)]), rnorm(10, mean = 5),
+  rnorm(n/2, mean = mu_t[(n + 21):(3*n/2 + 20)])
+)
+```
+
+To illustrate this, we generate data with a slowly varying background $\mu_t = 0.8 \sin(2 \pi t / 400)$, to which we add some Gaussian noise and two transient anomalies (at times 100 and 800), as seen in Figure \ref{fig-anomaly_detection}. We then run the detector with and without a minimum change size. When computing the statistics, we set `theta0 = 0`, deliberately ignoring the slowly varying background:
+
+```{r}
+#| prompt: true
+
+run_detector <- function(Y, anomaly_intensity = NULL) {
+  det <- detector_create(type = "univariate",
+                         anomaly_intensity = anomaly_intensity)
+  stat_trace <- numeric(length(Y))
+  for (i in seq_along(Y)) {
+    det <- det |> detector_update(Y[i])
+    res <- det |> get_statistics(family = "gaussian", theta0 = 0)
+    stat_trace[i] <- res$stat
+  }
+  stat_trace
+}
+stat_no_thresh <- run_detector(Y_anom, anomaly_intensity = NULL)
+stat_thresh <- run_detector(Y_anom, anomaly_intensity = 1.5)
+```
+
+In this example, the background mean varies smoothly with an amplitude smaller than the imposed minimum change size. In Figure \ref{fig-anomaly_detection} we plot the data together with the two corresponding statistic traces `stat_no_thresh` and `stat_thresh`. We notice how, without the constraint, the detector reacts to these slow variations. By setting `anomaly_intensity` larger than the maximum background deviation, these are suppressed, while the transient anomalies are still clearly identified.
+
+```{r}
+#| label: fig-anomaly_detection
+#| fig-cap: "Comparison of statistics with and without minimum change size under a slowly varying background: Analysed data (top); trace of test statistic without (middle) and with (bottom) a minimum change size."
+#| fig-width: 7
+#| fig-height: 4 
+#| echo: false
+
+df <- data.frame(time = rep(seq_along(Y_anom), 3),
+                 value = c(Y_anom, stat_no_thresh, stat_thresh),
+                 type = rep(c("Data", "No threshold", "With threshold"),
+                            each = length(Y_anom)))
+ggplot(df) +
+  aes(x = time, y = value) +
+  geom_line() +
+  facet_wrap(~type, ncol = 1, scales = "free_y") +
+  labs(x = "Time", y = "") +
+  theme_minimal()
+```
+
+
+
+### Non-Parametric Changepoint Detection {#sec_nonparametric}
+
+As a nonparametric detector, the package implements the [npfocus]{.pkg} detector described in Section \ref{sec_nonparametric_method}. As [npfocus]{.pkg} detects changes in the empirical cumulative density function estimated across a set of quantiles, to create a non-parametric detector, one should provide a vector of quantiles to the argument `quantiles` of `detector_create`. Quantiles normally can be estimated from historical data, or from domain knowledge, but for the sake of this example we will simply use quantiles from a standard normal distribution:
+
+```{r}
+#| prompt: true
+
+quants <- qnorm(seq(0.01, .99, length.out = 5))
+```
+
+We then create a non-parametric detector using these quantiles. [npfocus]{.pkg} returns two statistics: one based on summing over quantiles, and one based on taking the maximum over quantiles. To demonstrate a comparison of the behaviour of the two statistics, we consider two scenarios: (1) a change in location using heavy-tailed $t_2$ data (stored in `Y1`), and (2) a change only in the tail  (stored in `Y2`), where values with absolute values greater than 2 are shifted. We then run the non-parametric detector online on both data sets, and store the trace of both statistics for comparison. In Figure \ref{fig-npfocus} we plot the resulting statistic traces together with the data.
+
+```{r}
+#| echo: false
+
+set.seed(42)
+Y1_pre <- rt(800, df = 2)
+Y1_post <- rt(200, df = 2) + 0.5  # Location shift
+Y1 <- c(Y1_pre, Y1_post)
+Y2_pre <- rnorm(800)
+Y2_post <- rnorm(200)
+Y2_post[abs(Y2_post) > 2] <- Y2_post[abs(Y2_post) > 2] + 20  # Tail change
+Y2 <- c(Y2_pre, Y2_post)
+```
+
+```{r}
+#| prompt: true
+q1 <- qt(seq(0.01, 0.99, length.out = 5), df = 2)
+det_np1 <- detector_create(type = "npfocus", quantiles = q1)
+stat_trace1 <- matrix(nrow = length(Y1), ncol = 2)
+for (i in seq_along(Y1)) {
+  det_np1 <- det_np1 |> detector_update(Y1[i])
+  res <- det_np1 |> get_statistics(family = "npfocus")
+  stat_trace1[i, ] <- res$stat
+}
+q2 <- qnorm(seq(0.01, .99, length.out = 4))
+det_np2 <- detector_create(type = "npfocus", quantiles = q2)
+stat_trace2 <- matrix(nrow = length(Y2), ncol = 2)
+for (i in seq_along(Y2)) {
+  det_np2 <- det_np2 |> detector_update(Y2[i])
+  res <- det_np2 |> get_statistics(family = "npfocus")
+  stat_trace2[i, ] <- res$stat
+}
+```
+
+```{r}
+#| label: fig-npfocus
+#| fig-cap: "Comparison of sum and max statistics for two different change scenarios. Left: change in location for $t_2$ data. Right: change only in the tail for normal data. Dashed line indicates the true change location."
+#| fig-width: 9
+#| fig-height: 5
+#| echo: false
+#| warning: false
+
+# Combine data for plotting
+time1 <- seq_along(Y1)
+time2 <- seq_along(Y2)
+change_point1 <- 800
+change_point2 <- 800
+
+df_plot <- rbind(
+  data.frame(scenario = "Location shift (t)", time = time1, value = Y1, statistic = "Data"),
+  data.frame(scenario = "Location shift (t)", time = time1, value = stat_trace1[, 1], statistic = "Sum"),
+  data.frame(scenario = "Location shift (t)", time = time1, value = stat_trace1[, 2], statistic = "Max"),
+  data.frame(scenario = "Tail change (Normal)", time = time2, value = Y2, statistic = "Data"),
+  data.frame(scenario = "Tail change (Normal)", time = time2, value = stat_trace2[, 1], statistic = "Sum"),
+  data.frame(scenario = "Tail change (Normal)", time = time2, value = stat_trace2[, 2], statistic = "Max")
+)
+
+# Reorder factors for better visualization
+df_plot$statistic <- factor(df_plot$statistic, levels = c("Data", "Sum", "Max"))
+
+ggplot(df_plot) +
+  aes(x = time, y = value) +
+  geom_line(size = 0.5) +
+  geom_vline(aes(xintercept = xint), data = data.frame(scenario = c("Location shift (t)", "Tail change (Normal)"), 
+                                                         xint = c(change_point1, change_point2)), linetype = "dashed", linewidth = 1) +
+  facet_grid(statistic ~ scenario, scales = "free_y") +
+  labs(x = "Time", y = "") +
+  theme_minimal()
+```
+
+### Autoregressive Changepoint Detection {#sec_ar}
+
+To create an AR(p) detector, one must specify the AR coefficients $\rho = (\rho_1, \ldots, \rho_p)$ of the underlying process. These can be estimated from historical data. Additionally, if the pre-change mean is known, it can be provided to the detector for more efficient pruning, though this must be specified at detector creation time via the `mu0_arp` argument.
+
+To illustrate changepoint detection in AR processes, we first generate data from an AR(2) process with a change in mean. We start by specifying the AR coefficients:
+
+```{r}
+#| prompt: true
+set.seed(123)
+ar_coefs <- c(0.7, -0.3)
+Y_pre <- arima.sim(n = 5000, model = list(ar = ar_coefs), sd = 1)
+Y_post <- 2 + arima.sim(n = 100, model = list(ar = ar_coefs), sd = 1)
+Y <- c(Y_pre, Y_post)
+```
+
+We now run the AR($p$) detector online on this data. For this illustration we estimate the AR coefficients from a probation period of 1000 observations, as in real-world applications these can be estimated from historical data. We plot the resulting statistic trace together with the data in Figure \ref{fig-arp_detection}.
+```{r}
+#| prompt: true
+
+ar_coefs <- ar.yw(Y_pre[1:1000], order.max = 5)$ar
+det_arp <- detector_create(type = "arp", rho = ar_coefs, mu0_arp = 0)
+stat_trace <- numeric(length(Y))
+
+for (i in 1001:length(Y)) {
+  det_arp <- det_arp |> detector_update(Y[i])
+  result <- det_arp |> get_statistics(family = "arp")
+  stat_trace[i] <- result$stat
+}
+tail(result$stat)
+```
+
+We start the loop from 1001, as the first 1000 observations are used for estimation of the AR coefficients and are not processed by the detector.
+
+```{r}
+#| label: fig-arp_detection
+#| fig-cap: "The AR(2) process with mean shift and the resulting detection statistic using the R online interface. Dashed line illustrates the true change location."
+#| fig-width: 7
+#| fig-height: 3
+#| echo: false
+
+# Create data frame for visualization
+df <- data.frame(time = rep(seq_along(Y), 2),
+                 value = c(Y, stat_trace),
+                 type = rep(c("Data", "Statistic"), each = length(Y)))
+
+ggplot(df) +
+  aes(x = time, y = value) +
+  geom_line() +
+  geom_vline(xintercept = 5000, linetype = "dashed", linewidth = 1) +
+  facet_wrap(~type, ncol = 1, scales = "free_y") +
+  labs(x = "Time", y = "") +
+  theme_minimal()
+```
+
+
+## Some Examples of Real-Time Applications {#sec_real_time_applications}
+
+In this section, we illustrate few real-world applications of the package. The NBA application (Section \ref{sec_meanvar}) is implemented in [R]{.proglang}, while the gamma-ray burst detection (Section \ref{sec_grb}) and spike inference (Section \ref{sec_calcium}) examples are implemented in [Python]{.proglang}.
+
+### Implementing a Custom Cost Function: Change in Mean and Variance on NBA Plusminus Scores {#sec_meanvar}
+
+In this section, we illustrate how to implement a custom cost function for a bivariate model
+to detect a change in the Cleveland Cavaliers (an NBA team) Plus-Minus score from the season 
+2010-11 to the 2017-18 season as in \citep{pishchagina2025online}. 
+
+As illustrated in \citep{pishchagina2025online}, simulating data to calibrate a 
+simple Gaussian change in mean model for this NBA dataset is tricky. This is 
+because a small change in the variance of the reference distribution changes the 
+threshold and, as a consequence, can increase the detection time or leads to false 
+detections. A robust alternative to this problem is to consider a Gaussian change in mean 
+and variance model. Essentially, we let the data decide what the variance is 
+before and after the change. Because we look at the score difference, we might 
+very well have successive matches with exactly the same score difference. In 
+that case, the maximum likelihood estimator of the variance is 0 and the 
+likelihood would be infinite. To overcome this, we consider, as in 
+\citep{pishchagina2025online}, a lower bound on the variance of 1.
+
+As explained just after equation (6) in \citep{pishchagina2025online}, the hull 
+argument holds even when the set of parameters is constrained. In terms of code,
+it means that we only need to implement an alternative `get_statistics` function to run this test, and the detector update will be the one of the standard change 
+in mean and variance model.
+
+In detail, for a Gaussian change in mean and variance we need to get the points 
+on the hull of all $(t, \sum_{i=1}^t x_i, \sum_{i=1}^t x^2_i)$ for $t<n.$ 
+Now, assuming $t$ is on the hull, we first estimate the variance on the segment 
+before the change (going from $1$ to $t$). Our variance estimator is simply
+
+$$
+\hat{\sigma}^2_{1:t} = \min \left\{ \frac{1}{t}\left[\sum_{i=1}^t x^2_i - \frac{1}{t} \left(\sum_{i=1}^t x_i\right)^2\right], 1 \right\}
+$$
+
+and from that we get the likelihood as
+
+$$
+t\log(\hat{\sigma}^2_{1:t}) + \frac{\sum_{i=1}^t x^2_i - (1/t) (\sum_{i=1}^t x_i)^2}{\hat{\sigma}^2_{1:t}}.
+$$
+In code we get, for each segment defined by the candidate $\tau$ and its corresponding summary statistics, the following function to compute the likelihood:
+```{r}
+#| prompt: true
+get_seg_meanvar <- function(info_seg, min_var=1){
+  if(info_seg[1] > 0){
+    est_mse <-  info_seg[3] - info_seg[2]^2/info_seg[1]
+    est_var <- est_mse/info_seg[1]
+    if(est_var < min_var) est_var <- min_var
+    return(info_seg[1]*log(est_var) + est_mse/est_var)
+    } else { return(Inf) }
+}
+```
+
+We proceed similarly to obtain the likelihood of the right segment, going from
+$t+1$ to $n$ by replacing in the formula $t$ by $n-t$, 
+$\sum_{i=1}^t x_i$ by $\sum_{i=1}^n x_i - \sum_{i=1}^t x_i$ and
+$\sum_{i=1}^t x^2_i$ by $\sum_{i=1}^n x^2_i - \sum_{i=1}^t x^2_i.$
+This leads to the full cost function:
+
+```{r}
+#| prompt: true
+#| warnings: false
+#| message: false
+library(purrr)
+get_stat_meanvar <- function(det_ptr, min_var=1) {
+  mat <- detector_candidates(det_ptr)
+  n <- detector_info_n(det_ptr)
+  all <- detector_info_sn(det_ptr)
+  stats <- map_dbl(seq_along(mat$tau)[-1], \(i) {
+    info_seg_left <- c(mat$tau[i], mat$st[[i]])
+    
+    info_seg_right <- c(n, all) - info_seg_left
+    return(
+        - get_seg_meanvar(info_seg_left, min_var) -
+        get_seg_meanvar(info_seg_right, min_var)  +
+        get_seg_meanvar(info_seg_left + info_seg_right, min_var)
+    )
+  })
+  max(stats)
+}
+
+```
+Then for training and testing we first recover all the Cleveland Cavaliers
+game from 2000 to 2025.
+```{r load-nba-data}
+#| echo: false
+#| warnings: false
+#| message: false
+
+library(dplyr)
+
+file_path <- "paper_data/cle_data.rds"
+
+if (file.exists(file_path)) {
+  dat <- readRDS(file_path)
+} else {
+  library(nbastatR)
+  getDataTeam <- function(slugteam) {
+    T_gamelog_reg <-
+      suppressWarnings(
+        game_logs(
+          seasons = 2000:2025,
+          league = "NBA",
+          result_types = "team",
+          season_types = "Regular Season"
+        )
+      )
+    dat_team <- T_gamelog_reg |> dplyr::filter(slugTeam == slugteam)  |>
+      select(
+        yearSeason,
+        slugSeason,
+        typeSeason,
+        dateGame,
+        nameTeam,
+        slugTeam,
+        isWin,
+        ptsTeam,
+        plusminusTeam
+      ) |>
+      mutate(monthGame = format(as.Date(dateGame), "%Y-%m"))
+    dat_team
+  }
+  
+  dat <- getDataTeam("CLE")
+  saveRDS(dat, file_path)
+}
+```
+
+Then to calibrate our threshold, we 
+\begin{enumerate}
+\item resample uniformly at random 640 games prior to 2010 (each NBA regular season is made up of 64 games)
+\item compute the test statistics at all time-points.
+\item recover the maximum
+\end{enumerate}
+We repeated this a thousand times and picked our threshold as the 99% quantile.
+
+```{r}
+#| prompt: true
+#| eval: true
+#| cache: true
+
+library(furrr)
+plan(multisession, workers = 8)
+
+dat_past <- dat %>% filter(yearSeason <= 2010, typeSeason == "Regular Season")
+
+y <- future_map(1:10^3, \(i) {
+  plusminus_team <- sample(dat_past$plusminusTeam, 1000, replace = TRUE)
+  dat_for_focus <- rbind(plusminus_team, plusminus_team^2)
+  
+  det <- detector_create(type = "multivariate")
+  stat_record <- vector("numeric", length = ncol(dat_for_focus))
+  for (i in 1:ncol(dat_for_focus)) {
+    detector_update(det, dat_for_focus[, i])
+    stat_record[i] <- get_stat_meanvar(det)
+  }
+  # max_stat_record
+  max(stat_record)
+}, .options = furrr_options(seed = TRUE))
+results <- do.call(c, y)
+
+threshold_99 <- quantile(results, 0.99)
+
+print(threshold_99)
+```
+
+We then test the detector on the data from 2011 onwards:
+
+```{r}
+#| prompt: true
+#| eval: true
+
+dat_recent <- dat %>% filter(yearSeason > 2010, typeSeason == "Regular Season")
+Y_test <- rbind(dat_recent$plusminusTeam, dat_recent$plusminusTeam^2)
+det <- detector_create(type = "multivariate")
+stat_record <- vector("numeric", length = ncol(Y_test))
+for (i in 1:ncol(Y_test)) {
+  detector_update(det, Y_test[, i])
+  stat_record[i] <- get_stat_meanvar(det, min_var=1)
+}
+```
+
+And plot both data and statistics (as above) in Figure \ref{fig-nba-application}. 
+```{r}
+#| label: fig-nba-application
+#| fig-cap: "The NBA plus-minustest data (top) and the resulting test statistics (bottom). Dashed gray line indicates the Monte Carlo Threshold."
+#| fig-width: 7
+#| fig-height: 3
+#| echo: false
+
+df <- data.frame(time = rep(seq_along(dat_recent$plusminusTeam), 2),
+                 value = c(dat_recent$plusminusTeam, stat_record),
+                 type = rep(c("Data", "Statistic"), each = length(dat_recent$plusminusTeam)))
+
+ggplot(df) +
+  aes(x = time, y = value) +
+  geom_line() +
+  geom_hline(yintercept = threshold_99, color = "gray", linetype = "dashed", linewidth = 1) +
+  facet_wrap(~type, ncol = 1, scales = "free_y") +
+  labs(x = "Time", y = "") +
+  theme_minimal()
+```
+
+As discussed in \citep{pishchagina2025online} and \citep{shin2023detectors} we detect a 
+change in the 2014-2015 season corresponding to the return of James Lebron in the Cleveland
+Cavaliers.
+
+### Gamma-Ray Burst Detection {#sec_grb}
+
+```{r}
+#| include: false
+
+# needed for the python ">>> " prompt in the code chunks
+options(prompt = ">>> ", continue = "... ")
+```
+
+```{python}
+#| echo: false
+#| warnings: false
+
+from astropy.table import Table
+import pandas as pd
+import numpy as np
+from scipy import stats
+from plotnine import (ggplot, aes, geom_line, geom_hline, geom_ribbon,
+                      theme_minimal, xlim, labs)
+import focus_cpt
+import warnings
+from astropy.units import UnitsWarning
+warnings.filterwarnings('ignore', category=UnitsWarning) # needed to ignore warnings about time units in the Fermi-GBM
+
+data_dict = {}
+step = 0.01  # 10 milliseconds
+
+for hour in range(1, 2):
+    fp = 'paper_data/glg_tte_n2_bn250814432_v00.fit'
+    table = Table.read(fp, hdu=2)
+    df = table.to_pandas()
+    grb_counts = df['TIME'] - df.loc[0, 'TIME']
+
+    bins = np.arange(0, 360, step)
+    bin_map = pd.cut(grb_counts, bins=bins).apply(lambda I: I.left if pd.notna(I) else np.nan)
+    
+    bin_series = pd.DataFrame(bin_map).dropna()
+    bin_series['count'] = 1
+    d = bin_series.groupby("TIME")["count"].count()
+    data_dict[hour] = d
+
+data_full = pd.concat(list(data_dict.values())).reset_index(drop=True)
+count_times = data_full.index * pd.to_timedelta(step, "s") + pd.to_datetime("2025-08-14 10:00:00.000")
+data_full.index = count_times
+data_full[data_full == 0] = np.nan
+```
+
+Gamma-ray bursts (GRBs) are intense flashes of gamma rays. Their detection is crucial for understanding astrophysical phenomena, and fast and accurate online detection is essential for follow-up observations. Here, we demonstrate how the package can accurately identify the significance of a gamma-ray burst in publicly available data from the Fermi-GBM (Gamma-ray Burst Monitor) instrument \citep{meegan2009fermi}. As demonstrated in \citep{ward2022poisson, dilillo2024gamma} the advantage of using a [focus]{.pkg}-based trigger algorithm compared to traditional thresholding methods, is that it identifies the most significant interval in the gamma-ray burst as it happens, without requiring knowledge of the true duration in advance and any computational tradeoffs.
+
+The data we use is from the Fermi-GBM triggers catalogue for burst GRB250814432. The exact data file can be found on [this page](https://heasarc.gsfc.nasa.gov/FTP/fermi/data/gbm/triggers/2025/bn250814432//current/). The file contains time-to-event data spanning 10 minutes. We bin it into 10 millisecond intervals and examine the period around the gamma-ray burst. To detect the burst online, we initialise a detector and stream the data through it, updating the detector with each new observation. For the sake of this example, we estimate the pre-change parameter $\theta_0$ over a fixed length of a minute prior to the start of the sequence.
+```{python}
+#| echo: true
+#| prompt: true
+data_window = data_full['2025-08-14 10:01':'2025-08-14 10:02']
+theta0_est = np.mean(data_full['2025-08-14 10:00':'2025-08-14 10:00'])
+detector = focus_cpt.Detector(type="univariate_one_sided",
+                              side="right",
+                              anomaly_intensity = 1.5)
+stats_list = []
+for i, value in enumerate(data_window):
+    detector.update(value)
+    result = detector.get_statistics(family="poisson", theta0=theta0_est)
+    stats_list.append(result['stat'])
+stat_array = np.array(stats_list)
+significance = np.sqrt(2 * stat_array)
+```
+
+The significance transformation, as mentioned in Equation 1 of \citep{dilillo2024gamma}, is necessary to obtain a more interpretable measure of the detection statistic for physicists that can be directly compared to standard significance thresholds (e.g., 5-sigma). The plot in Figure \ref{fig-gamma-ray-burst} shows the count rate and the running test statistic in units of $\sigma$, with a vertical line indicating the first point at which the statistic exceeds the 5-sigma threshold. 
+
+```{python}
+#| label: fig-gamma-ray-burst
+#| fig-cap: "Online detection of a gamma-ray burst from Fermi-GBM data. Top: radiation count rate; Bottom: running test statistic in units of $\\sigma$ with a vertical line indicating the first point exceeding the 5-sigma threshold. The shaded region highlights the interval of most significant detection."
+#| fig-width: 7
+#| fig-height: 3
+#| echo: false
+
+from plotnine import facet_wrap, geom_rect, geom_vline, theme
+
+# Create dataframe for plotting
+df_grb = pd.DataFrame({
+    'index': range(len(data_window)),
+    'count': data_window.values,
+    'significance': significance
+})
+
+# Prepare data for faceting
+df_plot = pd.DataFrame({
+    'index': list(df_grb['index']) + list(df_grb['index']),
+    'value': list(df_grb['count']) + list(df_grb['significance']),
+    'type': ['Count'] * len(df_grb) + ['Significance'] * len(df_grb)
+})
+
+# Define the significant burst interval
+grb_start = 7680
+grb_end = 8180
+threshold = 5
+
+# Find the first point where significance exceeds the threshold
+detection_point = np.where(significance > threshold)[0]
+detection_point = detection_point[0] if len(detection_point) > 0 else None
+
+# Create the faceted plot
+p = (ggplot(df_plot, aes(x='index', y='value')) +
+    geom_rect(aes(xmin=grb_start, xmax=grb_end, ymin=-np.inf, ymax=np.inf), 
+              alpha=0.2, fill="lightgray", inherit_aes=False) +
+    geom_line(size=0.7) +
+    (geom_vline(xintercept=detection_point, linetype="dashed", size=1) if detection_point is not None else None) +
+    facet_wrap('~type', ncol=1, scales='free_y') +
+    xlim(0, 12000) +
+    labs(x="Time (10 ms bins)", y="") +
+    theme_minimal() +
+    theme(figure_size=(7, 3))
+)
+
+p
+
+```
+
+
+
+### Constrained Up-Down Model for Spike Inference {#sec_calcium}
+
+We now present an application to calcium imaging data, based on the \texttt{spikefinder} challenge data (\url{https://github.com/codeneuro/spikefinder}). This data measures fluorescence, relating to the intensity of calcium ions in neurons, and is sampled at a high-frequency of 100 Hz. In calcium imaging, each neuron firing (spike) produces a sharp upward jump followed by an exponential decay. Changepoint detection approaches have been successfully employed to analyse calcium imaging data in the offline setting, yielding computationally efficient algorithms for spike inference \citep{jewell2018exact, jewell2020fast, fleming2021inferring}. However, there is increasing interest in performing equivalent analyses in real time. In-vivo calcium imaging now enables closed-loop experiments in which neural activity is decoded and available online \citep{hira2024closed, zhang2025real}. These applications require low-latency processing of fluorescence signals, whereas most existing pipelines operate offline and incur substantial delays \citep{chen2023fpga}, motivating the need to perform spike inference for real-time streaming data. The original data is a trace of fluorescence intensity over time, which we will use to infer the underlying spike times; see Figure \ref{fig-calcium_trace}. Although the `spikefinder` dataset is offline in nature, the use of in-vitro recordings provides a controlled validation setting, as the true spike times are known from simultaneous electrophysiological recordings. This allows us to tune the thresholds of the two detectors and evaluate their performance.
+
+```{python}
+#| echo: false
+#| message: false
+
+#import numpy as np
+#import pandas as pd
+from plotnine import (ggplot, aes, geom_line, geom_vline, theme_minimal,
+                      xlim, geom_segment, geom_point, geom_ribbon, labs)
+import plotnine as pl
+from focus_cpt import Detector, focus_offline
+import pickle
+
+with open("paper_data/example_trace.pkl", "rb") as f:
+    neur_trace = pickle.load(f)
+
+
+df_spikes = pd.DataFrame({
+    't'   : neur_trace["spikes"],
+    'y'   : [-0.5] * len(neur_trace["spikes"]),
+    'yend': [-1.0] * len(neur_trace["spikes"])
+})
+
+df = pd.DataFrame({'t': neur_trace["time"], 'Y': neur_trace["trace"]})
+
+# (ggplot(df, aes(x='t', y='Y')) +
+#     geom_line() +
+#     geom_segment(df_spikes, aes(x='t', xend='t', y='y', yend='yend'),
+#                  alpha=0.6, colour="orange") +
+#     xlim(0, 160) +
+#     theme_minimal()
+# )
+```
+
+To analyse this sequence in a sequential fashion via our package, we use two one-sided detectors simultaneously: one watching for up-changes (spikes) and one for down-changes (decay onset), resetting both whenever either detects a change. The rationale behind this is that only up-changes are of interest, and that given the decay process, it would be beneficial to have two separate thresholds to better control the process. Below, we define a helper function that implements the two-detectors logic, as well as records the detected spike times, the change times, and the statistics of both detectors at each time step: 
+
+```{python}
+#| prompt: true
+def run_detector(Y, time, r_threshold, l_threshold):
+    r_det = Detector(type='univariate_one_sided', side='right')
+    l_det = Detector(type='univariate_one_sided', side='left')
+    up_detections = []
+    stp_times     = []
+    stp_types     = []
+    for t, y in enumerate(Y):
+        r_det.update(y)
+        l_det.update(y)
+        r_s = r_det.get_statistics(family='gaussian')['stat']
+        l_s = l_det.get_statistics(family='gaussian')['stat']
+        cpt_found = False
+        if r_s > r_threshold:
+            cpt_found, cpt_type = True, 'right'
+        elif l_s > l_threshold:
+            cpt_found, cpt_type = True, 'left'
+        if cpt_found:
+            if cpt_type == 'right':
+                up_detections.append(t)
+            stp_times.append(time[t])
+            stp_types.append(cpt_type)
+            r_det = Detector(type='univariate_one_sided', side='right')
+            l_det = Detector(type='univariate_one_sided', side='left')
+    return {
+        'up_detections': np.array(up_detections),
+        'stp_times'    : stp_times,
+        'stp_types'    : stp_types,
+    }
+```
+
+To give a brief intuition on the function above, at each time step, we update both detectors with the new observation, and we check if either of them has detected a change by comparing their statistics to the corresponding thresholds:  `r_threshold`, for up-changes, and `l_threshold`,for down-changes. If a change is detected, we record the time and type of the change, and we reset both detectors. The up-changes are recorded separately as they correspond to the spikes we want to detect.
+The two thresholds are passed as arguments to the function, as this will allow us to tune them via cross validation. To do so, we create a 30/70 \% train test split. Then, both thresholds are selected jointly by 5-fold cross-validation on the training set. As a criterion for the goodness of fit, we choose to minimise van Rossum distance between the detected and true spike trains. This is employed as a detection during the calcium decay, e.g. when we are far from any true spike, is penalised more than a miss. Furthermore near-burst detections are scored continuously rather than with a hard cutoff, so the metric reflects the biological reality that not all spikes in a burst may be detected, but detecting some of them is still useful \citep{jewell2020fast}.
+
+```{python}
+#| echo: false
+
+def van_rossum_distance(detected, true_spikes, tau_samples):
+    """Van Rossum distance between two spike trains (lower = better).
+
+    Each train is convolved with a causal exponential kernel
+    h(t) = exp(-t / tau) for t >= 0. The squared L2 distance between
+    the resulting continuous functions is computed analytically:
+
+        D = <det, det> - 2 <det, true> + <true, true>
+
+    where the inner product of two trains A, B is
+
+        <A, B> = (tau/2) * sum_{i in A, j in B} exp(-|t_i - t_j| / tau)
+
+    This handles both failure modes better than toleranced F1:
+      - A detection far from any true spike (e.g. during the calcium
+        decay) is penalised more than one that is merely slightly off.
+      - A detection during the decay is actually penalised MORE than
+        a complete miss, because it adds a spurious kernel contribution
+        far from any true spike, whereas a miss only incurs the cost of
+        the unmatched true spike's self inner product.
+      - Close detections near dense bursts are graded rather than
+        all-or-nothing, so missing some burst spikes is not catastrophic.
+
+    Parameters
+    ----------
+    detected    : array-like of sample indices of detected spikes
+    true_spikes : array-like of sample indices of true spikes
+    tau_samples : exponential time constant in samples
+                  (e.g. 5 samples = 50 ms at 100 Hz)
+    """
+    def inner_product(a, b):
+        if len(a) == 0 or len(b) == 0:
+            return 0.0
+        diff = np.abs(np.asarray(a, float)[:, None] - np.asarray(b, float)[None, :])
+        return (tau_samples / 2.0) * np.sum(np.exp(-diff / tau_samples))
+
+    return (inner_product(detected,    detected)
+            - 2 * inner_product(detected, true_spikes)
+            + inner_product(true_spikes, true_spikes))
+```
+
+```{python}
+#| echo: false
+time  = np.array(neur_trace["time"])
+trace = np.array(neur_trace["trace"])
+
+spike_indices = np.array(
+    [np.argmin(np.abs(time - s)) for s in neur_trace["spikes"]]
+)
+
+# ── Train / test split (60 / 40 by time) ─────────────────────────────────────
+SPLIT_FRAC = 0.3
+split_idx  = int(len(trace) * SPLIT_FRAC)
+
+Y_train    = trace[:split_idx]
+Y_test     = trace[split_idx:]
+time_train = time[:split_idx]
+time_test  = time[split_idx:]
+
+train_spikes = spike_indices[spike_indices <  split_idx]
+test_spikes  = spike_indices[spike_indices >= split_idx] - split_idx
+```
+
+```{python}
+#| echo: false
+# ── 5-fold cross-validation over a 2D threshold grid ─────────────────────────
+# Both r_threshold and l_threshold are tuned jointly.
+# Each contiguous fold is treated as an independent segment so the streaming
+# detector starts fresh — no warm-up leakage between folds.
+# The scoring criterion is the van Rossum distance (minimise).
+
+TAU_SAMPLES = 5     # exponential kernel time constant: 50 ms at 100 Hz
+N_FOLDS     = 5
+
+# Candidate grids
+r_thresholds = np.concatenate([
+    np.arange(0.005, 0.05, 0.005),
+    np.arange(0.05,  0.30, 0.02),
+])
+l_thresholds = np.array([0.2, 0.5, 1.0, 2.0, 5.0])
+
+n_train   = len(Y_train)
+fold_size = n_train // N_FOLDS
+
+cv_results = {}   # (r_thr, l_thr) -> mean CV van Rossum distance
+
+for r_thr in r_thresholds:
+    for l_thr in l_thresholds:
+        fold_vr = []
+        for fold in range(N_FOLDS):
+            v_start    = fold * fold_size
+            v_end      = v_start + fold_size if fold < N_FOLDS - 1 else n_train
+            val_spikes = train_spikes[
+                (train_spikes >= v_start) & (train_spikes < v_end)
+            ] - v_start
+
+            res = run_detector(Y_train[v_start:v_end],
+                               time_train[v_start:v_end], r_thr, l_thr)
+            fold_vr.append(
+                van_rossum_distance(res['up_detections'], val_spikes, TAU_SAMPLES)
+            )
+        cv_results[(r_thr, l_thr)] = np.mean(fold_vr)
+
+# ── Select best pair (minimum van Rossum distance) ────────────────────────────
+(best_r_threshold, best_l_threshold) = min(cv_results, key=cv_results.get)
+best_cv_vr = cv_results[(best_r_threshold, best_l_threshold)]
+```
+
+Using the CV-selected thresholds `best_r_threshold` and `best_l_threshold`, we evaluate on the held-out test set by calling `run_detector` directly. To illustrate the results, we plot the results in Figure \ref{fig-calcium_trace}, showing the detected changepoints and the trace of the right-detector statistic.
+
+```{python}
+#| prompt: true
+res_test = run_detector(Y_test, time_test,
+                        best_r_threshold, best_l_threshold)
+```
+
+```{python}
+#| echo: false
+#| label: fig-calcium_trace
+#| fig-cap: "The trace of fluorescence intensity over time from a calcium imaging recording of our example. The orange segments indicate the true spike times obtained from simultaneous electrophysiological recordings, while the blue segments the detected up changes. Dashed red line indicates the start of the test period."
+
+test_spike_times = time_test[test_spikes]
+df_test_changes = pd.DataFrame({
+    't'   : res_test['stp_times'],
+    'y'   : [-1.0] * len(res_test['stp_times']),
+    'yend': [-1.5] * len(res_test['stp_times']),
+    'type': res_test['stp_types'],
+})
+df_test = pd.DataFrame({'t': time_test, 'Y': Y_test})
+
+(ggplot(df, aes(x='t', y='Y')) +
+    geom_line() +
+    geom_segment(df_spikes,
+                 aes(x='t', xend='t', y='y', yend='yend'),
+                 alpha=0.6, colour="orange") +
+    geom_segment(df_test_changes.query('type == "right"'),
+                 aes(x='t', xend='t', y='y', yend='yend'),
+                 colour="blue") +
+    geom_vline(xintercept=time_test[0], color="red", linetype="dashed") +             
+    labs(title=f"Thresholds: right={best_r_threshold:.3f}, left={best_l_threshold:.3f}",
+         x="Time (s)", y="Y") +
+    theme_minimal() +
+    theme(figure_size=(7, 3))
+)
+```
+
+
+```{r}
+#| include: false
+
+# needed for the "R> " prompt in the code chunks
+options(prompt = "R> ", continue = "+  ")
+```
+
+## Acknowledgments
+
+I. A. Eckley and P. Fearnhead gratefully acknowledge the support of EPSRC and BT via grants \textit{UKRI2698, EP/Z531327/1}. G. Romano gratefully acknowledges the support of grant \textit{UKRI2698}.
+
+## References {.unnumbered}
+
+::: {#refs}
+:::
+
+{{< pagebreak >}}
+
+\newpage
+\appendix
+\begin{center}
+{\large\bf APPENDIX}
+\end{center}
+
+
+## The Python Interface: Differences and Similarities {#sec_python_interface}
+
+The [Python]{.proglang} package `[focus-cpt]{.pkg}` provides a clean, Pythonic interface to the same underlying C++ implementation as the [R]{.proglang} package. The core philosophy is to mirror the [R]{.proglang} interface as closely as possible, while leveraging [Python]{.proglang} idioms and conventions where appropriate.
+
+The primary structural difference between the two interfaces lies in the handling of the detector object. In [R]{.proglang}, the detector is an external pointer that must be passed to functions like `detector_update` and `get_statistics`. In [Python]{.proglang}, the detector is an instance of the `Detector` class, and operations are performed as methods on this object. This is more idiomatic in [Python]{.proglang} and aligns with the object-oriented philosophy of the language.
+
+Specifically:
+
+-   **Initialization**: In [R]{.proglang}, `detector_create(type = "univariate")` creates a detector. In [Python]{.proglang}, this is `Detector(type="univariate")`.
+
+-   **Updating**: In [R]{.proglang}, `detector_update(det, y)` updates the detector. In [Python]{.proglang}, this is `det.update(y)`.
+
+-   **Computing statistics**: In [R]{.proglang}, `get_statistics(det, family = "gaussian")` computes statistics. In [Python]{.proglang}, this is `det.get_statistics(family="gaussian")`.
+
+-   **Extracting information**: Functions like `detector_info_n`, `detector_info_sn`, and `detector_cands_len` in [R]{.proglang} are available as methods `get_n()`, `get_sn()`, and `get_n_candidates()` in [Python]{.proglang}. Similarly, `detector_candidates` is available as the method `get_candidates()`.
+
+Beyond the object-oriented interface, the [Python]{.proglang} bindings follow standard [Python]{.proglang} conventions:
+
+-   [Python]{.proglang} uses `None` instead of R's `NULL`. For example, `get_statistics(family="gaussian", theta0=None)` is equivalent to the R call `get_statistics(det, family = "gaussian", theta0 = NULL)`.
+
+-   Numeric vectors and matrices in [Python]{.proglang} are typically represented as NumPy arrays. The package should automatically handle conversion of lists and other array-like objects to NumPy arrays. Note that for univariate detectors, the `focus_offline` function returns a 2D statistic array with shape `(n_obs, 1)` rather than a 1D array, which may need to be flattened before further processing (see the offline example below).
+
+-   Functions return dictionaries ([Python]{.proglang}'s equivalent to [R]{.proglang}'s lists) rather than named lists. For example, `det.get_statistics(family="gaussian")` returns a dictionary with keys `'stopping_time'`, `'changepoint'`, and `'stat'`.
+
+#### Example Usage in Python
+
+```{r}
+#| include: false
+
+# needed for the python ">>> " prompt in the code chunks
+options(prompt = ">>> ", continue = "... ")
+```
+
+To better highlight the [Python]{.proglang} syntax, we replicate the example at the beginning of the section, noting that results will not be exactly the same due to differences in random number generation from numpy and [R]{.proglang}:
+
+```{python py-imports}
+#| eval: true
+#| prompt: true
+
+import numpy as np
+from focus_cpt import Detector
+
+
+np.random.seed(42)
+Y = np.concatenate([np.random.randn(100), np.random.randn(50) + 1])
+
+det = Detector(type="univariate")
+
+for i, y in enumerate(Y):
+    det.update(y)
+    result = det.get_statistics(family="gaussian")
+    
+    if result['stat'] > 20:
+        print(
+            f"Changepoint detected at time {i}: "
+            f"estimated changepoint at {result['changepoint']}"
+        )
+        break
+```
+
+The offline interface is also available in [Python]{.proglang} with the same signature as in [R]{.proglang}, again with the `None` convention for optional parameters. For example:
+
+```{python}
+#| label: fig-python-offline
+#| fig-cap: "The trace of the statistics for one simulated time series using the Python interface."
+#| fig-width: 7
+#| fig-height: 3
+#| eval: true
+#| prompt: true
+
+import pandas as pd
+from plotnine import *
+from focus_cpt import focus_offline
+
+result_offline = focus_offline(Y,
+                                threshold=np.inf,
+                                type="univariate",
+                                family="gaussian")
+
+stat = result_offline['stat'].flatten()
+
+df = pd.DataFrame({"time": range(1, len(Y) + 1), "stat": stat})
+(
+  ggplot(df) +
+    aes(x="time", y="stat") +
+    geom_line() +
+    labs(x="Time", y="Statistic") +
+    theme_minimal() +
+    theme(figure_size=(7, 3))
+)
+```
+
+```{r}
+#| include: false
+
+# needed for the "R> " prompt in the code chunks
+options(prompt = "R> ", continue = "+  ")
+```
+
