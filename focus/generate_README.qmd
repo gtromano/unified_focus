@@ -161,7 +161,7 @@ Both approaches produce the same statistical results. See the performance compar
 
 - **`detector_info_n(detector)`** - Get number of observations processed
 - **`detector_info_sn(detector)`** - Get cumulative sum state (vector for multivariate)
-- **`detector_pieces_len(detector)`** - Get number of candidate changepoints
+- **`detector_cands_len(detector)`** - Get number of candidate changepoints
 - **`detector_candidates(detector)`** - Get all candidate changepoints as a data frame
   - Returns: Data frame with columns for candidate positions and their sufficient statistics
 

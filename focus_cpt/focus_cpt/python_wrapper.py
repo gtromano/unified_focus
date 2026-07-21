@@ -408,12 +408,6 @@ def focus_offline(
     if rho is not None:
         rho = np.asarray(rho, dtype=np.float64)
     
-    # ARP detector requires mu0_arp to be specified
-    if type == "arp" and mu0_arp is None:
-        raise ValueError(
-            "The mu0_arp unknown case is still under development, "
-            "please specify a parameter `mu0_arp` when using type='arp'."
-        )
     
 
     result = _focus.focus_offline(

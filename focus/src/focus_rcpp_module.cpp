@@ -536,7 +536,7 @@ List get_statistics(SEXP det_ptr,
 //'
 //' @export
 // [[Rcpp::export]]
-int detector_pieces_len(SEXP det_ptr) {
+int detector_cands_len(SEXP det_ptr) {
   XPtr<std::shared_ptr<Info>> ptr(det_ptr);
   if (!ptr || !(*ptr)) stop("Invalid info pointer");
   return static_cast<int>((*ptr)->candidates().size());

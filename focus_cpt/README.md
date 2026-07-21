@@ -593,8 +593,8 @@ print(f"True changepoint: {n_pre}")
 
 ![](generate_README_python_files/figure-commonmark/cell-14-output-1.png)
 
-    Detection time: 517.0
-    Estimated changepoint: 500.0
+    Detection time: 505.0
+    Estimated changepoint: 498.0
     True changepoint: 500
 
 And in the online setting:
@@ -624,7 +624,7 @@ plt.ylabel("Statistic")
 plt.show()
 ```
 
-    Detection at time 517 with changepoint estimate τ = 500.0
+    Detection at time 505 with changepoint estimate τ = 498.0
 
 ![](generate_README_python_files/figure-commonmark/cell-15-output-2.png)
 

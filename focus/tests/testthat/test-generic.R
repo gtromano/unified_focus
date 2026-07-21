@@ -354,12 +354,12 @@ test_that("detector_info_sn returns cumulative sum (seed 123, first 10 obs)", {
   expect_equal(round(detector_info_sn(det), 6), 0.746256)
 })
 
-test_that("detector_pieces_len returns candidate count (seed 123, first 10 obs)", {
+test_that("detector_cands_len returns candidate count (seed 123, first 10 obs)", {
   Y   <- make_gaussian(seed = 123)
   det <- detector_create(type = "univariate")
   for (i in 1:10) detector_update(det, Y[i])
 
-  expect_equal(detector_pieces_len(det), 7)
+  expect_equal(detector_cands_len(det), 7)
 })
 
 test_that("detector_candidates returns a data frame with correct row count", {
@@ -373,16 +373,16 @@ test_that("detector_candidates returns a data frame with correct row count", {
   expect_equal(nrow(cands), 7)
 })
 
-test_that("detector_pieces_len grows with more observations", {
+test_that("detector_cands_len grows with more observations", {
   det <- detector_create(type = "univariate")
   set.seed(1)
   Y <- rnorm(50)
 
   for (i in 1:10)  detector_update(det, Y[i])
-  n10 <- detector_pieces_len(det)
+  n10 <- detector_cands_len(det)
 
   for (i in 11:50) detector_update(det, Y[i])
-  n50 <- detector_pieces_len(det)
+  n50 <- detector_cands_len(det)
 
   # candidate set can grow (or at least not shrink to nothing)
   expect_gte(n10, 1)

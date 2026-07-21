@@ -87,14 +87,14 @@ sprintf("Current cumulative sum: %.3f", cumsum_stat)
 
 #| eval: false
 ## detector_candidates(info_ptr)
-## detector_pieces_len(info_ptr)
+## detector_cands_len(info_ptr)
 
 
 #| prompt: true
 
 # Get candidate information
 candidates <- detector_candidates(det)
-n_cand <- detector_pieces_len(det)
+n_cand <- detector_cands_len(det)
 
 sprintf("Number of candidate segments: %d", n_cand)
 print(head(candidates))
