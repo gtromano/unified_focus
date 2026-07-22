@@ -44,7 +44,7 @@ author:
     
   - name: Guillem Rigaill
     affiliations:
-      - name: Université Paris-Saclay, CNRS, INRAE, Univ Evry, Institute of Plant Sciences Paris-Saclay (IPS2)\newline & Université Paris-Saclay, AgroParisTech, INRAE, UMR MIA Paris-Saclay
+      - name: Université Paris-Saclay, CNRS, INRAE, Univ Evry,\newline Institute of Plant Sciences Paris-Saclay (IPS2) &\newline Université Paris-Saclay, AgroParisTech, INRAE, UMR MIA Paris-Saclay
         address: 23 Bd de France-Georges Pompidou, 91037 Évry-Courcouronnes
         city: Orsay & Palaiseau
         country: France
@@ -209,7 +209,7 @@ $$
 D_n = \{\tau \in \{1,\dots,n-1\} : \exists\, (\theta_0, \theta_1) \text{ such that }
 \hat{\tau}_n(\theta_0,\theta_1) = \tau \}.
 $$
-This set collects precisely those candidates that contribute to $\mathcal{Q}_n(\theta_0,\theta_1)$.
+This set collects those candidates that contribute to $\mathcal{Q}_n(\theta_0,\theta_1)$.
 
 At any future time $n+1$, $\hat{\tau}_{n+1}(\theta_0, \theta_1) \in \{\hat{\tau}_{n}(\theta_0, \theta_1), n\}$, e.g. $\hat{\tau}_{n+1}(\theta_0, \theta_1)$ can only be either the current maximiser $\hat{\tau}_n(\theta_0, \theta_1)$ or the new candidate $n$, so any $\tau' \notin D_n$ cannot become a maximiser. This means the active set can only grow by at most one element at each step,
 $$
@@ -292,7 +292,7 @@ $$
 \quad \text{or} \quad
 \max_{j \in \{1,\dots,M\}} f^{(j)}_{\mathrm{GLR}}(z^{(j)}_{1:n}) \geq \xi^{\mathrm{max}},
 $$
-for user-specified thresholds $\xi^{\mathrm{sum}}, \xi^{\mathrm{max}} \in \mathbb{R}$, where $f^{(j)}_{\mathrm{GLR}}(z^{(j)}_{1:n})$ denotes the GLR statistic applied to the $j$-th quantile transformation. The user can choose to perform either both or one of the two tests, depending on what type of changes they wish to detect in the distribution: the sum statistic is more powerful for detecting changes that affect multiple quantiles (e.g., a shift in the scale or location), while the max statistic is more powerful for detecting changes that affect only a few quantiles (such as a change in the tail of the distribution).
+for user-specified thresholds $\xi^{\mathrm{sum}}, \xi^{\mathrm{max}} \in \mathbb{R}$, where $f^{(j)}_{\mathrm{GLR}}(z^{(j)}_{1:n})$ denotes the GLR statistic applied to the $j$-th quantile transformation. The user can choose to perform either both or one of the two tests, depending on what type of changes they wish to detect in the distribution: the sum statistic is more powerful for detecting changes that affect multiple quantiles (e.g., a shift in the scale or location), while the max statistic is more powerful for detecting changes that affect only a few quantiles (such as a change in the tail of the distribution). Section \ref{sec_nonparametric} provides an example of this.
 
 #### Autoregressive Detector {#sec_ar_method}
 
@@ -382,7 +382,7 @@ For the rest of the section, we will begin by introducing the different types of
 
 ### Changepoint Detectors {#sec_detectors}
 
-A detector is the core object of the package, and it holds the current state of the changepoint detection algorithm. The package implements both univariate, multivariate and non-parametric detectors for a large range of models. The detector stores and handles the update of the optimal changepoint locations, while the cost computations are handled by the cost functions, described in the next section. The cost functions are designed to be modular and flexible, allowing for a wide range of models even for the same detector, and in theory, as the detector handles the pruning, it would be possible to extend the method to new models just by implementing new cost functions. Not all detectors are however compatible with all cost functions, but roughly the following combinations are implemented:
+A detector is the core object of the package, and it holds the current state of the changepoint detection algorithm. The detector stores and handles the update of the optimal changepoint locations, while the cost computations are handled by the cost functions. The cost functions are designed to be modular and flexible, allowing for a wide range of models (even for the same detector), as well as user-defined cost functions (see Section \ref{sec_extracting_info} and \ref{sec_meanvar} for guidance and an example respectively). Note that not all detectors are however compatible with all cost functions, but roughly the following combinations are implemented:
 
 -   Detectors for iid data: these work for univariate and multivariate data, and they are compatible with many cost functions for exponential family distribution models.
 -   Non-parametric detector: this is designed for univariate data, and implements the non-parametric cost function described in @romano2023log. An example of this will be specifically described in Section \ref{sec_nonparametric}.
@@ -499,36 +499,10 @@ get_statistics(det_uni, family = "gamma", shape = 2)$stat
 
 Beyond computing the test statistics, the package provides several functions to inspect and extract information from the detector object. These functions allow users to access the internal state of the detector, and it can be particularly useful to implement new cost functions without reimplementing the core pruning algorithm. For the rest of this subsection, we will describe the main functions for extracting information from the detector object, but for a practical implementation of a new cost, one should refer to Section \ref{sec_meanvar}, where we provide an example of implementing a custom cost function for Gaussian change in mean and variance detection. To understand the returned values of these functions, it is useful to recall the notation of Section \ref{sec_update_pruning}.
 
-#### Number of Observations and Cumulative Statistics
-
-To retrieve basic information about the detector state, two simple functions are provided:
-
-```{r}
-#| eval: false
-detector_info_n(det_ptr)
-detector_info_sn(det_ptr)
-```
-
-`detector_info_n` returns the current number of observations processed, which corresponds to the time index $n$. This indicates how many data points have been processed since the detector was created.
-
-`detector_info_sn` returns the cumulative sum statistics maintained internally by the detector. These are the sufficient statistics for the full data sequence, and they are used to efficiently compute the log-likelihood values $q_{\tau,n}(\theta_0,\theta_1)$ given candidate changepoints $\tau \in D_n$ without reprocessing the raw data via telescopic sum cancellations. For univariate detectors, this returns a scalar; for multivariate detectors, this returns a vector of length equal to the number of dimensions. These statistics can be useful to compute the telescopic sum cancellations needed for $\mathcal{O}(1)$ cost function computations.
-
-**For [Python]{.proglang} readers.**, these functions are available as methods of the detector object, so they can be called as `detector.get_n()` and `detector.get_sn()`, respectively.
-
-For example:
-
-```{r}
-#| prompt: true
-
-n <- detector_info_n(det)
-cumsum_stat <- detector_info_sn(det)
-sprintf("n")
-sprintf("%.3f", cumsum_stat)
-```
 
 #### Accessing Changepoint Candidates {#sec_accessing_candidates}
 
-The detector maintains a set of candidate changepoint and summary statistics. The number of candidates is controlled by the pruning strategy, but inspecting these candidates can provide valuable insights into how the algorithm is tracking potential changes. Two functions are provided to access this information:
+The detector maintains a set of candidate changepoint and summary statistics. Two functions are provided to access this information:
 
 ```{r}
 #| eval: false
@@ -539,7 +513,7 @@ detector_cands_len(det_ptr)
 `detector_candidates` returns a detailed data frame with information about all candidate segments. To draw a parallel with Section \ref{sec_update_pruning}, at time $n$ this function will expose the internal $P(\tau)$ for all $\tau \in D_n$. It will return a `DataFrame` in [R]{.proglang}  (or a list of lists in [Python]{.proglang}). Each row represents a candidate segment from a changepoint location to the current time. The data frame contains the following columns:
 
 -   `tau`: Integer vector of candidate changepoint locations, e.g. the first component of $P(\tau)$.
--   `st`: List of numeric vectors containing the sufficient statistics for each candidate segment. These statistics (e.g., cumulative sums, cumulative sum of squares) are used to efficiently compute test statistics without reprocessing the raw data, corresponding to the remaining $d+1$ components of $P(\tau)$.
+-   `st`: List of numeric vectors containing the sufficient statistics for each candidate segment. These statistics (e.g., cumulative sums, cumulative sum of squares), in conjunction with the functions below, are used to efficiently compute test statistics without reprocessing the raw data, corresponding to the remaining $d+1$ components of $P(\tau)$.
 -   `side`: Character vector indicating the side for each candidate. This is which side of the univariate hull are the candidates related to, either the convex majorant or minorant. It could be relevant for implementation of one-sided cost functions, but it can be ignored for multivatiate detectors.
 
 **For [Python]{.proglang} readers.**, the candidate information functions are available as methods: `detector.get_candidates()` returns the candidate segments (as a dictionary) and `detector.get_n_candidates()` returns the number of candidate segments.
@@ -555,11 +529,36 @@ print(n_cand)
 print(head(candidates))
 ```
 
-`detector_cands_len` returns an integer indicating the number of candidate segments currently tracked by the detector. As the detector processes new observations, this number may grow or shrink depending on the pruning strategy (e.g. in the multivariate case, the number of candidates at a given iteration is controlled by the `pruning_mult` and `pruning_offset` parameters set at detector creation). This could be used to compute worst-case run time scenarios in case of time-sensitive applications.
+`detector_cands_len` returns an integer indicating the number of candidate segments currently tracked by the detector. As the detector processes new observations, this number may grow or shrink depending on the pruning strategy (e.g. in the multivariate case, the number of candidates at a given iteration is controlled by the `pruning_mult` and `pruning_offset` parameters set at detector creation, which could be also used to compute worst-case run time scenarios in case of time-sensitive applications).
+
+#### Number of Observations and Cumulative Statistics
+
+The following two functions provide access to the sufficient statistics for the full data sequence. These are needed to efficiently compute ($\mathcal{O}(1)$ complexity) the log-likelihood values $q_{\tau,n}(\theta_0,\theta_1)$ of user defined functions given candidate changepoints $\tau \in D_n$ without reprocessing the raw data via telescopic sum cancellations (i.e. $\sum_{t=1}^n T(y_t) - \sum_{t=1}^\tau T(y_t) = \sum_{t=\tau+1}^n T(y_t)$).
+
+```{r}
+#| eval: false
+detector_info_n(det_ptr)
+detector_info_sn(det_ptr)
+```
+
+Specifically, `detector_info_n` returns the current number of observations processed, which corresponds to the time index $n$. This indicates how many data points have been processed since the detector was created. `detector_info_sn` returns the full cumulative sum statistics maintained internally by the detector, e.g. $\sum_{t=1}^n T(y_t)$. For univariate detectors, this returns a scalar; for multivariate detectors, this returns a vector of length equal to the number of dimensions. 
+
+**For [Python]{.proglang} readers.**, these functions are available as methods of the detector object, so they can be called as `detector.get_n()` and `detector.get_sn()`, respectively.
+
+For example:
+
+```{r}
+#| prompt: true
+
+n <- detector_info_n(det)
+cumsum_stat <- detector_info_sn(det)
+sprintf("n")
+sprintf("%.3f", cumsum_stat)
+```
 
 ### The Offline Interface {#sec_offline_interface}
 
-`focus_offline` runs the complete changepoint detection algorithm over a whole data set in a single call. The primary use of `focus_offline` is therefore for retrospective analysis, testing and benchmarking when all observations are available prior to processing. Compared to the online interface, the offline call avoids repeated [R]{.proglang}-to-C++ crossings and is therefore (slightly) more efficient.
+`focus_offline` runs the complete changepoint detection algorithm over a whole data set in a single call. The primary use of `focus_offline`  is for computation of the threshold, as seen later in the examples of Sections \ref{sec_use_cases}, and for retrospective analysis. Compared to the online interface, the offline call avoids repeated [R]{.proglang}-to-C++ crossings and is therefore (slightly) more efficient.
 
 ```{r}
 #| eval: false
@@ -575,7 +574,7 @@ focus_offline(Y, threshold, type = "univariate", family = "gaussian",
 
 The `focus_offline` function takes as input the observed data `Y` (a numeric vector for univariate problems or an $\mathbb{R}^{n \times d}$ matrix for multivariate problems), a detection threshold, and a set of detector configuration and cost function parameters. Since most arguments of `focus_offline` mirror those of the online interface (combining the arguments of `detector_create` and `get_statistics`), we only describe the `threshold` argument. For other detector type and cost function parameters, refer to Sections \ref{sec_detectors} and \ref{sec_statistics}, respectively.
 
-`threshold` specifies detection threshold(s) as either a scalar (applied to all statistics) or a numeric vector (one threshold per statistic). Setting `threshold = Inf` disables early stopping and returns the full statistic traces and changepoint estimates at every time step; with finite threshold(s), the algorithm terminates at the first time any statistic exceeds its corresponding threshold, mirroring the online loop's stopping behaviour. For multivariate detectors, the implementation computes multiple statistics (one per projection or per configured statistic) and triggers a detection when any of these crosses its threshold.
+`threshold` specifies detection threshold(s) as either a scalar (applied to all statistics) or a numeric vector (one threshold per statistic). Setting `threshold = Inf` disables early stopping and returns the full statistic traces (useful for thresholding) and changepoint estimates at every time step. With finite threshold(s), the algorithm terminates at the first time any statistic exceeds its corresponding threshold, mirroring the online loop's stopping behaviour. For multivariate detectors, the implementation computes multiple statistics (one per projection or per configured statistic) and triggers a detection when any of these crosses its threshold.
 
 For example, the equivalent of the Gaussian change-in-mean online loop described in the previous section can be achieved in the offline mode by calling `focus_offline` with the same cost function parameters:
 ```{r}
@@ -601,7 +600,6 @@ ggplot(data.frame(time = seq_along(Y), stat = result_offline$stat)) +
   theme_minimal()
 ```
 
-By setting the threshold to `Inf`, we disable early stopping and obtain the full trace of the statistics, which can be useful for computation of the threshold, as seen later in the examples of Sections \ref{sec_use_cases}, and for retrospective analysis.
 
 ## Common Use Cases of Focus {#sec_use_cases}
 
@@ -611,7 +609,7 @@ Below are a few common examples showing how to create and update different types
 
 There may be some applications where one is only interested in detecting changes in a specific direction, for example, only increases in the mean of a signal. To create a one-sided detector, one can simply set the `side` argument of `detector_create` to either `'right'` (to detect increases) or `'left'` (to detect decreases). We can show how to implement a detector with an example.
 
-To choose an appropriate detection threshold, a common approach is to use Monte Carlo simulation \citep[as in][amongst many]{chen2022high, pishchagina2025online}. There are various statistical criteria that can be used to specify a threshold. Below we show how {\texttt{focus\_offline}} can be used to find a threshold that gives a required false positive probability over a fixed length of data. This example shows how using the {\texttt{threshold=Inf}} setting enables us to do this efficiently without re-running the algorithm for different thresholds.
+To choose an appropriate detection threshold, a common approach is to use Monte Carlo simulation \citep[as in][amongst many]{chen2022high, pishchagina2025online}. There are various statistical criteria that can be used to specify a threshold. Below we show how \texttt{focus\_offline} can be used to find a threshold that gives a required false positive probability over a fixed length of data. This example shows how using the \texttt{threshold=Inf} setting enables us to do this efficiently without re-running the algorithm for different thresholds.
 
 Obtaining a threshold that gives a require false-positive rate for data of length $n$ is achieved by (i) generating many sequences of data $Y^{(k)}_{1:n}$ ($k = 1, \ldots, K$) under the null hypothesis of no changepoints, (ii) computing the detection statistic $f_{\mathrm{GLR}}(Y^{(k)}_{1:n})$ for each sequence, and taking the maximum over time $\max_n f_{\mathrm{GLR}}(Y^{(k)}_{1:n})$ (as this is the most extreme value that would trigger a detection), and finally (iii) defining the threshold as the empirical quantile $\xi = F^{-1}_K(1 - \alpha)$, where $F_K$ is the empirical distribution of the maxima and $\alpha$ is the desired false positive rate. Specifically, to achieve a $1\%$ false positive rate ($\alpha = 0.01$), we take the 99th percentile of the null statistics as our threshold; approximately 1% of null sequences will then exceed this threshold by chance.
 
@@ -710,9 +708,9 @@ head(dim_idx, 2)
 det_mv <- detector_create(type = "multivariate", dim_indexes = dim_idx)
 ```
 
-This generates circular sequential projections of 2 dimensions from 6-dimensional data, producing 6 non-overlapping windows. Each row of the output represents one projection and contains the (0-indexed, since C++ uses 0-based indexing) coordinate indices to use. For instance, the first two projections use coordinates (0, 1) and (1, 2), and the last wraps around to (5, 0).
+This particular example generates circular sequential projections of 2 dimensions from 6-dimensional data, producing 6 non-overlapping windows. Each row of the output represents one projection and contains the (0-indexed, since C++ uses 0-based indexing) coordinate indices to use. In this instance, the first two projections use coordinates (0, 1) and (1, 2), and the last wraps around to (5, 0).
 
-As an example, we can measure how big the approximation is of using the projections by calculating the statistics for a 6-dimensional dataset with both the full hull and the projection-based approximation, and compare both the run time and the resulting statistics. We observe that the projection-based approximation is significantly faster than the full convex hull pruning, while still producing extremely similar results:
+As an illustration, we can measure how big the approximation is of using the projections by calculating the statistics for a 6-dimensional dataset with both the full hull and the projection-based approximation, and compare both the run time and the resulting statistics:
 
 ```{r}
 #| echo: false
@@ -740,6 +738,8 @@ system.time(
 )
 all.equal(res_multi$stat, res_multi_approx$stat)
 ```
+
+We observe that the projection-based approximation is significantly faster than the full convex hull pruning, while still producing extremely similar results.
 
 ### Anomaly Detection {#sec_anomaly_detection}
 
@@ -780,7 +780,7 @@ stat_no_thresh <- run_detector(Y_anom, anomaly_intensity = NULL)
 stat_thresh <- run_detector(Y_anom, anomaly_intensity = 1.5)
 ```
 
-In this example, the background mean varies smoothly with an amplitude smaller than the imposed minimum change size. In Figure \ref{fig-anomaly_detection} we plot the data together with the two corresponding statistic traces `stat_no_thresh` and `stat_thresh`. We notice how, without the constraint, the detector reacts to these slow variations. By setting `anomaly_intensity` larger than the maximum background deviation, these are suppressed, while the transient anomalies are still clearly identified.
+In this example, the background mean varies smoothly with an amplitude smaller than the imposed minimum change size. In Figure \ref{fig-anomaly_detection}, below the data, we see the two corresponding statistic traces `stat_no_thresh` and `stat_thresh`. We notice how, without the constraint, the detector reacts to these slow variations. By setting `anomaly_intensity` larger than the maximum background deviation, these are suppressed, while the transient anomalies are still clearly identified.
 
 ```{r}
 #| label: fig-anomaly_detection
@@ -805,15 +805,9 @@ ggplot(df) +
 
 ### Non-Parametric Changepoint Detection {#sec_nonparametric}
 
-As a nonparametric detector, the package implements the [npfocus]{.pkg} detector described in Section \ref{sec_nonparametric_method}. As [npfocus]{.pkg} detects changes in the empirical cumulative density function estimated across a set of quantiles, to create a non-parametric detector, one should provide a vector of quantiles to the argument `quantiles` of `detector_create`. Quantiles normally can be estimated from historical data, or from domain knowledge, but for the sake of this example we will simply use quantiles from a standard normal distribution:
+As a nonparametric detector, the package implements the [npfocus]{.pkg} detector described in Section \ref{sec_nonparametric_method}. As [npfocus]{.pkg} detects changes in the empirical cumulative density function estimated across a set of quantiles, to create a non-parametric detector, one should provide a vector of quantiles to the argument `quantiles` of `detector_create`. Quantiles normally can be estimated from historical data, or from domain knowledge (for the sake of the example below we will use quantiles from known distributions). We can then create a non-parametric detector using these quantiles. [npfocus]{.pkg} returns two statistics: one based on summing over quantiles, and one based on taking the maximum over quantiles. 
 
-```{r}
-#| prompt: true
-
-quants <- qnorm(seq(0.01, .99, length.out = 5))
-```
-
-We then create a non-parametric detector using these quantiles. [npfocus]{.pkg} returns two statistics: one based on summing over quantiles, and one based on taking the maximum over quantiles. To demonstrate a comparison of the behaviour of the two statistics, we consider two scenarios: (1) a change in location using heavy-tailed $t_2$ data (stored in `Y1`), and (2) a change only in the tail  (stored in `Y2`), where values with absolute values greater than 2 are shifted. We then run the non-parametric detector online on both data sets, and store the trace of both statistics for comparison. In Figure \ref{fig-npfocus} we plot the resulting statistic traces together with the data.
+As an illustration, to demonstrate a comparison of the behaviour of the two statistics, we consider two scenarios: (1) a change in location using heavy-tailed $t_2$ data (stored below in `Y1`), and (2) a Gaussian with a change only in the tail  (stored in `Y2`), where values with absolute values greater than 2 are shifted up by 20. We then run the non-parametric detector online on both data sets, and store the trace of both statistics for comparison. In Figure \ref{fig-npfocus} we plot the resulting statistic traces in both scenarios together with the data.
 
 ```{r}
 #| echo: false
@@ -888,7 +882,7 @@ ggplot(df_plot) +
 
 To create an AR(p) detector, one must specify the AR coefficients $\rho = (\rho_1, \ldots, \rho_p)$ of the underlying process. These can be estimated from historical data. Additionally, if the pre-change mean is known, it can be provided to the detector for more efficient pruning, though this must be specified at detector creation time via the `mu0_arp` argument.
 
-To illustrate changepoint detection in AR processes, we first generate data from an AR(2) process with a change in mean. We start by specifying the AR coefficients:
+As an example, we first generate data from an AR(2) process with a change in mean. We start by specifying the AR coefficients and generating some data:
 
 ```{r}
 #| prompt: true
@@ -899,7 +893,7 @@ Y_post <- 2 + arima.sim(n = 100, model = list(ar = ar_coefs), sd = 1)
 Y <- c(Y_pre, Y_post)
 ```
 
-We now run the AR($p$) detector online on this data. For this illustration we estimate the AR coefficients from a probation period of 1000 observations, as in real-world applications these can be estimated from historical data. We plot the resulting statistic trace together with the data in Figure \ref{fig-arp_detection}.
+We then run the AR($p$) detector online on this data. For this illustration we estimate the AR coefficients from a probation period of 1000 observations, as in real-world applications these can be estimated from historical data. We plot the resulting statistic trace together with the data in Figure \ref{fig-arp_detection}.
 ```{r}
 #| prompt: true
 
@@ -915,7 +909,6 @@ for (i in 1001:length(Y)) {
 tail(result$stat)
 ```
 
-We start the loop from 1001, as the first 1000 observations are used for estimation of the AR coefficients and are not processed by the detector.
 
 ```{r}
 #| label: fig-arp_detection
@@ -1068,12 +1061,8 @@ if (file.exists(file_path)) {
 }
 ```
 
-Then to calibrate our threshold, we 
-\begin{enumerate}
-\item resample uniformly at random 640 games prior to 2010 (each NBA regular season is made up of 64 games)
-\item compute the test statistics at all time-points.
-\item recover the maximum
-\end{enumerate}
+Then to calibrate our threshold, we (1) resample uniformly at random 640 games prior to 2010 (each NBA regular season is made up of 64 games), (2) compute the test statistics at all time-points, and (3) recover the maximum.
+
 We repeated this a thousand times and picked our threshold as the 99% quantile.
 
 ```{r}
