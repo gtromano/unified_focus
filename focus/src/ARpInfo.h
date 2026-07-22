@@ -101,9 +101,9 @@ public:
 private:
 
   static std::vector<double> normalise_rho(const std::vector<double>& rho) {
-    if (rho.size() == 1) {
-      return std::vector<double>{rho[0], 0.0};
-    }
+    // if (rho.size() == 1) {
+    //   return std::vector<double>{rho[0], 0.0};
+    // }
     return rho;
   }
 
