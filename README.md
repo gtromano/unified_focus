@@ -94,9 +94,32 @@ print("Estimated changepoint:", res["detected_changepoint"])
 
 * Vincent Runge: [email](mailto:vincent.runge@univ-evry.fr) (**Author**)
 
+* Idris A. Eckley: [email](mailto:i.eckley@lancaster.ac.uk) (**Author**)
+
 * Paul Fearnhead: [email](mailto:p.fearnhead@lancaster.ac.uk) (**Author**)
 
-* Idris A. Eckley: [email](mailto:i.eckley@lancaster.ac.uk) (**Author**)
+
+The software paper is available on arXiv: [https://arxiv.org/abs/2607.19961](https://arxiv.org/abs/2607.19961). 
+
+<div id="ref-pishchagina2023online" class="csl-entry">
+
+Romano, Gaetano, Kes Ward, Yuntang Fan, Guillem Rigaill, Vincent Runge, Idris A. Eckley, and Paul Fearnhead. 2026.
+“focus and focus-cpt: Fast Online Changepoint Detection in R and Python.” *arXiv preprint arXiv:2607.19961*. <https://arxiv.org/abs/2607.19961>
+
+</div>
+
+To reference the software in publications, please cite the following:
+
+```BibTeX
+@Article{,
+  title = {focus and focus-cpt: Fast Online Changepoint Detection in R and Python},
+  author = {Gaetano Romano and Kes Ward and Yuntang Fan and Guillem Rigaill and Vincent Runge and Idris A. Eckley and Paul Fearnhead},
+  journal = {arXiv preprint arXiv:2602.04322},
+  year = {2026},
+  url = {https://arxiv.org/abs/2607.19961},
+}
+```
+
 
 ### External libraries
 

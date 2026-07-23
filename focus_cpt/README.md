@@ -58,6 +58,12 @@ analysis.
 
 ## Installation
 
+You can install the stable version of **focus-cpt** from PyPI with:
+
+``` bash
+pip install focus-cpt
+```
+
 You can install the development version of **focus** from source with:
 
 ``` bash
@@ -744,13 +750,39 @@ print(f"Online time:  {online_time:.2f}s")
 print(f"Offline is {online_time / offline_time:.1f}× faster")
 ```
 
-    Offline time: 0.19s
+    Offline time: 0.20s
     Online time:  0.33s
     Offline is 1.7× faster
 
 ------------------------------------------------------------------------
 
 ## References
+
+The software paper is available on arXiv:
+<https://arxiv.org/abs/2607.19961>.
+
+<div id="ref-pishchagina2023online" class="csl-entry">
+
+Romano, Gaetano, Kes Ward, Yuntang Fan, Guillem Rigaill, Vincent Runge,
+Idris A. Eckley, and Paul Fearnhead. 2026. “focus and focus-cpt: Fast
+Online Changepoint Detection in R and Python.” *arXiv preprint
+arXiv:2607.19961*. <https://arxiv.org/abs/2607.19961>
+
+</div>
+
+To reference the software in publications, please cite the following:
+
+``` bibtex
+@Article{,
+  title = {focus and focus-cpt: Fast Online Changepoint Detection in R and Python},
+  author = {Gaetano Romano and Kes Ward and Yuntang Fan and Guillem Rigaill and Vincent Runge and Idris A. Eckley and Paul Fearnhead},
+  journal = {arXiv preprint arXiv:2602.04322},
+  year = {2026},
+  url = {https://arxiv.org/abs/2607.19961},
+}
+```
+
+Other relevant references include:
 
 <div id="ref-pishchagina2023online" class="csl-entry">
 
@@ -804,10 +836,10 @@ Detection for Exponential Family Models.” *Statistics and Computing* 34
 
 - Vincent Runge: [email](mailto:vincent.runge@univ-evry.fr) (**Author**)
 
+- Idris A. Eckley: [email](mailto:i.eckley@lancaster.ac.uk) (**Author**)
+
 - Paul Fearnhead: [email](mailto:p.fearnhead@lancaster.ac.uk)
   (**Author**)
-
-- Idris A. Eckley: [email](mailto:i.eckley@lancaster.ac.uk) (**Author**)
 
 ## License
 
