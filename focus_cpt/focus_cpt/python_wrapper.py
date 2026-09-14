@@ -173,7 +173,7 @@ class Detector:
         family: str,
         theta0: Optional[Union[float, List[float], np.ndarray]] = None,
         shape: Optional[float] = None,
-    ) -> Dict[str, Any]:
+    ) -> "DetectorStatistics":
         """Compute the current changepoint statistic.
 
         Parameters
@@ -200,11 +200,13 @@ class Detector:
 
         Returns
         -------
-        dict
-            A dictionary with keys:
-            - ``'stopping_time'``: int, number of observations processed
-            - ``'changepoint'``: int or ``None``, detected changepoint location (1-based), or ``None``
-            - ``'stat'``: float or numpy array, the computed test statistic(s)
+        DetectorStatistics
+            A dictionary, with a compact printed representation, with keys:
+            - ``'stopping_time'``: float, number of observations processed
+            - ``'changepoint'``: float or ``None``, estimated changepoint location
+              (index of the last pre-change observation), or ``None``
+            - ``'stat'``: float, numpy array or ``None``, the test statistic(s)
+            The values are also available as attributes, e.g. ``result.stat``.
 
         Notes
         -----
@@ -228,8 +230,8 @@ class Detector:
         # Convert singleton stats to scalar
         stat = result.get("stat")
         if isinstance(stat, np.ndarray) and stat.size == 1:
-            result["stat"] = float(stat)
-        return result
+            result["stat"] = float(stat.item())
+        return DetectorStatistics(result, family=family)
 
     def get_n_candidates(self) -> int:
         """Return the number of candidate segments currently tracked."""
@@ -269,6 +271,237 @@ class Detector:
 
     def __repr__(self) -> str:
         return f"Detector(type='{self._type}', n={self.get_n()}, n_candidates={self.get_n_candidates()})"
+
+
+def _format_number(x: Any, missing: str = "not available") -> str:
+    """Format a scalar compactly: integers without decimals, else 4 significant digits."""
+    if x is None:
+        return missing
+    x = float(x)
+    if np.isfinite(x) and x.is_integer():
+        return str(int(x))
+    return f"{x:.4g}"
+
+
+def _field(label: str, value: Any) -> str:
+    """One ``label: value`` line, with the values aligned."""
+    return f"  {label + ':':<15}{value}"
+
+
+def _stat_names(n_stats: int, family: Optional[str]) -> List[str]:
+    if family == "npfocus" and n_stats == 2:
+        return ["sum", "max"]
+    if n_stats == 1:
+        return ["stat"]
+    return [f"stat{i + 1}" for i in range(n_stats)]
+
+
+def _family_label(family: str, shape: Optional[float]) -> str:
+    if family == "gamma" and shape is not None:
+        return f"gamma (shape = {_format_number(shape)})"
+    return family
+
+
+def _detection_label(detection_time: Optional[float], changepoint: Optional[float]) -> str:
+    if detection_time is None:
+        return "none"
+    label = f"at time {_format_number(detection_time)}"
+    if changepoint is not None:
+        label += f" (changepoint estimate: {_format_number(changepoint)})"
+    return label
+
+
+def _item(key: str, doc: str) -> property:
+    """Read-only attribute access to a dictionary item."""
+    return property(lambda self: self[key], doc=doc)
+
+
+class DetectorStatistics(dict):
+    """Changepoint statistics returned by :meth:`Detector.get_statistics`.
+
+    A dictionary with keys ``'stopping_time'``, ``'changepoint'`` and
+    ``'stat'``, whose values are also available as attributes (e.g.
+    ``result.stat``). The family used to compute the statistics is stored in
+    ``family``. Printing the object gives a compact summary, as the ``print``
+    method of the R class ``focus_statistics``.
+    """
+
+    stopping_time = _item("stopping_time", "Current time index (number of observations processed).")
+    changepoint = _item("changepoint", "Estimated changepoint location, or ``None``.")
+    stat = _item("stat", "Test statistic(s): float, numpy array (``npfocus``) or ``None``.")
+
+    def __init__(self, values=(), family: Optional[str] = None):
+        super().__init__(values)
+        self.family = family
+
+    def __repr__(self) -> str:
+        header = "focus statistics"
+        if self.family is not None:
+            header += f" (family: {self.family})"
+        if self.stat is None or np.ndim(self.stat) == 0:
+            label, value = "statistic", _format_number(self.stat)
+        else:
+            values = np.ravel(self.stat)
+            names = _stat_names(values.size, self.family)
+            label = "statistics"
+            value = ", ".join(f"{k} = {_format_number(v)}" for k, v in zip(names, values))
+        return "\n".join([
+            header,
+            _field("stopping time", _format_number(self.stopping_time)),
+            _field("changepoint", _format_number(self.changepoint)),
+            _field(label, value),
+        ])
+
+
+class OfflineResult(dict):
+    """Result of :func:`focus_offline`.
+
+    A dictionary with keys ``'stat'``, ``'changepoint'``, ``'detection_time'``,
+    ``'detected_changepoint'``, ``'candidates'``, ``'threshold'``, ``'n'``,
+    ``'type'``, ``'family'`` and ``'shape'`` (see :func:`focus_offline`), whose
+    values are also available as attributes. Printing the object describes the
+    detection, :meth:`summary` summarises the test statistics and :meth:`plot`
+    draws their trace, as the ``print``, ``summary`` and ``plot`` methods of the
+    R class ``focus_offline``.
+    """
+
+    stat = _item("stat", "Test statistics over time, array of shape (n, n_stats).")
+    changepoint = _item("changepoint", "Changepoint estimate at each time (``None`` if not available).")
+    detection_time = _item("detection_time", "Time of the first detection, or ``None``.")
+    detected_changepoint = _item("detected_changepoint", "Changepoint estimate at detection, or ``None``.")
+    candidates = _item("candidates", "Candidate segments at the end of the run.")
+    threshold = _item("threshold", "Threshold(s) used for detection.")
+    n = _item("n", "Number of observations processed.")
+    type = _item("type", "Detector type.")
+    family = _item("family", "Distribution family.")
+    shape = _item("shape", "Shape parameter (gamma family), or ``None``.")
+
+    def __repr__(self) -> str:
+        return "\n".join([
+            "focus offline detection",
+            _field("detector type", self.type),
+            _field("family", _family_label(self.family, self.shape)),
+            _field("observations", _format_number(self.n)),
+            _field("threshold", ", ".join(_format_number(t) for t in np.ravel(self.threshold))),
+            _field("detection", _detection_label(self.detection_time, self.detected_changepoint)),
+        ])
+
+    def summary(self) -> "OfflineSummary":
+        """Summarise the test statistics.
+
+        Returns
+        -------
+        OfflineSummary
+            A dictionary with the detector type, family, shape, number of
+            observations, detection time, detected changepoint and number of
+            final candidates (``'n_candidates'``), and ``'statistics'``: a list
+            with, for each test statistic, its maximum over time, the (1-based)
+            time of the maximum, the changepoint estimate at that time and the
+            threshold.
+        """
+        stat = np.asarray(self.stat, dtype=np.float64)
+        if stat.ndim == 1:
+            stat = stat[:, None]
+        n_obs, n_stats = stat.shape
+        threshold = np.ravel(self.threshold)
+        if threshold.size == 1:
+            threshold = np.repeat(threshold, n_stats)
+        rows = []
+        for j, name in enumerate(_stat_names(n_stats, self.family)):
+            row = {"statistic": name, "max": None, "time_of_max": None,
+                   "changepoint_at_max": None, "threshold": float(threshold[j])}
+            if n_obs > 0:
+                t = int(np.argmax(stat[:, j]))
+                cp = self.changepoint[t]
+                row.update(max=float(stat[t, j]), time_of_max=t + 1,
+                           changepoint_at_max=None if cp is None else float(cp))
+            rows.append(row)
+        return OfflineSummary({
+            "type": self.type,
+            "family": self.family,
+            "shape": self.shape,
+            "n": self.n,
+            "detection_time": self.detection_time,
+            "detected_changepoint": self.detected_changepoint,
+            "n_candidates": len(self.candidates["tau"]),
+            "statistics": rows,
+        })
+
+    def plot(self, ax=None, **kwargs):
+        """Plot the trace of the test statistic(s) over time.
+
+        Finite thresholds are drawn as dashed horizontal lines and, if a
+        detection occurred, the detection time and the estimated changepoint as
+        dotted vertical lines. Requires ``matplotlib``.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            Axes to draw on. By default, a new figure is created.
+        **kwargs
+            Passed to ``ax.plot`` for the statistic traces.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+        """
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError as err:
+            raise ImportError("OfflineResult.plot() requires matplotlib "
+                              "(pip install matplotlib)") from err
+        if ax is None:
+            _, ax = plt.subplots()
+        stat = np.asarray(self.stat, dtype=np.float64)
+        if stat.ndim == 1:
+            stat = stat[:, None]
+        lines = ax.plot(np.arange(1, stat.shape[0] + 1), stat, **kwargs)
+        threshold = np.ravel(self.threshold)
+        if threshold.size == 1:
+            if np.isfinite(threshold[0]):
+                ax.axhline(threshold[0], linestyle="--", color="black")
+        else:
+            for line, thr in zip(lines, threshold):
+                if np.isfinite(thr):
+                    ax.axhline(thr, linestyle="--", color=line.get_color())
+        if self.detection_time is not None:
+            ax.axvline(self.detection_time, linestyle=":", color="black")
+        if self.detected_changepoint is not None:
+            ax.axvline(self.detected_changepoint, linestyle=":", color="grey")
+        if len(lines) > 1:
+            for line, name in zip(lines, _stat_names(len(lines), self.family)):
+                line.set_label(name)
+            ax.legend(frameon=False)
+        ax.set_xlabel("Time")
+        ax.set_ylabel("Statistic")
+        return ax
+
+
+class OfflineSummary(dict):
+    """Summary of an :class:`OfflineResult`, as returned by :meth:`OfflineResult.summary`."""
+
+    def __repr__(self) -> str:
+        lines = [
+            "focus offline detection: summary",
+            _field("detector type", self["type"]),
+            _field("family", _family_label(self["family"], self["shape"])),
+            _field("observations", _format_number(self["n"])),
+            _field("detection", _detection_label(self["detection_time"], self["detected_changepoint"])),
+            _field("candidates", self["n_candidates"]),
+            "",
+            "Statistics:",
+        ]
+        header = ["", "max", "time of max", "changepoint at max", "threshold"]
+        table = [header] + [
+            [row["statistic"]] + [_format_number(row[key], "None")
+                                  for key in ("max", "time_of_max", "changepoint_at_max", "threshold")]
+            for row in self["statistics"]
+        ]
+        widths = [max(len(row[i]) for row in table) for i in range(len(header))]
+        for row in table:
+            cells = [row[0].ljust(widths[0])] + [c.rjust(w) for c, w in zip(row[1:], widths[1:])]
+            lines.append(" ".join(cells))
+        return "\n".join(lines)
 
 
 def generate_projection_indexes(d: int, p: int) -> List[np.ndarray]:
@@ -311,7 +544,7 @@ def focus_offline(
     anomaly_intensity: Optional[float] = None,
     rho: Optional[Union[List[float], np.ndarray]] = None,
     mu0_arp: Optional[float] = None,
-) -> Dict[str, Any]:
+) -> OfflineResult:
     """
     Run the FOCuS detector in batch/offline mode (entirely in C++).
 
@@ -361,8 +594,9 @@ def focus_offline(
     
     Returns
     -------
-    dict
-        Detection results with keys:
+    OfflineResult
+        Detection results: a dictionary (with a compact printed representation
+        and ``summary()`` and ``plot()`` methods) with keys:
         - 'stat': array, test statistics over time (n_obs x n_stats)
         - 'changepoint': array, detected changepoints at each time (or None for None)
         - 'detection_time': int or None, time of first detection
@@ -429,7 +663,14 @@ def focus_offline(
 
     cp = result["changepoint"]
     result["changepoint"] = np.where(cp == -1, None, cp)
-    return result
+    return OfflineResult(result)
 
 
-__all__ = ["Detector", "generate_projection_indexes", "focus_offline"]
+__all__ = [
+    "Detector",
+    "DetectorStatistics",
+    "OfflineResult",
+    "OfflineSummary",
+    "generate_projection_indexes",
+    "focus_offline",
+]

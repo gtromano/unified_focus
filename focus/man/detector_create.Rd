@@ -2,7 +2,7 @@
 % Please edit documentation in R/RcppExports.R
 \name{detector_create}
 \alias{detector_create}
-\title{Create a FOCuS changepoint detector}
+\title{Create a FOCuS Changepoint Detector}
 \usage{
 detector_create(
   type,
@@ -27,8 +27,9 @@ detector_create(
 }}
 
 \item{dim_indexes}{List of integer vectors specifying projection index sets
-for high-dimensional multivariate detectors. Not required for sequences of dimentions less than 5.
- Each element is a vector of 0-based column indices. Default is \code{NULL}.}
+for high-dimensional multivariate detectors (not required for data with
+at most 5 dimensions). Each element is a vector of 0-based column indices.
+Default is \code{NULL}.}
 
 \item{quantiles}{Numeric vector of quantiles for nonparametric
 (\code{"npfocus"}) detectors. Required when \code{type = "npfocus"}.
@@ -57,9 +58,13 @@ the known pre-change parameter. Only used when \code{type = "arp"}.
 Default is \code{NULL}.}
 }
 \value{
-An external pointer (SEXP) to the detector object. This should be
-  passed to other detector functions like \code{\link{detector_update}()} and
-  \code{\link{get_statistics}()}.
+An object of class \code{"focus_detector"}: an external pointer to
+  the state of the C++ detector, which is updated in place. It should be
+  passed to the other detector functions, such as
+  \code{\link{detector_update}()} and \code{\link{get_statistics}()}. A
+  \code{print} method is available, see \code{\link{focus-methods}}. As
+  external pointers, detectors cannot be saved and restored across \R
+  sessions.
 }
 \description{
 Creates an online (sequential) changepoint detector object that provides
@@ -72,34 +77,39 @@ The detector maintains sufficient statistics internally and uses pruning
 to efficiently track candidate changepoints. The \code{pruning_mult} and
 \code{pruning_offset} parameters control the pruning strategy.
 
-AutoRegressive Process (ARP):
+\strong{AutoRegressive Process (ARP).}
 When \code{type = "arp"}, the \code{rho} parameter must be provided as a numeric
 vector of AR coefficients (lag-1, lag-2, ..., lag-p). The detector then computes
 statistics optimal for detecting changepoints in AR(p) processes. Use
 \code{get_statistics(family = "arp")} to retrieve the test statistics.
-The optional \code{theta0} parameter specifies the pre-change mean and is tied
+The optional \code{mu0_arp} parameter specifies the pre-change mean and is tied
 to the pruning logic: if provided, it enables more efficient pruning by allowing
 the algorithm to filter candidates based on the known pre-change parameter.
 
-High-dimentional multivariate detectors:
-For high-dimensional multivariate detection, computing the full hull would be too prohibitive.
-Additionally, the complexity is expected to be log(n)^p, where n is the number of iterations and p is the
-dimensions. So for short, high-dimentional sequences, it is possible to reconstruct the set of changepoint
-locations by approximating the hull on projections in smaller dimentions.  \code{dim_indexes} specifies which dimensions
-to use for each projection of the convex hull for pruning. Use \code{generate_projection_indexes()} to
-generate systematic projection sets.
+\strong{High-dimensional multivariate detectors.}
+For high-dimensional multivariate detection, computing the full convex hull
+is prohibitive, as the expected number of candidates grows as
+\eqn{\log(n)^p}{log(n)^p}, where \eqn{n} is the number of observations and
+\eqn{p} the number of dimensions. The set of candidate changepoints can then
+be approximated by computing the hull on lower-dimensional projections:
+\code{dim_indexes} specifies which dimensions to use for each projection.
+Use \code{\link{generate_projection_indexes}()} to generate systematic
+projection sets.
 
-NPFOCuS:
-  For non-parametric detection one needs to set \code{detector(type = "npfocus")} and the cost can be computed as \code{get_statistics(family = "npfocus")}.
-  Any other cost will not work with this detector type. The \code{quantiles} vector argument is required, see \code{\link{get_statistics}()} for details.
+\strong{NPFOCuS.}
+For non-parametric detection, create the detector with
+\code{detector_create(type = "npfocus", quantiles = ...)} and compute the
+statistics with \code{get_statistics(family = "npfocus")}. No other family
+can be used with this detector type.
 }
 \examples{
 # Univariate detector
 det <- detector_create(type = "univariate")
-detector_update(det, 0.5)
-detector_update(det, 1.2)
+det <- detector_update(det, 0.5)
+det <- detector_update(det, 1.2)
+det
 r <- get_statistics(det, family = "gaussian")
-print(r)
+r
 
 ## Online (sequential) example
 # Generate data with a changepoint

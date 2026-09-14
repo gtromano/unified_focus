@@ -61,6 +61,12 @@
       \code{detector_cands_len()}, \code{detector_candidates()}.
   }
 
+  The detector, the statistics and the offline results are S3 objects of
+  class \code{"focus_detector"}, \code{"focus_statistics"} and
+  \code{"focus_offline"}, respectively, with \code{print} methods and, for
+  offline results, \code{summary} and \code{plot} methods; see
+  \code{\link{focus-methods}}.
+
 }
 \author{
   Gaetano Romano [aut, cre], \email{g.romano@lancaster.ac.uk}\\

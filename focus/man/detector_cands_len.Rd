@@ -2,12 +2,12 @@
 % Please edit documentation in R/RcppExports.R
 \name{detector_cands_len}
 \alias{detector_cands_len}
-\title{Get number of candidate segments}
+\title{Get the Number of Candidate Segments}
 \usage{
 detector_cands_len(det_ptr)
 }
 \arguments{
-\item{det_ptr}{External pointer to detector created by
+\item{det_ptr}{A \code{"focus_detector"} object created by
 \code{\link{detector_create}()}.}
 }
 \value{

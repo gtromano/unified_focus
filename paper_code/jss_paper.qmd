@@ -118,7 +118,7 @@ the GLR statistic exactly, without any approximation, but does so with a per-ite
 
 Methodologies based on [focus]{.pkg} are already being trialled in diverse areas, from detecting astrophysical events on satellites \citep{dilillo2024gamma}, to monitoring IoT networks \citep{yang2024communication} and digital infrastructure \citep{romano2023log}. This paper and software package arise from the need to provide a common interface to the [focus]{.pkg} family, that could be of use to practitioners.
 
-One particular aspect of this implementation is that the [R]{.proglang} and [Python]{.proglang} interfaces share the same underlying [C++]{.proglang} backend, implementing the algorithms, and therefore show parity of functionalities and produce identical results. Across the two interfaces, available on [CRAN](https://cran.r-project.org/web/packages/focus/index.html) as [focus]{.pkg} and on [PyPI](https://pypi.org/project/focus-cpt/0.1.1/) as [focus-cpt]{.pkg}, there are only minor differences in interface design philosophy (e.g., the update mechanism is more functional in [R]{.proglang}, while it is more object-oriented in [Python]{.proglang}). For this reason, in the description of the interface in this article, we will provide code through the [R]{.proglang} interface and highlight differences in the [Python]{.proglang} interface where relevant in bold (as most of the function calls are exactly the same). We will give a detailed overview of what differs in Appendix \ref{sec_python_interface} and have a couple of [Python]{.proglang} examples in Section \ref{sec_real_time_applications}. [Python]{.proglang} users should therefore not be discouraged from reading the main part of the article as well. On the same note, a certain degree of repetition is somewhat unavoidable in the article, as we want to provide examples of several types of detectors across both interfaces. To save space, code dedicated to plotting, printing, some tuning, and data preparation has been hidden from the code chunks; however, it is fully available on GitHub at \url{https://github.com/gtromano/unified_focus/tree/main/paper_code} as a reproducible [Quarto](https://quarto.org/) notebook.
+One particular aspect of this implementation is that the [R]{.proglang} and [Python]{.proglang} interfaces share the same underlying [C++]{.proglang} backend, implementing the algorithms, and therefore show parity of functionalities and produce identical results. Across the two interfaces, available on [CRAN](https://cran.r-project.org/web/packages/focus/index.html) as [focus]{.pkg} and on [PyPI](https://pypi.org/project/focus-cpt/) as [focus-cpt]{.pkg}, there are only minor differences in interface design philosophy (e.g., the update mechanism is more functional in [R]{.proglang}, while it is more object-oriented in [Python]{.proglang}). For this reason, in the description of the interface in this article, we will provide code through the [R]{.proglang} interface and highlight differences in the [Python]{.proglang} interface where relevant in bold (as most of the function calls are exactly the same). We will give a detailed overview of what differs in Appendix \ref{sec_python_interface} and have a couple of [Python]{.proglang} examples in Section \ref{sec_real_time_applications}. [Python]{.proglang} users should therefore not be discouraged from reading the main part of the article as well. On the same note, a certain degree of repetition is somewhat unavoidable in the article, as we want to provide examples of several types of detectors across both interfaces. To save space, code dedicated to plotting, printing, some tuning, and data preparation has been hidden from the code chunks; however, it is fully available in the replication materials accompanying this article (plain [R]{.proglang} and [Python]{.proglang} scripts reproducing all results and figures), as well as on GitHub at \url{https://github.com/gtromano/unified_focus/tree/main/paper_code} as a reproducible [Quarto](https://quarto.org/) notebook.
 
 The rest of the article is structured as follows. In Section \ref{sec_algorithm}, we provide a high-level description of the algorithms implemented in the package, and in Section \ref{sec_interface}, we describe the interfaces in detail. In Section \ref{sec_use_cases}, we provide simulated examples of common use cases of the package. Finally, in Section \ref{sec_real_time_applications}, we provide some examples of real-time applications of the package, showcasing its potential in various domains.
 
@@ -364,12 +364,23 @@ This is possible thanks to the fact that both functions return the detector obje
 options(prompt = ">>> ", continue = "... ")
 ```
 **For [Python]{.proglang} readers.** The pipe operator `|>` syntax in [R]{.proglang} will be useful as well to aid reading for [Python]{.proglang} users. This is because it is more syntactically similar to the method chaining in [Python]{.proglang}, so most of the code can be directly adapted to [Python]{.proglang} by simply replacing the pipe operator with method calls on the detector object, e.g.:
-```{python, eval=FALSE}
+```{python}
+#| include: false
+
+import numpy as np
+from focus_cpt import Detector
+
+np.random.seed(42)
+Y = np.concatenate([np.random.randn(100), np.random.randn(50) + 1])
+det = Detector(type="univariate")
+i = 0
+```
+
+```{python}
 #| prompt: true
 
-result = (det
-          .detector_update(Y[i])
-          .get_statistics(family="gaussian"))
+det.update(Y[i])
+result = det.get_statistics(family="gaussian")
 ```
 
 ```{r}
@@ -392,8 +403,7 @@ A detector is the core object of the package, and it holds the current state of 
 
 To initialise a detector, one can simply call `detector_create`:
 
-```{r}
-#| eval: false
+```
 detector_create(type, dim_indexes = NULL, quantiles = NULL,
   pruning_mult = 2L, pruning_offset = 1L, side = "right",
   anomaly_intensity = NULL, rho = NULL, mu0_arp = NULL
@@ -424,8 +434,7 @@ The detector object returned by `detector_create` is passed to subsequent functi
 
 To update a detector at every iteration, one should call `detector_update` with the new data point, and the detector object from the previous iteration.
 
-```{r}
-#| eval: false
+```
 detector_update(det_ptr, y, lambda=1)
 ```
 
@@ -451,14 +460,13 @@ det_uni <- det_uni |> detector_update(0.1)
 print(det_uni)
 ```
 
-The output `<pointer: 0x...>` indicates that the detector object is an external pointer to the underlying C++ implementation (printing the hexadecimal address uniquely identifies the detector instance being referenced). It is important to note that detector objects maintain mutable state, meaning that all variables pointing to the same detector instance share that state. For example, if you assign the result of `detector_update` to different variables (e.g., `det_uni1 <- detector_update(det_uni, 0.5)` and `det_uni2 <- detector_update(det_uni1, 0.1)`), both `det_uni1` and `det_uni2` reference the same underlying C++ object. In \proglang{R}, the return is not strictly necessary to update the detector, as the update is performed in place, so one could simply call `detector_update(det_uni, 0.5)` without assignment, and the state of `det_uni` would still be updated. However, we return the detector object for consistency with the pipe operator and to allow for chaining of operations.
+The detector object is an external pointer to the underlying C++ implementation, of S3 class `focus_detector`, whose `print` method reports the detector type, the number of observations processed and the number of candidate changepoints currently stored. It is important to note that detector objects maintain mutable state, meaning that all variables pointing to the same detector instance share that state. For example, if you assign the result of `detector_update` to different variables (e.g., `det_uni1 <- detector_update(det_uni, 0.5)` and `det_uni2 <- detector_update(det_uni1, 0.1)`), both `det_uni1` and `det_uni2` reference the same underlying C++ object. In \proglang{R}, the return is not strictly necessary to update the detector, as the update is performed in place, so one could simply call `detector_update(det_uni, 0.5)` without assignment, and the state of `det_uni` would still be updated. However, we return the detector object for consistency with the pipe operator and to allow for chaining of operations.
 
 ### Compute Statistics {#sec_statistics}
 
 As explained in Section \ref{sec_algorithm}, the `get_statistics` function computes the log-likelihood ratio test statistic from the set of optimal changepoints at the current time. Therefore, in a normal workflow, at every iteration, one should call `get_statistics` with the updated detector object and the cost function parameters, and compare the resulting statistic against a threshold to decide whether to declare a changepoint.
 
-```{r}
-#| eval: false
+```
 get_statistics(det_ptr, family, theta0 = NULL, shape = NULL)
 ```
 
@@ -483,6 +491,8 @@ The function returns a list (or a dictionary, in [Python]{.proglang}) with the f
 -   `changepoint`: The current best estimate of the changepoint location, if there is a change. This is the $\hat\tau_n$ defined in Section \ref{sec_update_pruning}.
 -   `stat`: Numeric scalar or vector. The test statistic(s). This is either a scalar value (e.g. in univariate or multivariate), or a vector (for instance, in case of an `npfocus` detector).
 
+The returned list is an object of class `focus_statistics`, whose `print` method gives a compact summary of these components (in [Python]{.proglang}, the returned dictionary is a `DetectorStatistics` object, with an equivalent printed representation).
+
 An important aspect of the implementation is that one can test multiple cost functions on the same detector object, as the statistics computation is independent of the detector state. This allows for model comparison without needing to rerun the detector.
 
 For example, on the detector initialised and updated in the previous section, below we compute the Gaussian and Gamma statistics:
@@ -504,8 +514,7 @@ Beyond computing the test statistics, the package provides several functions to 
 
 The detector maintains a set of candidate changepoint and summary statistics. Two functions are provided to access this information:
 
-```{r}
-#| eval: false
+```
 detector_candidates(det_ptr)
 detector_cands_len(det_ptr)
 ```
@@ -535,8 +544,7 @@ print(head(candidates))
 
 The following two functions provide access to the sufficient statistics for the full data sequence. These are needed to efficiently compute ($\mathcal{O}(1)$ complexity) the log-likelihood values $q_{\tau,n}(\theta_0,\theta_1)$ of user defined functions given candidate changepoints $\tau \in D_n$ without reprocessing the raw data via telescopic sum cancellations (i.e. $\sum_{t=1}^n T(y_t) - \sum_{t=1}^\tau T(y_t) = \sum_{t=\tau+1}^n T(y_t)$).
 
-```{r}
-#| eval: false
+```
 detector_info_n(det_ptr)
 detector_info_sn(det_ptr)
 ```
@@ -552,7 +560,7 @@ For example:
 
 n <- detector_info_n(det)
 cumsum_stat <- detector_info_sn(det)
-sprintf("n")
+sprintf("%d", n)
 sprintf("%.3f", cumsum_stat)
 ```
 
@@ -560,9 +568,7 @@ sprintf("%.3f", cumsum_stat)
 
 `focus_offline` runs the complete changepoint detection algorithm over a whole data set in a single call. The primary use of `focus_offline`  is for computation of the threshold, as seen later in the examples of Sections \ref{sec_use_cases}, and for retrospective analysis. Compared to the online interface, the offline call avoids repeated [R]{.proglang}-to-C++ crossings and is therefore (slightly) more efficient.
 
-```{r}
-#| eval: false
-
+```
 focus_offline(Y, threshold, type = "univariate", family = "gaussian",
   theta0 = NULL, dim_indexes = NULL, quantiles = NULL,
   pruning_mult = 2L, pruning_offset = 1L, side = "right",
@@ -575,6 +581,8 @@ focus_offline(Y, threshold, type = "univariate", family = "gaussian",
 The `focus_offline` function takes as input the observed data `Y` (a numeric vector for univariate problems or an $\mathbb{R}^{n \times d}$ matrix for multivariate problems), a detection threshold, and a set of detector configuration and cost function parameters. Since most arguments of `focus_offline` mirror those of the online interface (combining the arguments of `detector_create` and `get_statistics`), we only describe the `threshold` argument. For other detector type and cost function parameters, refer to Sections \ref{sec_detectors} and \ref{sec_statistics}, respectively.
 
 `threshold` specifies detection threshold(s) as either a scalar (applied to all statistics) or a numeric vector (one threshold per statistic). Setting `threshold = Inf` disables early stopping and returns the full statistic traces (useful for thresholding) and changepoint estimates at every time step. With finite threshold(s), the algorithm terminates at the first time any statistic exceeds its corresponding threshold, mirroring the online loop's stopping behaviour. For multivariate detectors, the implementation computes multiple statistics (one per projection or per configured statistic) and triggers a detection when any of these crosses its threshold.
+
+The returned list is an object of class `focus_offline`, with `print`, `summary` and `plot` methods, which respectively describe the run, summarise the statistics (e.g., their maximum and the time at which it is attained), and plot their trace together with the threshold and the detection (in [Python]{.proglang}, `focus_offline` returns an `OfflineResult` dictionary with equivalent methods).
 
 For example, the equivalent of the Gaussian change-in-mean online loop described in the previous section can be achieved in the offline mode by calling `focus_offline` with the same cost function parameters:
 ```{r}
@@ -1016,7 +1024,7 @@ get_stat_meanvar <- function(det_ptr, min_var=1) {
 
 ```
 Then for training and testing we first recover all the Cleveland Cavaliers
-game from 2000 to 2025.
+game from 2000 to 2025. These data were sourced via the \pkg{nbastatR} package (available on GitHub at \url{https://github.com/abresler/nbastatR}), and are provided as a data set (`cle_data.rds`) in the replication materials.
 ```{r load-nba-data}
 #| echo: false
 #| warnings: false
@@ -1024,44 +1032,10 @@ game from 2000 to 2025.
 
 library(dplyr)
 
-file_path <- "paper_data/cle_data.rds"
-
-if (file.exists(file_path)) {
-  dat <- readRDS(file_path)
-} else {
-  library(nbastatR)
-  getDataTeam <- function(slugteam) {
-    T_gamelog_reg <-
-      suppressWarnings(
-        game_logs(
-          seasons = 2000:2025,
-          league = "NBA",
-          result_types = "team",
-          season_types = "Regular Season"
-        )
-      )
-    dat_team <- T_gamelog_reg |> dplyr::filter(slugTeam == slugteam)  |>
-      select(
-        yearSeason,
-        slugSeason,
-        typeSeason,
-        dateGame,
-        nameTeam,
-        slugTeam,
-        isWin,
-        ptsTeam,
-        plusminusTeam
-      ) |>
-      mutate(monthGame = format(as.Date(dateGame), "%Y-%m"))
-    dat_team
-  }
-  
-  dat <- getDataTeam("CLE")
-  saveRDS(dat, file_path)
-}
+dat <- readRDS("paper_data/cle_data.rds")
 ```
 
-Then to calibrate our threshold, we (1) resample uniformly at random 640 games prior to 2010 (each NBA regular season is made up of 64 games), (2) compute the test statistics at all time-points, and (3) recover the maximum.
+Then to calibrate our threshold, we (1) resample uniformly at random, with replacement, 1000 games prior to 2010, (2) compute the test statistics at all time-points, and (3) recover the maximum.
 
 We repeated this a thousand times and picked our threshold as the 99% quantile.
 
@@ -1073,6 +1047,7 @@ We repeated this a thousand times and picked our threshold as the 99% quantile.
 library(furrr)
 plan(multisession, workers = 8)
 
+set.seed(123)
 dat_past <- dat %>% filter(yearSeason <= 2010, typeSeason == "Regular Season")
 
 y <- future_map(1:10^3, \(i) {
@@ -1085,7 +1060,6 @@ y <- future_map(1:10^3, \(i) {
     detector_update(det, dat_for_focus[, i])
     stat_record[i] <- get_stat_meanvar(det)
   }
-  # max_stat_record
   max(stat_record)
 }, .options = furrr_options(seed = TRUE))
 results <- do.call(c, y)
@@ -1264,8 +1238,6 @@ We now present an application to calcium imaging data, based on the \texttt{spik
 #| echo: false
 #| message: false
 
-#import numpy as np
-#import pandas as pd
 from plotnine import (ggplot, aes, geom_line, geom_vline, theme_minimal,
                       xlim, geom_segment, geom_point, geom_ribbon, labs)
 import plotnine as pl
@@ -1283,14 +1255,6 @@ df_spikes = pd.DataFrame({
 })
 
 df = pd.DataFrame({'t': neur_trace["time"], 'Y': neur_trace["trace"]})
-
-# (ggplot(df, aes(x='t', y='Y')) +
-#     geom_line() +
-#     geom_segment(df_spikes, aes(x='t', xend='t', y='y', yend='yend'),
-#                  alpha=0.6, colour="orange") +
-#     xlim(0, 160) +
-#     theme_minimal()
-# )
 ```
 
 To analyse this sequence in a sequential fashion via our package, we use two one-sided detectors simultaneously: one watching for up-changes (spikes) and one for down-changes (decay onset), resetting both whenever either detects a change. The rationale behind this is that only up-changes are of interest, and that given the decay process, it would be beneficial to have two separate thresholds to better control the process. Below, we define a helper function that implements the two-detectors logic, as well as records the detected spike times, the change times, and the statistics of both detectors at each time step: 
@@ -1559,7 +1523,7 @@ for i, y in enumerate(Y):
     
     if result['stat'] > 20:
         print(
-            f"Changepoint detected at time {i}: "
+            f"Changepoint detected at time {i + 1}: "
             f"estimated changepoint at {result['changepoint']}"
         )
         break

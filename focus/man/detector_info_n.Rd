@@ -2,12 +2,12 @@
 % Please edit documentation in R/RcppExports.R
 \name{detector_info_n}
 \alias{detector_info_n}
-\title{Get number of observations processed}
+\title{Get the Number of Observations Processed}
 \usage{
 detector_info_n(det_ptr)
 }
 \arguments{
-\item{det_ptr}{External pointer to detector created by
+\item{det_ptr}{A \code{"focus_detector"} object created by
 \code{\link{detector_create}()}.}
 }
 \value{

@@ -1,212 +1,99 @@
-# focus JSS Paper - Reproducible Build
+# Replication Materials for "focus and focus-cpt: Fast Online Changepoint Detection in R and Python"
 
-This folder contains the reproducible source code for the JSS paper on `focus`: Fast Online Changepoint Detection in R and Python.
+This folder contains the replication materials for the article submitted to the
+*Journal of Statistical Software*, together with the Quarto source of the
+manuscript.
 
-## Quick Start
+## Contents
 
-The easiest way to build this paper is using the provided Makefile:
+| File | Description |
+|------|-------------|
+| `replication.R` | Plain R script reproducing all R results and figures (Sections 3, 4 and 5.1). |
+| `replication.py` | Plain Python script reproducing all Python results and figures (Section 3, Sections 5.2 and 5.3, Appendix A). |
+| `paper_data/` | Data sets used in Section 5 (see [Data](#data)). |
+| `jss_paper.qmd`, `bibliography.bib`, `Makefile` | Quarto source of the manuscript and build tools (not needed for replication). |
 
-```bash
-make all
-```
+The software is provided as source packages, submitted alongside the manuscript:
 
-This will:
-1. Check for all system and package dependencies
-2. Prompt you to install the JSS Quarto template (if not already installed)
-3. Install any missing R and Python packages (with your confirmation)
-4. Compile the paper to generate `jss_paper.tex` and `jss_paper.pdf`
+- `focus_0.1.10.tar.gz`: the R package **focus** (also on CRAN);
+- `focus_cpt-0.1.10.tar.gz`: the Python package **focus-cpt** (also on PyPI).
 
-## System Requirements
+## Replicating the Results
 
-### Core Software
+Both scripts must be run from this folder, as the data are read from
+`paper_data/`. Results are printed to the console and figures are saved as PDF
+files in `figures/`, named after the figure labels of the manuscript. All random
+number generation is seeded. Timings reported by `system.time()` in Section 4.2
+are machine dependent. On a 20-core Linux workstation, `replication.R` runs in
+about 6 minutes and `replication.py` in about 15 seconds.
 
-Before building, ensure you have installed:
+### R
 
-- **Quarto** (≥ 1.3.0) - Document rendering engine
-  - Installation: https://quarto.org/docs/get-started/
-  - **Note:** The build process will check for and guide you through setting up the [JSS Quarto template](https://github.com/quarto-journals/jss) if needed.
-  
-- **R** (≥ 4.0) - Statistical computing language
-  - Installation: https://www.r-project.org/
-  
-- **Python** (≥ 3.8) - Programming language
-  - Installation: https://www.python.org/
-  
-- **LaTeX** - Required for PDF generation
-  - On Ubuntu/Debian: `sudo apt-get install texlive-latex-extra`
-  - On macOS: `brew install mactex` or install MacTeX
-  - On Windows: Install MiKTeX or TeX Live
-
-### R Package Dependencies
-
-The following R packages are required:
-
-- `focus` - The focus changepoint detection package
-- `ggplot2` - Graphics system
-- `furrr` - Parallel functional programming
-- `purrr` - Functional programming tools
-- `dplyr` - Data manipulation
-
-These will be automatically installed by `make install-deps` if missing.
-
-### Python Package Dependencies
-
-The following Python packages are required:
-
-- `focus-cpt` - The focus changepoint detection package (Python version)
-- `pandas` - Data manipulation
-- `numpy` - Numerical computing
-- `scipy` - Scientific computing
-- `plotnine` - Grammar of graphics plotting
-- `astropy` - Astronomy/astrophysics library
-
-These will be automatically installed by `make install-deps` if missing.
-
-## Data Files
-
-The following data files are included in this repository under paper_data/:
-
-- `example_trace.pkl` - Example trace from the codeneuro challenge dataset. The original source can be found on GitHub at [this link](https://github.com/codeneuro/spikefinder}).
-- `glg_tte_n2_bn250814432_v00.fit` - GRB detection data from Fermi-GBM detector. The exact data file can be found on [this page](https://heasarc.gsfc.nasa.gov/FTP/fermi/data/gbm/triggers/2025/bn250814432//current/).
-- `nba_data.rds` - NBA cavaliers data, obtained using the `nbastatR` package. Code to generate this file is included in the paper source (see `jss_paper.qmd`), but the pre-generated file is included here to speed up compilation. 
-
-## Building the Paper
-
-### Option 1: Using Make (Recommended)
+Requirements: R (>= 4.1.0) and the CRAN packages ggplot2, furrr, purrr and
+dplyr. The Monte Carlo simulations of Sections 4.1 and 5.1 run in parallel,
+using 4 and 8 background R sessions respectively (via furrr).
 
 ```bash
-# Check dependencies
-make check-deps
-
-# Install missing dependencies
-make install-deps
-
-# Build the paper
-make compile
-
-# Or do everything in one command
-make all
+R CMD INSTALL focus_0.1.10.tar.gz      # or: Rscript -e "install.packages('focus')"
+Rscript -e "install.packages(c('ggplot2', 'furrr', 'purrr', 'dplyr'))"
+Rscript replication.R
 ```
 
-### Option 2: Manual Build
+### Python
 
-If you don't have `make` available, you can build directly with Quarto:
+Requirements: Python (>= 3.8) and the PyPI packages numpy, pandas, plotnine and
+astropy. Installing focus-cpt from the source package requires a C++17
+compiler, CMake (>= 3.15) and the Qhull library (e.g., `libqhull-dev` on
+Debian/Ubuntu, `qhull-devel` on Fedora, `brew install qhull` on macOS).
 
 ```bash
-# First, ensure all dependencies are installed
-# Install R packages:
-Rscript -e "install.packages(c('focus', 'ggplot2', 'furrr', 'purrr', 'dplyr'))"
-
-# Install Python packages:
-pip install focus-cpt pandas numpy scipy plotnine astropy
-
-# Then render the paper
-quarto render jss_paper.qmd --to jss-pdf
+pip install focus_cpt-0.1.10.tar.gz    # or: pip install focus-cpt
+pip install numpy pandas plotnine astropy
+python replication.py
 ```
 
-## Make Targets
+## Data
 
-- `make all` - Full pipeline: check deps, prompt to install missing, compile
-- `make check-deps` - Check all dependencies (stops if JSS template missing)
-- `make install-deps` - Install missing R and Python packages
-- `make compile` - Compile the paper
-- `make clean` - Remove generated cache and files directories
-- `make rebuild` - Clean and recompile
-- `make help` - Show help message
+The following data files are included in `paper_data/`:
 
-**Note on Installation:** The build system checks dependencies and provides clear instructions rather than silently installing packages. This ensures transparency and lets reviewers control what gets installed on their systems.
+- `cle_data.rds`: game logs of the 2089 regular season games of the Cleveland
+  Cavaliers from the 1999-00 to the 2024-25 NBA season (Section 5.1), as an R
+  data frame with columns `yearSeason`, `slugSeason`, `typeSeason`, `dateGame`,
+  `nameTeam`, `slugTeam`, `isWin`, `ptsTeam`, `plusminusTeam` and `monthGame`.
+  The game logs were retrieved with the `game_logs()` function of the
+  **nbastatR** package (<https://github.com/abresler/nbastatR>), which is not
+  required for replication.
+- `glg_tte_n2_bn250814432_v00.fit`: time-tagged event data of the NaI detector
+  n2 of the Fermi Gamma-ray Burst Monitor for the trigger bn250814432
+  (Section 5.2), publicly available from
+  <https://heasarc.gsfc.nasa.gov/FTP/fermi/data/gbm/triggers/2025/bn250814432/current/>.
+- `example_trace.pkl`: a pickled Python dictionary with the fluorescence trace
+  (`trace`), its sampling times (`time`) and the true spike times (`spikes`) of
+  one recording of the spikefinder challenge data (Section 5.3), available at
+  <https://github.com/codeneuro/spikefinder>.
 
-## Output Files
+## Building the Manuscript (Optional)
 
-After successful compilation, you will have:
-
-- **`jss_paper.tex`** - LaTeX source file (ready for submission to JSS)
-- **`jss_paper.pdf`** - Compiled PDF version
-- **`jss_paper_files/`** - Directory containing any embedded figures and assets
-- **`jss_paper_cache/`** - Quarto cache directory (can be removed after build)
-
-## Source Document
-
-The paper is written in **Quarto** format (`.qmd`), a markup language that combines:
-
-- **Markdown** for text and formatting
-- **YAML** for metadata (title, authors, abstract, etc.)
-- **R code blocks** for R examples and figures
-- **Python code blocks** for Python examples and figures
-
-The document is processed by Quarto, which:
-1. Executes all code blocks (via `knitr`)
-2. Generates figures and output
-3. Converts to LaTeX format
-4. Uses pdflatex to generate the final PDF
-
-This paper uses the [JSS Quarto template](https://github.com/quarto-journals/jss).
-
-## Troubleshooting
-
-### JSS Quarto Extension Not Found
-
-If the build fails with "Unable to read the extension 'jss'", you need to install the JSS template:
+The manuscript is written in Quarto and uses the
+[JSS Quarto template](https://github.com/quarto-journals/jss). Building it
+requires Quarto (>= 1.3.0), LaTeX, and the R and Python dependencies above (the
+Python chunks are run through the R package reticulate).
 
 ```bash
-quarto add quarto-journals/jss
+quarto add quarto-journals/jss   # install the JSS template in this folder
+make all                         # check dependencies and compile jss_paper.pdf
 ```
 
-Then retry:
-```bash
-make compile
-```
+Other Make targets:
 
-If the extension was installed correctly, in the same directory you should have the folder `_extensions/quarto-journals/jss` at the same level of `jss_paper.qmd`.
-
-### LaTeX not found
-If you get an error about pdflatex not found:
-- **Ubuntu/Debian**: `sudo apt-get install texlive-latex-extra`
-- **macOS**: `brew install mactex` (or download MacTeX from https://www.tug.org/mactex/)
-- **Windows**: Install MiKTeX from https://miktex.org/
-
-### R package installation fails
-To install R packages manually:
-```bash
-Rscript -e "install.packages(c('focus', 'ggplot2', 'furrr', 'purrr', 'dplyr'), repos='https://cloud.r-project.org/')"
-```
-
-### Python package installation fails
-To install Python packages manually:
-```bash
-pip install --upgrade pip
-pip install focus-cpt pandas numpy scipy plotnine astropy
-```
-
-### Quarto not found
-If Quarto is not in your PATH, download and install from: https://quarto.org/docs/get-started/
-
-
-### Quitting from lines 1019-1060 [load-nba-data] (jss_paper.qmd)
-
-If you see something like:
-
-```bash
-Error:
-! invalid connection... Please make sure not to call closeAllConnections().
-Backtrace:
-```
-
-This can happen in case the package `nbastatR` has downloaded all data, but did not close the connection. Simply restarting the `make compile` should fix this issue. 
+- `make check-deps`: check all system and package dependencies;
+- `make install-deps`: install missing R and Python packages;
+- `make compile`: compile the manuscript (`jss_paper.tex` and `jss_paper.pdf`);
+- `make replicate`: run `replication.R` and `replication.py`;
+- `make clean` and `make rebuild`: remove the Quarto cache and recompile.
 
 ## License
 
-The paper in this folder (including all code and reproducibility materials) is licensed under the Creative Commons Attribution 4.0 International License (CC BY 4.0), in line with ArXiv and the Journal of Statistical Software. For full license terms, see https://creativecommons.org/licenses/by/4.0/
-
-## Citation
-
-If you use this code or paper, please cite:
-
-```bibtex
-@article{romano2026focus,
-  title={focus and focus-cpt: Fast Online Changepoint Detection in R and Python},
-  author={Romano, Gaetano and Ward, Kes and Fan, Yuntang and Rigaill, Guillem and Runge, Vincent and Eckley, Idris A and Fearnhead, Paul},
-  journal={},
-  year={2026}
-}
-```
+The content of this folder (including all code and replication materials) is
+licensed under the Creative Commons Attribution 4.0 International License
+(CC BY 4.0), see <https://creativecommons.org/licenses/by/4.0/>.

@@ -2,7 +2,7 @@
 % Please edit documentation in R/RcppExports.R
 \name{focus_offline}
 \alias{focus_offline}
-\title{Run FOCuS detector in offline batch mode}
+\title{Run a FOCuS Detector in Offline Batch Mode}
 \usage{
 focus_offline(
   Y,
@@ -70,7 +70,9 @@ Only used when \code{type = "arp"}.
 Default is \code{NULL}.}
 }
 \value{
-A list with components:
+An object of class \code{"focus_offline"}, with \code{print},
+  \code{summary} and \code{plot} methods (see \code{\link{focus-methods}}):
+  a list with components
   \item{stat}{Numeric matrix. Test statistics over time (n_obs × n_stats).
     Each row corresponds to one time point, each column to one statistic.}
   \item{changepoint}{Integer vector. Detected changepoints at each time
@@ -97,8 +99,9 @@ This function runs the complete detection algorithm in C++ for maximum
 efficiency. It processes observations sequentially and stops at the first
 detection (when any statistic exceeds its threshold).
 
-For multivariate data, the algorithm computes multiple statistics (one per
-projection). Detection occurs when ANY statistic exceeds its threshold.
+When more than one statistic is computed (e.g., the sum and maximum
+statistics of \code{"npfocus"}), a detection occurs when any statistic
+exceeds its threshold.
 }
 \examples{
 # Univariate Gaussian detection
@@ -106,15 +109,11 @@ set.seed(123)
 Y <- c(rnorm(100, mean = 0), rnorm(100, mean = 2))
 result <- focus_offline(Y, threshold = 10, type = "univariate",
                        family = "gaussian")
-cat("Detection at time:", result$detection_time, "\n")
-cat("Changepoint at:", result$detected_changepoint, "\n")
+result
+summary(result)
 
-# Plot statistics
-plot(result$stat, type = "l", ylab = "Test Statistic", xlab = "Time")
-abline(h = result$threshold, col = "red", lty = 2)
-if (!is.null(result$detection_time)) {
-  abline(v = result$detection_time, col = "blue", lty = 2)
-}
+# Plot the trace of the statistic, the threshold and the detection
+plot(result)
 
 # Poisson detection
 Y_poisson <- c(rpois(100, lambda = 2), rpois(100, lambda = 5))

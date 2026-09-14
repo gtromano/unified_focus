@@ -2,12 +2,12 @@
 % Please edit documentation in R/RcppExports.R
 \name{get_statistics}
 \alias{get_statistics}
-\title{Compute current changepoint statistics}
+\title{Compute the Current Changepoint Statistics}
 \usage{
 get_statistics(det_ptr, family, theta0 = NULL, shape = NULL)
 }
 \arguments{
-\item{det_ptr}{External pointer to detector created by
+\item{det_ptr}{A \code{"focus_detector"} object created by
 \code{\link{detector_create}()}.}
 
 \item{family}{Character string specifying the distribution family:
@@ -30,14 +30,18 @@ Required and must be positive when \code{family = "gamma"}.
 Default is \code{NULL}.}
 }
 \value{
-A list with components:
-  \item{stopping_time}{Integer. Current time index (number of observations
+An object of class \code{"focus_statistics"}, with a \code{print}
+  method (see \code{\link{focus-methods}}): a list with components
+  \item{stopping_time}{Numeric. Current time index (number of observations
     processed).}
-  \item{changepoint}{Integer or NULL. Detected changepoint location
-    (1-based index), or NULL if no changepoint detected.}
-  \item{stat}{Numeric scalar or vector. Test statistic(s). For univariate
-    detectors, a scalar. For multivariate detectors, a vector of statistics
-    for each projection.}
+  \item{changepoint}{Numeric or \code{NULL}. Estimated changepoint location,
+    i.e., the index of the last observation before the change, or
+    \code{NULL} if no estimate is available.}
+  \item{stat}{Numeric scalar or vector, or \code{NULL} if no candidate is
+    available yet. The test statistic: a scalar for all families except
+    \code{"npfocus"}, which returns the sum and the maximum of the
+    statistics over the quantiles.}
+  The family is stored in the attribute \code{"family"}.
 }
 \description{
 Computes the current changepoint test statistic and detection result based
@@ -49,25 +53,22 @@ null hypothesis (no change) against the alternative (a change at the optimal
 location). The statistic is typically compared against a threshold to
 determine if a changepoint should be declared.
 
-Gamma family:
+\strong{Gamma family.}
 When \code{family = "gamma"} a positive \code{shape} parameter must
 be provided; otherwise an error is raised. Passing \code{shape} for a
-non-gamma family will be ignored (and in some interfaces will trigger
-                                    a warning).
+non-gamma family raises a warning and the parameter is ignored.
 
-NPFOCuS:
-  For non-parametric detection one needs to set \code{detector(type = "npfocus")} and the cost can be computed as \code{get_statistics(family = "npfocus")}.
-  The \code{quantiles} vector argument is required. NPFOCuS returns two
-statistics (sum and max over quantiles) as a vector; in the offline interface
-\code{stat} will be a matrix with two columns.
+\strong{NPFOCuS.}
+For non-parametric detection, the detector must be created with
+\code{detector_create(type = "npfocus", quantiles = ...)}. NPFOCuS returns
+two statistics (sum and maximum over the quantiles) as a vector; in the
+offline interface, \code{stat} is a matrix with two columns.
 
-AutoRegressive Process (ARP):
+\strong{AutoRegressive Process (ARP).}
 For ARP detection, use \code{family = "arp"} with a detector created via
-\code{detector_create(type = "arp", rho = ...)}. The AR coefficients (rho)
-are already built into the detector at creation time. The optional \code{theta0}
-parameter specifies the pre-change mean (if known) and is used for pruning logic;
-if not provided (\code{NULL}), pruning operates without this information.
-Returns a scalar test statistic optimized for detecting changepoints in AR processes.
+\code{detector_create(type = "arp", rho = ...)}. The AR coefficients and the
+(optional) pre-change mean \code{mu0_arp} are set at detector creation, so
+\code{theta0} is ignored (with a warning) for this family.
 }
 \examples{
 

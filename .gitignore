@@ -21,3 +21,4 @@ comparison_with_python.qmd
 *.tar.gz
 focus.Rcheck/
 test.R
+paper_code/figures/

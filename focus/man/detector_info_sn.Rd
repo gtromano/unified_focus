@@ -2,12 +2,12 @@
 % Please edit documentation in R/RcppExports.R
 \name{detector_info_sn}
 \alias{detector_info_sn}
-\title{Get cumulative sum statistic}
+\title{Get the Cumulative Sum Statistic}
 \usage{
 detector_info_sn(det_ptr)
 }
 \arguments{
-\item{det_ptr}{External pointer to detector created by
+\item{det_ptr}{A \code{"focus_detector"} object created by
 \code{\link{detector_create}()}.}
 }
 \value{

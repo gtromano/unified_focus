@@ -2,32 +2,33 @@
 % Please edit documentation in R/RcppExports.R
 \name{detector_update}
 \alias{detector_update}
-\title{Update detector with new observation(s)}
+\title{Update a Detector with New Observations}
 \usage{
 detector_update(det_ptr, y, lambda = 1)
 }
 \arguments{
-\item{det_ptr}{External pointer to detector created by
+\item{det_ptr}{A \code{"focus_detector"} object created by
 \code{\link{detector_create}()}.}
 
-\item{y}{Numeric vector of new observation(s). For univariate detectors,
+\item{y}{Numeric vector with the new observation. For univariate detectors,
 this should be a scalar (length-1 vector). For multivariate detectors,
 this should be a vector matching the number of dimensions.}
 
-\item{lambda}{Numeric scalar. Rate parameter for background process (default: 1.0).
-Allows for non-fixed background rate. For example, use \code{lambda_i} for observation-specific rates.
-Default is \code{1.0} (standard CUSUM, one observation per update).}
+\item{lambda}{Numeric scalar. Weight of the new observation: the internal
+time counter is incremented by \code{lambda} rather than by one, which
+allows for a non-constant background rate (e.g., observation-specific
+exposures). Default is \code{1.0}, i.e., one observation per update.}
 }
 \value{
-An external pointer to the detector (the same object that was passed in).
-The detector is updated *in place* — no copy is made — so this return value
-is provided only for convenience, for example when using the native R pipe
-operator (`|>`) e.g.,
-\code{det |> detector_update(y) |> get_statistics()}.
+The same \code{"focus_detector"} object that was passed in. The detector is
+updated \emph{in place} (no copy is made), so the return value is provided
+only for convenience, for example to chain calls with the native pipe
+operator, as in
+\code{det |> detector_update(y) |> get_statistics(family = "gaussian")}.
 }
 \description{
-Adds new observation(s) to the detector's internal state and updates
-sufficient statistics.
+Adds a new observation to the detector's internal state, updates the
+sufficient statistics and prunes the set of candidate changepoints.
 }
 \examples{
 # Univariate example
