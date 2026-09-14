@@ -11,6 +11,7 @@ manuscript.
 | `replication.R` | Plain R script reproducing all R results and figures (Sections 3, 4 and 5.1). |
 | `replication.py` | Plain Python script reproducing all Python results and figures (Section 3, Sections 5.2 and 5.3, Appendix A). |
 | `paper_data/` | Data sets used in Section 5 (see [Data](#data)). |
+| `make_replication_scripts.py` | Generates the two replication scripts from the code chunks of `jss_paper.qmd` (not needed for replication). |
 | `jss_paper.qmd`, `bibliography.bib`, `Makefile` | Quarto source of the manuscript and build tools (not needed for replication). |
 
 The software is provided as source packages, submitted alongside the manuscript:
@@ -19,6 +20,11 @@ The software is provided as source packages, submitted alongside the manuscript:
 - `focus_cpt-0.1.10.tar.gz`: the Python package **focus-cpt** (also on PyPI).
 
 ## Replicating the Results
+
+The scripts are generated from the manuscript with `make replication-scripts`
+(`python make_replication_scripts.py`): every evaluated code chunk is copied
+verbatim, in order of appearance, and the only added lines are those saving the
+figures to files.
 
 Both scripts must be run from this folder, as the data are read from
 `paper_data/`. Results are printed to the console and figures are saved as PDF
@@ -41,14 +47,14 @@ Rscript replication.R
 
 ### Python
 
-Requirements: Python (>= 3.8) and the PyPI packages numpy, pandas, plotnine and
-astropy. Installing focus-cpt from the source package requires a C++17
+Requirements: Python (>= 3.8) and the PyPI packages numpy, pandas, scipy, plotnine
+and astropy. Installing focus-cpt from the source package requires a C++17
 compiler, CMake (>= 3.15) and the Qhull library (e.g., `libqhull-dev` on
 Debian/Ubuntu, `qhull-devel` on Fedora, `brew install qhull` on macOS).
 
 ```bash
 pip install focus_cpt-0.1.10.tar.gz    # or: pip install focus-cpt
-pip install numpy pandas plotnine astropy
+pip install numpy pandas scipy plotnine astropy
 python replication.py
 ```
 
@@ -90,6 +96,8 @@ Other Make targets:
 - `make install-deps`: install missing R and Python packages;
 - `make compile`: compile the manuscript (`jss_paper.tex` and `jss_paper.pdf`);
 - `make replicate`: run `replication.R` and `replication.py`;
+- `make replication-scripts`: regenerate `replication.R` and `replication.py`
+  from `jss_paper.qmd`;
 - `make clean` and `make rebuild`: remove the Quarto cache and recompile.
 
 ## License

@@ -2,6 +2,9 @@
 "focus and focus-cpt: Fast Online Changepoint Detection in R and Python"
 (Journal of Statistical Software).
 
+This file is generated from the code chunks of jss_paper.qmd by
+make_replication_scripts.py (make replication-scripts): do not edit by hand.
+
 This script reproduces all Python results and figures of the manuscript, in
 their order of appearance: the Python example of Section 3 (the interface),
 Section 5.2 (gamma-ray burst detection), Section 5.3 (constrained up-down model
@@ -9,9 +12,10 @@ for spike inference) and Appendix A (the Python interface). The R results are
 reproduced by the companion script replication.R.
 
 Requirements: Python (>= 3.8) and the packages focus-cpt (>= 0.1.10), numpy,
-pandas, plotnine and astropy, all available from PyPI. The focus-cpt package can
-also be installed from the source package submitted with the manuscript (this
-requires a C++ compiler, CMake and the Qhull library, see its README):
+pandas, scipy, plotnine and astropy, all available from PyPI. The focus-cpt
+package can also be installed from the source package submitted with the
+manuscript (this requires a C++ compiler, CMake and the Qhull library, see its
+README):
     pip install focus_cpt-0.1.10.tar.gz
 
 Run the script from the folder containing it, as the data are read from
@@ -23,25 +27,16 @@ minute.
 """
 
 import os
-import pickle
-import warnings
-
-import numpy as np
-import pandas as pd
-from astropy.table import Table
-from astropy.units import UnitsWarning
-from plotnine import (aes, facet_wrap, geom_line, geom_rect, geom_segment,
-                      geom_vline, ggplot, labs, theme, theme_minimal, xlim)
-
-import focus_cpt
-from focus_cpt import Detector, focus_offline
 
 os.makedirs("figures", exist_ok=True)
 
 
-# =============================================================================
-# Section 3: The interface (Python version of the quick example)
-# =============================================================================
+# ==========================================================================
+# The Interface
+# ==========================================================================
+
+import numpy as np
+from focus_cpt import Detector
 
 np.random.seed(42)
 Y = np.concatenate([np.random.randn(100), np.random.randn(50) + 1])
@@ -52,12 +47,22 @@ det.update(Y[i])
 result = det.get_statistics(family="gaussian")
 
 
-# =============================================================================
-# Section 5.2: Gamma-ray burst detection
-# =============================================================================
+# ==========================================================================
+# Some Examples of Real-Time Applications
+# ==========================================================================
 
-# needed to ignore warnings about time units in the Fermi-GBM data
-warnings.filterwarnings('ignore', category=UnitsWarning)
+# ---- Gamma-Ray Burst Detection -------------------------------------------
+
+from astropy.table import Table
+import pandas as pd
+import numpy as np
+from scipy import stats
+from plotnine import (ggplot, aes, geom_line, geom_hline, geom_ribbon,
+                      theme_minimal, xlim, labs)
+import focus_cpt
+import warnings
+from astropy.units import UnitsWarning
+warnings.filterwarnings('ignore', category=UnitsWarning) # needed to ignore warnings about time units in the Fermi-GBM
 
 data_dict = {}
 step = 0.01  # 10 milliseconds
@@ -70,7 +75,7 @@ for hour in range(1, 2):
 
     bins = np.arange(0, 360, step)
     bin_map = pd.cut(grb_counts, bins=bins).apply(lambda I: I.left if pd.notna(I) else np.nan)
-
+    
     bin_series = pd.DataFrame(bin_map).dropna()
     bin_series['count'] = 1
     d = bin_series.groupby("TIME")["count"].count()
@@ -95,29 +100,34 @@ stat_array = np.array(stats_list)
 significance = np.sqrt(2 * stat_array)
 
 # Figure: fig-gamma-ray-burst
+from plotnine import facet_wrap, geom_rect, geom_vline, theme
+
+# Create dataframe for plotting
 df_grb = pd.DataFrame({
     'index': range(len(data_window)),
     'count': data_window.values,
     'significance': significance
 })
+
+# Prepare data for faceting
 df_plot = pd.DataFrame({
     'index': list(df_grb['index']) + list(df_grb['index']),
     'value': list(df_grb['count']) + list(df_grb['significance']),
     'type': ['Count'] * len(df_grb) + ['Significance'] * len(df_grb)
 })
 
-# the significant burst interval
+# Define the significant burst interval
 grb_start = 7680
 grb_end = 8180
 threshold = 5
 
-# first point where the significance exceeds the threshold
+# Find the first point where significance exceeds the threshold
 detection_point = np.where(significance > threshold)[0]
 detection_point = detection_point[0] if len(detection_point) > 0 else None
-print(f"First 5-sigma crossing at bin {detection_point}")
 
+# Create the faceted plot
 p = (ggplot(df_plot, aes(x='index', y='value')) +
-    geom_rect(aes(xmin=grb_start, xmax=grb_end, ymin=-np.inf, ymax=np.inf),
+    geom_rect(aes(xmin=grb_start, xmax=grb_end, ymin=-np.inf, ymax=np.inf), 
               alpha=0.2, fill="lightgray", inherit_aes=False) +
     geom_line(size=0.7) +
     (geom_vline(xintercept=detection_point, linetype="dashed", size=1) if detection_point is not None else None) +
@@ -127,15 +137,21 @@ p = (ggplot(df_plot, aes(x='index', y='value')) +
     theme_minimal() +
     theme(figure_size=(7, 3))
 )
+
+p
 p.save("figures/fig-gamma-ray-burst.pdf", verbose=False)
 
+# ---- Constrained Up-Down Model for Spike Inference -----------------------
 
-# =============================================================================
-# Section 5.3: Constrained up-down model for spike inference
-# =============================================================================
+from plotnine import (ggplot, aes, geom_line, geom_vline, theme_minimal,
+                      xlim, geom_segment, geom_point, geom_ribbon, labs)
+import plotnine as pl
+from focus_cpt import Detector, focus_offline
+import pickle
 
 with open("paper_data/example_trace.pkl", "rb") as f:
     neur_trace = pickle.load(f)
+
 
 df_spikes = pd.DataFrame({
     't'   : neur_trace["spikes"],
@@ -144,7 +160,6 @@ df_spikes = pd.DataFrame({
 })
 
 df = pd.DataFrame({'t': neur_trace["time"], 'Y': neur_trace["trace"]})
-
 
 def run_detector(Y, time, r_threshold, l_threshold):
     r_det = Detector(type='univariate_one_sided', side='right')
@@ -175,7 +190,6 @@ def run_detector(Y, time, r_threshold, l_threshold):
         'stp_types'    : stp_types,
     }
 
-
 def van_rossum_distance(detected, true_spikes, tau_samples):
     """Van Rossum distance between two spike trains (lower = better).
 
@@ -188,6 +202,16 @@ def van_rossum_distance(detected, true_spikes, tau_samples):
     where the inner product of two trains A, B is
 
         <A, B> = (tau/2) * sum_{i in A, j in B} exp(-|t_i - t_j| / tau)
+
+    This handles both failure modes better than toleranced F1:
+      - A detection far from any true spike (e.g. during the calcium
+        decay) is penalised more than one that is merely slightly off.
+      - A detection during the decay is actually penalised MORE than
+        a complete miss, because it adds a spurious kernel contribution
+        far from any true spike, whereas a miss only incurs the cost of
+        the unmatched true spike's self inner product.
+      - Close detections near dense bursts are graded rather than
+        all-or-nothing, so missing some burst spikes is not catastrophic.
 
     Parameters
     ----------
@@ -206,7 +230,6 @@ def van_rossum_distance(detected, true_spikes, tau_samples):
             - 2 * inner_product(detected, true_spikes)
             + inner_product(true_spikes, true_spikes))
 
-
 time  = np.array(neur_trace["time"])
 trace = np.array(neur_trace["trace"])
 
@@ -214,7 +237,7 @@ spike_indices = np.array(
     [np.argmin(np.abs(time - s)) for s in neur_trace["spikes"]]
 )
 
-# Train / test split (30 / 70 by time)
+# ── Train / test split (60 / 40 by time) ─────────────────────────────────────
 SPLIT_FRAC = 0.3
 split_idx  = int(len(trace) * SPLIT_FRAC)
 
@@ -226,13 +249,16 @@ time_test  = time[split_idx:]
 train_spikes = spike_indices[spike_indices <  split_idx]
 test_spikes  = spike_indices[spike_indices >= split_idx] - split_idx
 
-# 5-fold cross-validation over a 2D threshold grid. Both r_threshold and
-# l_threshold are tuned jointly. Each contiguous fold is treated as an
-# independent segment so the streaming detector starts fresh. The scoring
-# criterion is the van Rossum distance (minimise).
+# ── 5-fold cross-validation over a 2D threshold grid ─────────────────────────
+# Both r_threshold and l_threshold are tuned jointly.
+# Each contiguous fold is treated as an independent segment so the streaming
+# detector starts fresh — no warm-up leakage between folds.
+# The scoring criterion is the van Rossum distance (minimise).
+
 TAU_SAMPLES = 5     # exponential kernel time constant: 50 ms at 100 Hz
 N_FOLDS     = 5
 
+# Candidate grids
 r_thresholds = np.concatenate([
     np.arange(0.005, 0.05, 0.005),
     np.arange(0.05,  0.30, 0.02),
@@ -261,10 +287,9 @@ for r_thr in r_thresholds:
             )
         cv_results[(r_thr, l_thr)] = np.mean(fold_vr)
 
+# ── Select best pair (minimum van Rossum distance) ────────────────────────────
 (best_r_threshold, best_l_threshold) = min(cv_results, key=cv_results.get)
 best_cv_vr = cv_results[(best_r_threshold, best_l_threshold)]
-print(f"CV-selected thresholds: right = {best_r_threshold:.3f}, "
-      f"left = {best_l_threshold:.3f} (van Rossum distance {best_cv_vr:.2f})")
 
 res_test = run_detector(Y_test, time_test,
                         best_r_threshold, best_l_threshold)
@@ -287,7 +312,7 @@ p = (ggplot(df, aes(x='t', y='Y')) +
     geom_segment(df_test_changes.query('type == "right"'),
                  aes(x='t', xend='t', y='y', yend='yend'),
                  colour="blue") +
-    geom_vline(xintercept=time_test[0], color="red", linetype="dashed") +
+    geom_vline(xintercept=time_test[0], color="red", linetype="dashed") +             
     labs(title=f"Thresholds: right={best_r_threshold:.3f}, left={best_l_threshold:.3f}",
          x="Time (s)", y="Y") +
     theme_minimal() +
@@ -296,9 +321,15 @@ p = (ggplot(df, aes(x='t', y='Y')) +
 p.save("figures/fig-calcium_trace.pdf", verbose=False)
 
 
-# =============================================================================
-# Appendix A: The Python interface
-# =============================================================================
+# ==========================================================================
+# The Python Interface: Differences and Similarities
+# ==========================================================================
+
+# ---- Example Usage in Python ---------------------------------------------
+
+import numpy as np
+from focus_cpt import Detector
+
 
 np.random.seed(42)
 Y = np.concatenate([np.random.randn(100), np.random.randn(50) + 1])
@@ -308,7 +339,7 @@ det = Detector(type="univariate")
 for i, y in enumerate(Y):
     det.update(y)
     result = det.get_statistics(family="gaussian")
-
+    
     if result['stat'] > 20:
         print(
             f"Changepoint detected at time {i + 1}: "
@@ -316,12 +347,16 @@ for i, y in enumerate(Y):
         )
         break
 
-result_offline = focus_offline(Y,
-                               threshold=np.inf,
-                               type="univariate",
-                               family="gaussian")
-
 # Figure: fig-python-offline
+import pandas as pd
+from plotnine import *
+from focus_cpt import focus_offline
+
+result_offline = focus_offline(Y,
+                                threshold=np.inf,
+                                type="univariate",
+                                family="gaussian")
+
 stat = result_offline['stat'].flatten()
 
 df = pd.DataFrame({"time": range(1, len(Y) + 1), "stat": stat})

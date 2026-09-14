@@ -1,4 +1,4 @@
-.PHONY: all check-deps install-deps compile clean help rebuild replicate replicate-r replicate-python
+.PHONY: all check-deps install-deps compile clean help rebuild replicate replicate-r replicate-python replication-scripts
 
 # Colors for output
 RED = \033[0;31m
@@ -17,6 +17,7 @@ help:
 	@echo "  $(YELLOW)make clean$(NC)         - Remove generated files (_cache and _files directories)"
 	@echo "  $(YELLOW)make rebuild$(NC)       - Clean and recompile the paper"
 	@echo "  $(YELLOW)make replicate$(NC)     - Run the replication scripts (replication.R and replication.py)"
+	@echo "  $(YELLOW)make replication-scripts$(NC) - Regenerate replication.R and replication.py from jss_paper.qmd"
 	@echo "  $(YELLOW)make help$(NC)          - Show this help message"
 
 all: check-deps install-deps compile
@@ -158,6 +159,12 @@ clean:
 # Force recompile even if files exist
 rebuild: clean compile
 	@echo "$(GREEN)✓ Paper rebuilt successfully!$(NC)"
+
+# Regenerate the replication scripts from the code chunks of jss_paper.qmd
+replication-scripts:
+	@echo "$(YELLOW)Generating replication.R and replication.py from jss_paper.qmd...$(NC)"
+	@which python3 >/dev/null 2>&1 && PYTHON=python3 || PYTHON=python; \
+	$$PYTHON make_replication_scripts.py
 
 # Run the replication scripts (figures are saved in figures/)
 replicate: replicate-r replicate-python

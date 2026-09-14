@@ -2,6 +2,9 @@
 ## "focus and focus-cpt: Fast Online Changepoint Detection in R and Python"
 ## (Journal of Statistical Software)
 ##
+## This file is generated from the code chunks of jss_paper.qmd by
+## make_replication_scripts.py (make replication-scripts): do not edit by hand.
+##
 ## This script reproduces all R results and figures of the manuscript, in their
 ## order of appearance: Section 3 (the interface), Section 4 (common use cases)
 ## and Section 5.1 (custom cost function on the NBA data). The Python results
@@ -22,24 +25,17 @@
 ## 8 workers, respectively; the whole script took about 6 minutes on a 20-core
 ## Linux workstation.
 
-library("focus")
-library("ggplot2")
-library("furrr")
-library("purrr")
-library("dplyr")
-
 dir.create("figures", showWarnings = FALSE)
 
 
-## ===========================================================================
-## Section 3: The interface
-## ===========================================================================
-
-## A quick example -----------------------------------------------------------
+## ==========================================================================
+## The Interface
+## ==========================================================================
 
 set.seed(42)
 Y <- c(rnorm(100, mean = 0), rnorm(50, mean = 1))
 
+library(focus)
 det <- detector_create(type = "univariate")
 for (i in seq_along(Y)) {
   detector_update(det, Y[i])
@@ -49,53 +45,61 @@ for (i in seq_along(Y)) {
 }
 sprintf("Changepoint detected at time %d", i)
 
-## Section 3.1: Update the detector ------------------------------------------
+## ---- Changepoint Detectors -----------------------------------------------
+
+## ---- Update the Detector -------------------------------------------------
 
 det_uni <- detector_create(type = "univariate")
-det_uni <- det_uni |> detector_update(0.5)
+det_uni <- det_uni |> detector_update(0.5) 
 det_uni <- det_uni |> detector_update(0.1)
 print(det_uni)
 
-## Section 3.2: Compute statistics -------------------------------------------
+## ---- Compute Statistics --------------------------------------------------
 
 get_statistics(det_uni, family = "gaussian")$stat
 
 get_statistics(det_uni, family = "gamma", shape = 2)$stat
 
-## Section 3.3: Extracting information from the detector object --------------
+## ---- Extracting Informations from the Detector Object --------------------
+
+## ---- Accessing Changepoint Candidates ------------------------------------
 
 candidates <- detector_candidates(det)
 n_cand <- detector_cands_len(det)
 print(n_cand)
 print(head(candidates))
 
+## ---- Number of Observations and Cumulative Statistics --------------------
+
 n <- detector_info_n(det)
 cumsum_stat <- detector_info_sn(det)
 sprintf("%d", n)
 sprintf("%.3f", cumsum_stat)
 
-## Section 3.4: The offline interface ----------------------------------------
+## ---- The Offline Interface -----------------------------------------------
 
 result_offline <- focus_offline(Y, threshold = Inf,
                                 type = "univariate",
                                 family = "gaussian")
 
 ## Figure: fig-r-offline
-p <- ggplot(data.frame(time = seq_along(Y), stat = result_offline$stat)) +
+pdf("figures/fig-r-offline.pdf", width = 7, height = 2)
+library(ggplot2)
+ggplot(data.frame(time = seq_along(Y), stat = result_offline$stat)) +
   aes(x = time, y = stat) +
   geom_line() +
   labs(x = "Time", y = "Statistic") +
   theme_minimal()
-ggsave("figures/fig-r-offline.pdf", p, width = 7, height = 2)
+invisible(dev.off())
 
 
-## ===========================================================================
-## Section 4: Common use cases of focus
-## ===========================================================================
+## ==========================================================================
+## Common Use Cases of Focus
+## ==========================================================================
 
-## Section 4.1: Constrained detection with one-sided detectors ----------------
+## ---- Constrained Detection with One-sided Detectors ----------------------
 
-## Monte Carlo threshold (99% quantile of the maximum null statistic)
+library(furrr)
 plan(multisession, workers = 4)
 set.seed(42)
 n_sim <- 500
@@ -125,7 +129,7 @@ for (i in seq_along(Y)) {
 }
 sprintf("Changepoint detected at time %d", i)
 
-## Section 4.2: Multivariate detectors ----------------------------------------
+## ---- Multivariate Detectors ----------------------------------------------
 
 set.seed(42)
 n <- 1000
@@ -139,18 +143,19 @@ for (i in seq_len(nrow(Y))) {
   det_mv <- det_mv |> detector_update(Y[i, ])
   result <- det_mv |> get_statistics(family = "gaussian")
   stat_trace[i] <- result$stat
+  
 }
 
 ## Figure: fig-multivariate
-p <- ggplot(data.frame(t = seq_len(n), trace = stat_trace)) +
+pdf("figures/fig-multivariate.pdf", width = 7, height = 2)
+ggplot(data.frame(t = seq_len(n), trace = stat_trace)) +
   aes(x = t, y = trace) +
   geom_line() +
   geom_vline(xintercept = 500, color = "red", linetype = "dashed", linewidth = 1) +
   labs(x = "Time", y = "Statistic") +
   theme_minimal()
-ggsave("figures/fig-multivariate.pdf", p, width = 7, height = 2)
+invisible(dev.off())
 
-## Projection-based approximation for higher-dimensional data
 dim_idx <- generate_projection_indexes(6, 2)
 head(dim_idx, 2)
 det_mv <- detector_create(type = "multivariate", dim_indexes = dim_idx)
@@ -158,6 +163,7 @@ det_mv <- detector_create(type = "multivariate", dim_indexes = dim_idx)
 set.seed(42)
 n <- 1000
 d <- 6
+
 Y_multi <- rbind(
   matrix(rnorm(5000 * d, mean = -1, 1), ncol = d),
   matrix(rnorm(500 * d, mean = 1.2), ncol = d)
@@ -174,7 +180,7 @@ system.time(
 )
 all.equal(res_multi$stat, res_multi_approx$stat)
 
-## Section 4.3: Anomaly detection ---------------------------------------------
+## ---- Anomaly Detection ---------------------------------------------------
 
 set.seed(999)
 n <- 1000
@@ -201,19 +207,20 @@ stat_no_thresh <- run_detector(Y_anom, anomaly_intensity = NULL)
 stat_thresh <- run_detector(Y_anom, anomaly_intensity = 1.5)
 
 ## Figure: fig-anomaly_detection
+pdf("figures/fig-anomaly_detection.pdf", width = 7, height = 4)
 df <- data.frame(time = rep(seq_along(Y_anom), 3),
                  value = c(Y_anom, stat_no_thresh, stat_thresh),
                  type = rep(c("Data", "No threshold", "With threshold"),
                             each = length(Y_anom)))
-p <- ggplot(df) +
+ggplot(df) +
   aes(x = time, y = value) +
   geom_line() +
   facet_wrap(~type, ncol = 1, scales = "free_y") +
   labs(x = "Time", y = "") +
   theme_minimal()
-ggsave("figures/fig-anomaly_detection.pdf", p, width = 7, height = 4)
+invisible(dev.off())
 
-## Section 4.4: Non-parametric changepoint detection --------------------------
+## ---- Non-Parametric Changepoint Detection --------------------------------
 
 set.seed(42)
 Y1_pre <- rt(800, df = 2)
@@ -242,10 +249,13 @@ for (i in seq_along(Y2)) {
 }
 
 ## Figure: fig-npfocus
+pdf("figures/fig-npfocus.pdf", width = 9, height = 5)
+# Combine data for plotting
 time1 <- seq_along(Y1)
 time2 <- seq_along(Y2)
 change_point1 <- 800
 change_point2 <- 800
+
 df_plot <- rbind(
   data.frame(scenario = "Location shift (t)", time = time1, value = Y1, statistic = "Data"),
   data.frame(scenario = "Location shift (t)", time = time1, value = stat_trace1[, 1], statistic = "Sum"),
@@ -254,20 +264,21 @@ df_plot <- rbind(
   data.frame(scenario = "Tail change (Normal)", time = time2, value = stat_trace2[, 1], statistic = "Sum"),
   data.frame(scenario = "Tail change (Normal)", time = time2, value = stat_trace2[, 2], statistic = "Max")
 )
+
+# Reorder factors for better visualization
 df_plot$statistic <- factor(df_plot$statistic, levels = c("Data", "Sum", "Max"))
-p <- ggplot(df_plot) +
+
+ggplot(df_plot) +
   aes(x = time, y = value) +
   geom_line(size = 0.5) +
-  geom_vline(aes(xintercept = xint),
-             data = data.frame(scenario = c("Location shift (t)", "Tail change (Normal)"),
-                               xint = c(change_point1, change_point2)),
-             linetype = "dashed", linewidth = 1) +
+  geom_vline(aes(xintercept = xint), data = data.frame(scenario = c("Location shift (t)", "Tail change (Normal)"), 
+                                                         xint = c(change_point1, change_point2)), linetype = "dashed", linewidth = 1) +
   facet_grid(statistic ~ scenario, scales = "free_y") +
   labs(x = "Time", y = "") +
   theme_minimal()
-ggsave("figures/fig-npfocus.pdf", p, width = 9, height = 5)
+invisible(dev.off())
 
-## Section 4.5: Autoregressive changepoint detection --------------------------
+## ---- Autoregressive Changepoint Detection --------------------------------
 
 set.seed(123)
 ar_coefs <- c(0.7, -0.3)
@@ -287,23 +298,27 @@ for (i in 1001:length(Y)) {
 tail(result$stat)
 
 ## Figure: fig-arp_detection
+pdf("figures/fig-arp_detection.pdf", width = 7, height = 3)
+# Create data frame for visualization
 df <- data.frame(time = rep(seq_along(Y), 2),
                  value = c(Y, stat_trace),
                  type = rep(c("Data", "Statistic"), each = length(Y)))
-p <- ggplot(df) +
+
+ggplot(df) +
   aes(x = time, y = value) +
   geom_line() +
   geom_vline(xintercept = 5000, linetype = "dashed", linewidth = 1) +
   facet_wrap(~type, ncol = 1, scales = "free_y") +
   labs(x = "Time", y = "") +
   theme_minimal()
-ggsave("figures/fig-arp_detection.pdf", p, width = 7, height = 3)
+invisible(dev.off())
 
 
-## ===========================================================================
-## Section 5.1: Implementing a custom cost function, change in mean and
-## variance on NBA plus-minus scores
-## ===========================================================================
+## ==========================================================================
+## Some Examples of Real-Time Applications
+## ==========================================================================
+
+## ---- Implementing a Custom Cost Function: Change in Mean and Variance on NBA Plusminus Scores ---
 
 get_seg_meanvar <- function(info_seg, min_var=1){
   if(info_seg[1] > 0){
@@ -314,13 +329,14 @@ get_seg_meanvar <- function(info_seg, min_var=1){
     } else { return(Inf) }
 }
 
+library(purrr)
 get_stat_meanvar <- function(det_ptr, min_var=1) {
   mat <- detector_candidates(det_ptr)
   n <- detector_info_n(det_ptr)
   all <- detector_info_sn(det_ptr)
   stats <- map_dbl(seq_along(mat$tau)[-1], \(i) {
     info_seg_left <- c(mat$tau[i], mat$st[[i]])
-
+    
     info_seg_right <- c(n, all) - info_seg_left
     return(
         - get_seg_meanvar(info_seg_left, min_var) -
@@ -331,19 +347,20 @@ get_stat_meanvar <- function(det_ptr, min_var=1) {
   max(stats)
 }
 
-## Game logs of the Cleveland Cavaliers, 1999-00 to 2024-25 regular seasons.
-## The data were originally retrieved with the nbastatR package
-## (https://github.com/abresler/nbastatR) and are provided in paper_data/.
+library(dplyr)
+
 dat <- readRDS("paper_data/cle_data.rds")
 
-## Monte Carlo threshold, resampling games from the seasons up to 2010
+library(furrr)
 plan(multisession, workers = 8)
+
 set.seed(123)
 dat_past <- dat %>% filter(yearSeason <= 2010, typeSeason == "Regular Season")
 
 y <- future_map(1:10^3, \(i) {
   plusminus_team <- sample(dat_past$plusminusTeam, 1000, replace = TRUE)
   dat_for_focus <- rbind(plusminus_team, plusminus_team^2)
+  
   det <- detector_create(type = "multivariate")
   stat_record <- vector("numeric", length = ncol(dat_for_focus))
   for (i in 1:ncol(dat_for_focus)) {
@@ -358,7 +375,6 @@ threshold_99 <- quantile(results, 0.99)
 
 print(threshold_99)
 
-## Test on the seasons after 2010
 dat_recent <- dat %>% filter(yearSeason > 2010, typeSeason == "Regular Season")
 Y_test <- rbind(dat_recent$plusminusTeam, dat_recent$plusminusTeam^2)
 det <- detector_create(type = "multivariate")
@@ -368,21 +384,17 @@ for (i in 1:ncol(Y_test)) {
   stat_record[i] <- get_stat_meanvar(det, min_var=1)
 }
 
-## First crossing of the threshold (reported in the text)
-first_detection <- which(stat_record > threshold_99)[1]
-dat_recent$slugSeason[first_detection]
-
 ## Figure: fig-nba-application
+pdf("figures/fig-nba-application.pdf", width = 7, height = 3)
 df <- data.frame(time = rep(seq_along(dat_recent$plusminusTeam), 2),
                  value = c(dat_recent$plusminusTeam, stat_record),
                  type = rep(c("Data", "Statistic"), each = length(dat_recent$plusminusTeam)))
-p <- ggplot(df) +
+
+ggplot(df) +
   aes(x = time, y = value) +
   geom_line() +
   geom_hline(yintercept = threshold_99, color = "gray", linetype = "dashed", linewidth = 1) +
   facet_wrap(~type, ncol = 1, scales = "free_y") +
   labs(x = "Time", y = "") +
   theme_minimal()
-ggsave("figures/fig-nba-application.pdf", p, width = 7, height = 3)
-
-sessionInfo()
+invisible(dev.off())
