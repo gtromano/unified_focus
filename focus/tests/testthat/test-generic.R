@@ -308,7 +308,7 @@ test_that("ARP detector detects mean shift in AR(2) series (seed 123)", {
   expect_equal(res$detected_changepoint, 295)
 })
 
-test_that("ARP statistics match a brute-force GLR for AR orders 1 to 3", {
+test_that("ARP statistics match a brute-force GLR for AR orders 1 to 3, known and unknown pre-change mean", {
   # Exact GLR for a change in mean of an AR(p) process with unknown pre-change
   # mean, computed over all changepoint locations. Aligned with focus_offline().
   arp_brute_force <- function(x, rho) {
@@ -345,6 +345,28 @@ test_that("ARP statistics match a brute-force GLR for AR orders 1 to 3", {
     c(rep(-1, p), stat)
   }
 
+  # Exact GLR when the pre-change mean mu0 is known: after centring and
+  # whitening, a change at tau gives weights 0 before the change, v[j] for the
+  # j-th of the first p observations after it and 1 - sum(rho) afterwards.
+  arp_brute_force_known <- function(x, rho, mu0) {
+    p <- length(rho)
+    n <- length(x) - p
+    y <- vapply(seq_len(n), function(i) (x[i + p] - mu0) - sum(rho * (x[i + p - seq_len(p)] - mu0)), numeric(1))
+    v <- c(1, 1 - cumsum(rho))[seq_len(p)]
+    vmax <- 1 - sum(rho)
+    stat <- numeric(n - 1)
+    for (i in 2:n) {
+      best <- -Inf
+      for (tau in 1:(i - 1)) {
+        j <- seq_len(i - tau)
+        w <- ifelse(j <= p, v[pmin(j, p)], vmax)
+        best <- max(best, sum(w * y[(tau + 1):i])^2 / sum(w^2))
+      }
+      stat[i - 1] <- best
+    }
+    c(rep(-1, p), stat)
+  }
+
   for (rho in list(0.7, -0.5, c(0.8, -0.2), c(0.95, -0.1, 0.1))) {
     for (seed in 1:3) {
       set.seed(seed)
@@ -359,6 +381,17 @@ test_that("ARP statistics match a brute-force GLR for AR orders 1 to 3", {
 
       expect_equal(off, arp_brute_force(Y, rho), tolerance = 1e-6)
       expect_equal(on[-1], off)
+
+      # known pre-change mean
+      off_known <- as.vector(focus_offline(Y, threshold = Inf, type = "arp", rho = rho, mu0_arp = 10)$stat)
+      det_known <- detector_create(type = "arp", rho = rho, mu0_arp = 10)
+      on_known <- vapply(Y, function(y) {
+        detector_update(det_known, y)
+        get_statistics(det_known, family = "arp")$stat
+      }, numeric(1))
+
+      expect_equal(off_known, arp_brute_force_known(Y, rho, mu0 = 10), tolerance = 1e-6)
+      expect_equal(on_known[-1], off_known)
     }
   }
 })
