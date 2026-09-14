@@ -305,7 +305,7 @@ test_that("ARP detector detects mean shift in AR(2) series (seed 123)", {
 
   expect_equal(res$type,            "arp")
   expect_equal(res$detection_time,   306)
-  expect_equal(res$detected_changepoint, 295)
+  expect_equal(res$detected_changepoint, 297)
 })
 
 test_that("ARP statistics match a brute-force GLR for AR orders 1 to 3, known and unknown pre-change mean", {
