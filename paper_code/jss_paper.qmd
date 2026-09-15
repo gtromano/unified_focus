@@ -345,11 +345,9 @@ for (i in seq_along(Y)) {
 sprintf("Changepoint detected at time %d", i)
 ```
 
-Within the `for` loop, we update the detector with a new data point with `detector_update` and retrieve the current statistics `get_statistics`; both functions will be explained in detail below. `get_statistics` returns a list, where `$stat` is our GLR test statistic: we break the cycle as soon as this is over a fixed threshold of 20, and print the stopping time. The online interface supports modern [R]{.proglang} piping, so the update and retrieval of statistics can be chained together in a more concise way. For example, the following snippet is equivalent to the above calls to `detector_update` and `get_statistics`:
+Within the `for` loop, we update the detector with a new data point with `detector_update` and retrieve the current statistics `get_statistics`; both functions will be explained in detail below. `get_statistics` returns a list, where `$stat` is our GLR test statistic: we break the cycle as soon as this is over a fixed threshold of 20, and print the stopping time. The online interface supports modern [R]{.proglang} piping, so the update and retrieval of statistics can be chained together in a more concise way. For example, the following syntax is equivalent to the above calls to `detector_update` and `get_statistics`:
 
-```{r, eval=FALSE}
-#| prompt: true
-
+```
 result <- det |>
   detector_update(Y[i]) |>
   get_statistics(family = "gaussian")
