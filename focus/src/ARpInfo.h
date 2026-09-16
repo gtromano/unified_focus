@@ -45,7 +45,9 @@ public:
       known_prechange_(known_prechange),
       mu0_(mu0),                         // <-- stored
       p_((int)rho_.size()),
-      buf_max_(std::max(2 * p_, p_ + 1)),
+      // buffer of whitened observations: the last 2p are needed by the
+      // recursion, and its first step (at the (p + 2)-th one) needs p + 2
+      buf_max_(std::max(2 * p_, p_ + 2)),
       max_stat_(-1.0),
       cpt_(-1),
       cumsum_(0.0),

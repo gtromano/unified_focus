@@ -512,7 +512,7 @@ inline std::pair<double, int> compute_focus_arp(const std::vector<double>& data_
 void arp_detector_update_impl(double obs,
                               const std::vector<double>& rho,
                               int p,
-                              int /* buf_max */,
+                              int buf_max,
                               bool known_prechange,
                               double /* n */,
                               void*& opaque_states,
@@ -555,7 +555,8 @@ void arp_detector_update_impl(double obs,
     state->x_buf.erase(state->x_buf.begin());
     state->x_buf.push_back(state->data_old[static_cast<std::size_t>(p + current_i - 2)]);
 
-    const int buf_max_y = 2 * p;
+    // Size of the buffer of whitened observations, at least p + 2 (see ARpInfo)
+    const int buf_max_y = buf_max;
     const double new_y = state->data_old[static_cast<std::size_t>(p + current_i - 1)] - dot_product(rho, reverse_copy(state->x_buf));
     if (static_cast<int>(state->y_buf.size()) < buf_max_y) {
       state->y_buf.push_back(new_y);

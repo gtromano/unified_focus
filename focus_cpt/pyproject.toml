@@ -7,7 +7,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "focus_cpt"
-version = "0.1.9"
+version = "0.1.10"
 description = "Online Changepoint Detection in Univariate and Multivariate Data Streams using FOCUS algorithms"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -50,6 +50,9 @@ docs = [
     "sphinx>=5.0",
     "sphinx-rtd-theme>=1.0",
 ]
+plot = [
+    "matplotlib>=3.3",
+]
 
 [project.urls]
 Homepage = "https://github.com/gtromano/unified_focus"
@@ -69,6 +72,9 @@ build.verbose = false
 
 # Wheel settings
 wheel.packages = ["focus_cpt"]
+
+# Keep previously built distributions out of the source distribution
+sdist.exclude = ["dist/"]
 
 # Installation settings
 install.strip = false

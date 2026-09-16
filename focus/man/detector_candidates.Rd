@@ -2,17 +2,19 @@
 % Please edit documentation in R/RcppExports.R
 \name{detector_candidates}
 \alias{detector_candidates}
-\title{Get candidate segments}
+\title{Get the Candidate Segments}
 \usage{
 detector_candidates(det_ptr)
 }
 \arguments{
-\item{det_ptr}{External pointer to detector created by
+\item{det_ptr}{A \code{"focus_detector"} object created by
 \code{\link{detector_create}()}.}
 }
 \value{
-A data frame (tibble) with columns:
-  \item{tau}{Integer vector. Candidate changepoint locations (0-based indices).}
+A data frame (tibble) with one row per candidate and columns:
+  \item{tau}{Numeric vector. Candidate changepoint locations, on the same
+    scale as the changepoint estimate returned by
+    \code{\link{get_statistics}()}.}
   \item{st}{List of numeric vectors. Sufficient statistics for each
     candidate segment (e.g., cumulative sums of the data).}
   \item{side}{Character vector. Side indicator for each candidate

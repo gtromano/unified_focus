@@ -305,7 +305,95 @@ test_that("ARP detector detects mean shift in AR(2) series (seed 123)", {
 
   expect_equal(res$type,            "arp")
   expect_equal(res$detection_time,   306)
-  expect_equal(res$detected_changepoint, 295)
+  expect_equal(res$detected_changepoint, 297)
+})
+
+test_that("ARP statistics match a brute-force GLR for AR orders 1 to 3, known and unknown pre-change mean", {
+  # Exact GLR for a change in mean of an AR(p) process with unknown pre-change
+  # mean, computed over all changepoint locations. Aligned with focus_offline().
+  arp_brute_force <- function(x, rho) {
+    p <- length(rho)
+    n <- length(x) - p
+    y <- vapply(seq_len(n), function(i) x[i + p] - sum(rho * x[i + p - seq_len(p)]), numeric(1))
+    v <- c(1, 1 - cumsum(rho), rep(1 - sum(rho), n - p - 1))
+    vmax <- 1 - sum(rho)
+    stat <- numeric(n - 1)
+    coeffs <- matrix(0, nrow = n - 1, ncol = 6)
+    for (i in seq_len(n)) {
+      if (i < n) {
+        for (k in i:(n - 1)) coeffs[k, ] <- coeffs[k, ] + c(vmax^2, 0, 0, -2 * vmax * y[i], 0, y[i]^2)
+      }
+      for (j in seq_len(p)) {
+        if (i > j) {
+          coeffs[i - j, ] <- coeffs[i - j, ] + c((vmax - v[j])^2, v[j]^2, 2 * v[j] * (vmax - v[j]),
+                                                 -2 * (vmax - v[j]) * y[i], -2 * v[j] * y[i], y[i]^2)
+        }
+      }
+      if (i > p + 1) {
+        for (k in 1:(i - p - 1)) coeffs[k, ] <- coeffs[k, ] + c(0, vmax^2, 0, 0, -2 * vmax * y[i], y[i]^2)
+      }
+      if (i > 1) {
+        lr0 <- sum(y[1:i]^2) - sum(y[1:i])^2 / i
+        cf <- coeffs[1:(i - 1), , drop = FALSE]
+        A <- cf[, 1]; B <- cf[, 2]; C <- cf[, 3]; D <- cf[, 4]; E <- cf[, 5]; FF <- cf[, 6]
+        mu0 <- (C * E - 2 * B * D) / (4 * A * B - C^2)
+        mu1 <- (C * D - 2 * A * E) / (4 * A * B - C^2)
+        lr1 <- A * mu0^2 + B * mu1^2 + C * mu0 * mu1 + D * mu0 + E * mu1 + FF
+        stat[i - 1] <- max(lr0 - lr1)
+      }
+    }
+    c(rep(-1, p), stat)
+  }
+
+  # Exact GLR when the pre-change mean mu0 is known: after centring and
+  # whitening, a change at tau gives weights 0 before the change, v[j] for the
+  # j-th of the first p observations after it and 1 - sum(rho) afterwards.
+  arp_brute_force_known <- function(x, rho, mu0) {
+    p <- length(rho)
+    n <- length(x) - p
+    y <- vapply(seq_len(n), function(i) (x[i + p] - mu0) - sum(rho * (x[i + p - seq_len(p)] - mu0)), numeric(1))
+    v <- c(1, 1 - cumsum(rho))[seq_len(p)]
+    vmax <- 1 - sum(rho)
+    stat <- numeric(n - 1)
+    for (i in 2:n) {
+      best <- -Inf
+      for (tau in 1:(i - 1)) {
+        j <- seq_len(i - tau)
+        w <- ifelse(j <= p, v[pmin(j, p)], vmax)
+        best <- max(best, sum(w * y[(tau + 1):i])^2 / sum(w^2))
+      }
+      stat[i - 1] <- best
+    }
+    c(rep(-1, p), stat)
+  }
+
+  for (rho in list(0.7, -0.5, c(0.8, -0.2), c(0.95, -0.1, 0.1))) {
+    for (seed in 1:3) {
+      set.seed(seed)
+      Y <- rep(c(10, 35), each = 40) + arima.sim(list(ar = rho), n = 80)
+
+      off <- as.vector(focus_offline(Y, threshold = Inf, type = "arp", rho = rho)$stat)
+      det <- detector_create(type = "arp", rho = rho)
+      on <- vapply(Y, function(y) {
+        detector_update(det, y)
+        get_statistics(det, family = "arp")$stat
+      }, numeric(1))
+
+      expect_equal(off, arp_brute_force(Y, rho), tolerance = 1e-6)
+      expect_equal(on[-1], off)
+
+      # known pre-change mean
+      off_known <- as.vector(focus_offline(Y, threshold = Inf, type = "arp", rho = rho, mu0_arp = 10)$stat)
+      det_known <- detector_create(type = "arp", rho = rho, mu0_arp = 10)
+      on_known <- vapply(Y, function(y) {
+        detector_update(det_known, y)
+        get_statistics(det_known, family = "arp")$stat
+      }, numeric(1))
+
+      expect_equal(off_known, arp_brute_force_known(Y, rho, mu0 = 10), tolerance = 1e-6)
+      expect_equal(on_known[-1], off_known)
+    }
+  }
 })
 
 

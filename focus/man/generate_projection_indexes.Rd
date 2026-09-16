@@ -2,7 +2,7 @@
 % Please edit documentation in R/RcppExports.R
 \name{generate_projection_indexes}
 \alias{generate_projection_indexes}
-\title{Generate projection index sets}
+\title{Generate Projection Index Sets}
 \usage{
 generate_projection_indexes(d, p)
 }

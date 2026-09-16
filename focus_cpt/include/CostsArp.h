@@ -33,9 +33,11 @@ inline ChangepointResult compute_costs_arp_typed(const ARpInfo& arp_info) {
   // Extract the max statistic and changepoint computed during update
   double stat = arp_info.max_stat();
   int cpt = arp_info.cpt();
-  
+
   out.stat = stat;
-  out.changepoint = (cpt < 0) ? std::nullopt : std::optional<int>(cpt);
+  // The update counts changepoints on the whitened observations, which start
+  // after the first p observations: add p to report it on the original data.
+  out.changepoint = (cpt < 0) ? std::nullopt : std::optional<int>(cpt + arp_info.p());
   
   return out;
 }

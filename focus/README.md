@@ -455,7 +455,7 @@ system.time(
 ```
 
        user  system elapsed 
-      8.425   0.111   8.538 
+      8.080   0.091   8.187 
 
 ``` r
 # Low-dimensional projection approximation
@@ -468,7 +468,7 @@ system.time(
 ```
 
        user  system elapsed 
-      0.157   0.000   0.157 
+      0.149   0.001   0.149 
 
 ``` r
 # Verify similarity
@@ -598,7 +598,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.002   0.000   0.003 
+      0.002   0.000   0.002 
 
 ``` r
 plot(res_bern$stat, main = "Bernoulli (univariate): change in success probability")
@@ -619,7 +619,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.023   0.000   0.022 
+      0.021   0.000   0.021 
 
 ``` r
 plot(res_bern_multi$stat, main = "Bernoulli (multivariate): two streams")
@@ -676,7 +676,7 @@ system.time({
 ```
 
        user  system elapsed 
-      0.003   0.000   0.003 
+      0.002   0.000   0.002 
 
 ``` r
 plot(res_gamma$stat, main = "Gamma: change in scale (shape = 2)")
@@ -851,14 +851,10 @@ det <- det |>
 det |> get_statistics(family="npfocus")
 ```
 
-    $stopping_time
-    [1] 3
-
-    $changepoint
-    NULL
-
-    $stat
-    [1] 3.819085 1.909543
+    focus statistics (family: npfocus)
+      stopping time: 3
+      changepoint:   not available
+      statistics:    sum = 3.819, max = 1.91
 
 ### AutoRegressive Process (ARP) changepoint detection
 
@@ -924,7 +920,7 @@ cat("Detection time:", res$detection_time, "\n")
 cat("Estimated changepoint:", res$detected_changepoint, "\n")
 ```
 
-    Estimated changepoint: 498 
+    Estimated changepoint: 500 
 
 ``` r
 cat("True changepoint:", n_pre, "\n")
@@ -957,7 +953,7 @@ for (i in seq_along(Y)) {
 }
 ```
 
-    Detection at time 511 with changepoint estimate τ = 498 
+    Detection at time 511 with changepoint estimate τ = 500 
 
 ``` r
 # Plot results
@@ -993,7 +989,7 @@ print(time_offline)
 ```
 
        user  system elapsed 
-      0.161   0.001   0.161 
+      0.154   0.018   0.149 
 
 ``` r
 # Benchmark online mode
@@ -1017,7 +1013,7 @@ print(time_online)
 ```
 
        user  system elapsed 
-       0.37    0.00    0.37 
+      0.402   0.000   0.402 
 
 ``` r
 # Verify both produce identical results
@@ -1033,7 +1029,7 @@ speedup <- time_online["elapsed"] / time_offline["elapsed"]
 cat("Offline mode is", round(speedup, 1), "x faster\n")
 ```
 
-    Offline mode is 2.3 x faster
+    Offline mode is 2.7 x faster
 
 ## C++ Integration
 

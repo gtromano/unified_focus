@@ -2,8 +2,8 @@ Package: focus
 Type: Package
 Title: Online Changepoint Detection in Univariate and Multivariate Data
         Streams
-Version: 0.1.9
-Date: 2026-07-23
+Version: 0.1.10
+Date: 2026-09-14
 Authors@R: c(
     person("Gaetano", "Romano", 
            email = "g.romano@lancaster.ac.uk",
@@ -39,8 +39,8 @@ Description: Provides high-performance online changepoint detection in univariat
              The package bundles code from 'Qhull' <http://www.qhull.org/>, by C. B. Barber and
              The Geometry Center. See 'inst/COPYRIGHTS' for details.
 License: GPL (>= 3)
-Imports: Rcpp (>= 1.1.0)
+Imports: graphics, Rcpp (>= 1.1.0)
 LinkingTo: Rcpp
 Encoding: UTF-8
-RoxygenNote: 7.2.3
 Suggests: testthat (>= 3.0.0)
+Config/roxygen2/version: 8.1.0
