@@ -295,7 +295,6 @@ for (i in 1001:length(Y)) {
   result <- det_arp |> get_statistics(family = "arp")
   stat_trace[i] <- result$stat
 }
-tail(result$stat)
 
 ## Figure: fig-arp_detection
 pdf("figures/fig-arp_detection.pdf", width = 7, height = 3)
