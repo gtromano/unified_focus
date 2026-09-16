@@ -228,3 +228,4 @@ plot.focus_offline <- function(x, type = "l", lty = 1, col = NULL, xlab = "Time"
   }
   invisible(x)
 }
+
