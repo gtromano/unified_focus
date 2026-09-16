@@ -219,9 +219,6 @@ plot.focus_offline <- function(x, type = "l", lty = 1, col = NULL, xlab = "Time"
   } else if (any(finite)) {
     graphics::abline(h = threshold[finite], lty = 2, col = rep_len(col, n_stats)[finite])
   }
-  if (!is.null(x$detection_time)) {
-    graphics::abline(v = x$detection_time, lty = 3)
-  }
   if (!is.null(x$detected_changepoint)) {
     graphics::abline(v = x$detected_changepoint, lty = 3, col = "grey50")
   }
