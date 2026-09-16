@@ -29,8 +29,9 @@ R_HEADER = """\
 ## "focus and focus-cpt: Fast Online Changepoint Detection in R and Python"
 ## (Journal of Statistical Software)
 ##
-## This file is generated from the code chunks of jss_paper.qmd by
-## make_replication_scripts.py (make replication-scripts): do not edit by hand.
+## This file is generated from the code chunks of 
+## https://github.com/gtromano/unified_focus/blob/main/paper_code/jss_paper.qmd
+## by `make replication-scripts`.
 ##
 ## This script reproduces all R results and figures of the manuscript, in their
 ## order of appearance: Section 3 (the interface), Section 4 (common use cases)
@@ -49,8 +50,7 @@ R_HEADER = """\
 ## Printed results are written to the console, and figures are saved as PDF
 ## files in the folder figures/. Timings (system.time) are machine dependent.
 ## The Monte Carlo simulations of Sections 4.1 and 5.1 run in parallel on 4 and
-## 8 workers, respectively; the whole script took about 6 minutes on a 20-core
-## Linux workstation.
+## 8 workers, respectively.
 """
 
 PY_HEADER = '''\
@@ -58,8 +58,9 @@ PY_HEADER = '''\
 "focus and focus-cpt: Fast Online Changepoint Detection in R and Python"
 (Journal of Statistical Software).
 
-This file is generated from the code chunks of jss_paper.qmd by
-make_replication_scripts.py (make replication-scripts): do not edit by hand.
+This file is generated from the code chunks of 
+https://github.com/gtromano/unified_focus/blob/main/paper_code/jss_paper.qmd
+by `make replication-scripts`.
 
 This script reproduces all Python results and figures of the manuscript, in
 their order of appearance: the Python example of Section 3 (the interface),
@@ -78,8 +79,7 @@ Run the script from the folder containing it, as the data are read from
 paper_data/, e.g. with
     python replication.py
 Printed results are written to the console, and figures are saved as PDF files
-in the folder figures/. The cross-validation of Section 5.3 takes about a
-minute.
+in the folder figures/.
 """
 '''
 
