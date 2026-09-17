@@ -2,8 +2,7 @@
 "focus and focus-cpt: Fast Online Changepoint Detection in R and Python"
 (Journal of Statistical Software).
 
-This file is generated from the code chunks of 
-https://github.com/gtromano/unified_focus/blob/main/paper_code/jss_paper.qmd
+This file is generated from the code chunks of jss_paper.qmd
 by `make replication-scripts`.
 
 This script reproduces all Python results and figures of the manuscript, in
