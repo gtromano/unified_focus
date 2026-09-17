@@ -3,7 +3,7 @@ Type: Package
 Title: Online Changepoint Detection in Univariate and Multivariate Data
         Streams
 Version: 0.1.10
-Date: 2026-09-14
+Date: 2026-09-16
 Authors@R: c(
     person("Gaetano", "Romano", 
            email = "g.romano@lancaster.ac.uk",
