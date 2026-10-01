@@ -125,13 +125,6 @@ class Detector:
         if rho is not None:
             rho = np.asarray(rho, dtype=np.float64)
         
-        # ARP detector requires mu0_arp to be specified
-        if type == "arp" and mu0_arp is None:
-            raise ValueError(
-                "The mu0_arp unknown case is still under development, "
-                "please specify a parameter `mu0_arp` when using type='arp'."
-            )
-        
         # if mu0_arp is not None:
         #     mu0_arp = np.array([mu0_arp], dtype=np.float64)
 

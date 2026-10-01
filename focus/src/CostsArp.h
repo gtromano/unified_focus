@@ -15,7 +15,7 @@ namespace changepoint {
   CostsArp:
   
   Strongly-typed ARP cost function that computes the maximum test statistic
-  across all four detection directions (right_pos, left_pos, right_neg, left_neg).
+  over the candidate changes, for increases and decreases (see focus_ARp.cpp).
 
   - compute_costs_arp_typed(const ARpInfo&)
       The real implementation: accepts only ARpInfo (typed), extracts the
