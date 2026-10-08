@@ -115,6 +115,9 @@ summary(result)
 # Plot the trace of the statistic, the threshold and the detection
 plot(result)
 
+# Plot the data above the trace of the statistic
+plot(result, data = Y)
+
 # Poisson detection
 Y_poisson <- c(rpois(100, lambda = 2), rpois(100, lambda = 5))
 result_poisson <- focus_offline(Y_poisson, threshold = 10,

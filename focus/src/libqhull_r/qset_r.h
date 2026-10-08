@@ -94,6 +94,21 @@ struct setT {
                            maxsize elements */
 };
 
+/*-<a                             href="qh-set_r.htm#TOC"
+  >--------------------------------</a><a name="SETe_">-</a>
+
+  SETe_(set)
+    return the elements of a set, e[0..maxsize], as a pointer to setelemT
+
+  notes:
+    focus (R package): e[] is declared with size 1 but holds maxsize+1
+    elements. All elements are accessed through this pointer, rather than by
+    indexing the array e[1] itself, so that -fsanitize=bounds-strict does not
+    report the accesses beyond e[0] as out of bounds. The layout of setT is
+    unchanged.
+*/
+#define SETe_(set)                 ((setelemT *)((set)->e))
+
 /*=========== -constants- =========================*/
 
 /*-<a                                 href="qh-set_r.htm#TOC"
@@ -142,7 +157,7 @@ struct setT {
 */
 #define FOREACHsetelement_(type, set, variable) \
         if (((variable= NULL), set)) for (\
-          variable##p= (type **)&((set)->e[0].p); \
+          variable##p= (type **)&(SETe_(set)[0].p); \
           (variable= *variable##p++);)
 
 /*-<a                                      href="qh-set_r.htm#TOC"
@@ -175,10 +190,10 @@ struct setT {
 */
 #define FOREACHsetelement_i_(qh, type, set, variable) \
         if (((variable= NULL), set)) for (\
-          variable##_i= 0, variable= (type *)((set)->e[0].p), \
+          variable##_i= 0, variable= (type *)(SETe_(set)[0].p), \
                    variable##_n= qh_setsize(qh, set);\
           variable##_i < variable##_n;\
-          variable= (type *)((set)->e[++variable##_i].p) )
+          variable= (type *)(SETe_(set)[++variable##_i].p) )
 
 /*-<a                                    href="qh-set_r.htm#TOC"
   >--------------------------------------</a><a name="FOREACHsetelementreverse_">-</a>
@@ -239,10 +254,10 @@ struct setT {
 */
 #define FOREACHsetelementreverse12_(type, set, variable) \
         if (((variable= NULL), set)) for (\
-          variable##p= (type **)&((set)->e[1].p); \
+          variable##p= (type **)&(SETe_(set)[1].p); \
           (variable= *variable##p); \
-          variable##p == ((type **)&((set)->e[0].p))?variable##p += 2: \
-              (variable##p == ((type **)&((set)->e[1].p))?variable##p--:variable##p++))
+          variable##p == ((type **)&(SETe_(set)[0].p))?variable##p += 2: \
+              (variable##p == ((type **)&(SETe_(set)[1].p))?variable##p--:variable##p++))
 
 /*-<a                                 href="qh-set_r.htm#TOC"
   >-----------------------------------</a><a name="FOREACHelem_">-</a>
@@ -312,7 +327,7 @@ struct setT {
    example:
      i= SETindex_(ridges, ridge)
 */
-#define SETindex_(set, elem) ((int)((void **)elem##p - (void **)&(set)->e[1].p))
+#define SETindex_(set, elem) ((int)((void **)elem##p - (void **)&SETe_(set)[1].p))
 
 /*-<a                                     href="qh-set_r.htm#TOC"
   >---------------------------------------</a><a name="SETref_">-</a>
@@ -335,7 +350,7 @@ struct setT {
       assumes that n is valid [0..size] and that set is defined
       use SETelemt_() for type cast
 */
-#define SETelem_(set, n)           ((set)->e[n].p)
+#define SETelem_(set, n)           (SETe_(set)[n].p)
 
 /*-<a                                     href="qh-set_r.htm#TOC"
   >---------------------------------------</a><a name="SETelemt_">-</a>
@@ -346,7 +361,7 @@ struct setT {
    notes:
       assumes that n is valid [0..size] and that set is defined
 */
-#define SETelemt_(set, n, type)    ((type *)((set)->e[n].p))
+#define SETelemt_(set, n, type)    ((type *)(SETe_(set)[n].p))
 
 /*-<a                                     href="qh-set_r.htm#TOC"
   >---------------------------------------</a><a name="SETelemaddr_">-</a>
@@ -357,7 +372,7 @@ struct setT {
    notes:
       assumes that n is valid [0..size] and set is defined
 */
-#define SETelemaddr_(set, n, type) ((type **)(&((set)->e[n].p)))
+#define SETelemaddr_(set, n, type) ((type **)(&(SETe_(set)[n].p)))
 
 /*-<a                                     href="qh-set_r.htm#TOC"
   >---------------------------------------</a><a name="SETfirst_">-</a>
@@ -366,7 +381,7 @@ struct setT {
      return first element of set
 
 */
-#define SETfirst_(set)             ((set)->e[0].p)
+#define SETfirst_(set)             (SETe_(set)[0].p)
 
 /*-<a                                     href="qh-set_r.htm#TOC"
   >---------------------------------------</a><a name="SETfirstt_">-</a>
@@ -375,7 +390,7 @@ struct setT {
      return first element of set as a type
 
 */
-#define SETfirstt_(set, type)      ((type *)((set)->e[0].p))
+#define SETfirstt_(set, type)      ((type *)(SETe_(set)[0].p))
 
 /*-<a                                     href="qh-set_r.htm#TOC"
   >---------------------------------------</a><a name="SETsecond_">-</a>
@@ -384,7 +399,7 @@ struct setT {
      return second element of set
 
 */
-#define SETsecond_(set)            ((set)->e[1].p)
+#define SETsecond_(set)            (SETe_(set)[1].p)
 
 /*-<a                                     href="qh-set_r.htm#TOC"
   >---------------------------------------</a><a name="SETsecondt_">-</a>
@@ -392,7 +407,7 @@ struct setT {
    SETsecondt_(set, type)
      return second element of set as a type
 */
-#define SETsecondt_(set, type)     ((type *)((set)->e[1].p))
+#define SETsecondt_(set, type)     ((type *)(SETe_(set)[1].p))
 
 /*-<a                                     href="qh-set_r.htm#TOC"
   >---------------------------------------</a><a name="SETaddr_">-</a>
@@ -400,7 +415,7 @@ struct setT {
    SETaddr_(set, type)
        return address of set's elements
 */
-#define SETaddr_(set,type)         ((type **)(&((set)->e[0].p)))
+#define SETaddr_(set,type)         ((type **)(&(SETe_(set)[0].p)))
 
 /*-<a                                     href="qh-set_r.htm#TOC"
   >---------------------------------------</a><a name="SETreturnsize_">-</a>
@@ -412,7 +427,7 @@ struct setT {
       set must be defined
       use qh_setsize(qhT *qh, set) unless speed is critical
 */
-#define SETreturnsize_(set, size) (((size)= ((set)->e[(set)->maxsize].i))?(--(size)):((size)= (set)->maxsize))
+#define SETreturnsize_(set, size) (((size)= (SETe_(set)[(set)->maxsize].i))?(--(size)):((size)= (set)->maxsize))
 
 /*-<a                                     href="qh-set_r.htm#TOC"
   >---------------------------------------</a><a name="SETempty_">-</a>
@@ -438,7 +453,7 @@ struct setT {
   notes:
     *SETsizeaddr==NULL or e[*SETsizeaddr-1].p==NULL
 */
-#define SETsizeaddr_(set) (&((set)->e[(set)->maxsize]))
+#define SETsizeaddr_(set) (&(SETe_(set)[(set)->maxsize]))
 
 /*-<a                                     href="qh-set_r.htm#TOC"
   >---------------------------------------</a><a name="SETtruncate_">-</a>
@@ -450,8 +465,8 @@ struct setT {
      qh_settruncate()
 
 */
-#define SETtruncate_(set, size) {set->e[set->maxsize].i= size+1; /* maybe overwritten */ \
-      set->e[size].p= NULL;}
+#define SETtruncate_(set, size) {SETe_(set)[set->maxsize].i= size+1; /* maybe overwritten */ \
+      SETe_(set)[size].p= NULL;}
 
 /*======= prototypes in alphabetical order ============*/
 

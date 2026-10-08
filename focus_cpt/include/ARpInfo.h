@@ -17,7 +17,9 @@ namespace changepoint {
   - Maintains the maximum test statistic and corresponding changepoint over the candidate
     changes, pruned as in Algorithm 2 of the AR(p)-focus paper, with one stack for increases
     and one for decreases (see focus_ARp.cpp).
-  - candidates() returns a dummy/empty candidate list (the real computation happens in cost function).
+  - candidates() returns the changes stored in the two stacks: those for increases (side "right"),
+    then those for decreases (side "left"), with tau on the original data and st the sum of the
+    whitened observations up to the change. It is built when called.
 */
 
 // Forward declaration from focus_ARp.cpp
@@ -31,6 +33,9 @@ void arp_detector_update_impl(double obs,
 
 // Cleanup helper for opaque states
 void cleanup_arp_states(void* opaque_states);
+
+// The changes stored in the two stacks, written to out (see focus_ARp.cpp)
+void arp_detector_candidates(const void* opaque_states, std::vector<Candidate>& out);
 
 class ARpInfo : public Info {
 public:
@@ -81,9 +86,10 @@ public:
     sn_.assign(1, cumsum_);
   }
 
-  // candidates: Return dummy candidates (actual computation in cost function)
+  // candidates: the changes stored in the two stacks, built from the detector's state when called
   const std::vector<Candidate>& candidates() const override {
-    return dummy_candidates_;
+    changepoint::arp_detector_candidates(opaque_states_, candidates_);
+    return candidates_;
   }
 
   // Accessors for external cost function
@@ -116,8 +122,8 @@ private:
   // Data
   double cumsum_;                 // Cumulative sum of all observations
 
-  // Dummy candidates (required by interface but not used for ARP)
-  mutable std::vector<Candidate> dummy_candidates_;
+  // The stored changes, filled by candidates() (the stacks themselves live in focus_ARp.cpp)
+  mutable std::vector<Candidate> candidates_;
 
   // Opaque pointer to hold the detector's state (implementation detail in focus_ARp.cpp)
   void* opaque_states_;

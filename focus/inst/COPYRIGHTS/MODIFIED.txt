@@ -7,3 +7,23 @@ qh_fprintf_rbox         libqhull_r/userprintf_rbox_r.c  48, 50      2026/04/20  
 qh_meminit              src/libqhull_r/mem_r.c          310,514     2026/04/20  Gaetano Romano       Replaced `stderr` assignments with `qh_FILEstderr` to avoid pulling libc stderr symbol for CRAN compliance
 qh_new_qhull            src/libqhull_r/user_r.c         69,134      2026/04/20  Gaetano Romano       Replaced `stderr` initializations with `qh_FILEstderr`  for CRAN compliance
 qh_fprintf_rbox         libqhullcpp/RboxPoints.cpp      188         2026/04/20  Gaetano Romano       Commented out fprintf to silence console output for CRAN compliance
+SETe_ (new macro)       src/libqhull_r/qset_r.h         97-110      2026/10/06  Gaetano Romano       Added macro returning the elements e[0..maxsize] of a set as a pointer. e[] is declared with size 1 but holds maxsize+1 elements, so indexing it beyond e[0] is reported as out of bounds by -fsanitize=bounds-strict (gcc UBSan, as in the CRAN/R-hub sanitizer checks). The layout of setT is unchanged
+set access macros (*)   src/libqhull_r/qset_r.h         160-469     2026/10/06  Gaetano Romano       Elements accessed through SETe_ instead of set->e[n], see SETe_
+qh_setappend_set        src/libqhull_r/qset_r.c         188         2026/10/06  Gaetano Romano       Elements accessed through SETe_ instead of set->e[n], see SETe_
+qh_setcheck             src/libqhull_r/qset_r.c         248         2026/10/06  Gaetano Romano       Elements accessed through SETe_ instead of set->e[n], see SETe_
+qh_setcopy              src/libqhull_r/qset_r.c         321         2026/10/06  Gaetano Romano       Elements accessed through SETe_ instead of set->e[n], see SETe_
+qh_setdellast           src/libqhull_r/qset_r.c         392-402     2026/10/06  Gaetano Romano       Elements accessed through SETe_ instead of set->e[n], see SETe_
+qh_setendpointer        src/libqhull_r/qset_r.c         572         2026/10/06  Gaetano Romano       Elements accessed through SETe_ instead of set->e[n], see SETe_
+qh_setnew               src/libqhull_r/qset_r.c         985,986     2026/10/06  Gaetano Romano       Elements accessed through SETe_ instead of set->e[n], see SETe_
+qh_setnew_delnthsorted  src/libqhull_r/qset_r.c         1021        2026/10/06  Gaetano Romano       Elements accessed through SETe_ instead of set->e[n], see SETe_
+qh_setprint             src/libqhull_r/qset_r.c         1103        2026/10/06  Gaetano Romano       Elements accessed through SETe_ instead of set->e[n], see SETe_
+qh_settruncate          src/libqhull_r/qset_r.c         1325,1326   2026/10/06  Gaetano Romano       Elements accessed through SETe_ instead of set->e[n], see SETe_
+qh_setzero              src/libqhull_r/qset_r.c         1378        2026/10/06  Gaetano Romano       Elements accessed through SETe_ instead of set->e[n], see SETe_
+qh_matchnewfacets       src/libqhull_r/poly_r.c         953         2026/10/06  Gaetano Romano       Elements accessed through SETe_ instead of set->e[n], see SETe_
+
+(*) FOREACHsetelement_, FOREACHsetelement_i_, FOREACHsetelementreverse12_, SETindex_, SETelem_,
+    SETelemt_, SETelemaddr_, SETfirst_, SETfirstt_, SETsecond_, SETsecondt_, SETaddr_,
+    SETreturnsize_, SETsizeaddr_ and SETtruncate_. The two remaining direct accesses to set
+    elements, in qh_mergevertex_neighbors (src/libqhull_r/merge_r.c) and in
+    QhullSetBase::beginPointer (src/libqhullcpp/QhullSet.h), only use e[0], within the declared
+    size, and are unchanged. The results are unaffected (checked to be bitwise identical).

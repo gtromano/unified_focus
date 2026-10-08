@@ -8,8 +8,10 @@ multivariate, and nonparametric data using the FOCuS algorithm.
 from .python_wrapper import (
     Detector,
     DetectorStatistics,
+    DetectorSummary,
     OfflineResult,
     OfflineSummary,
+    ProjectionIndexes,
     generate_projection_indexes,
     focus_offline,
 )
@@ -19,8 +21,10 @@ __version__ = "0.1.11"
 __all__ = [
     "Detector",
     "DetectorStatistics",
+    "DetectorSummary",
     "OfflineResult",
     "OfflineSummary",
+    "ProjectionIndexes",
     "generate_projection_indexes",
     "focus_offline",
 ]

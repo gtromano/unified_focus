@@ -27,7 +27,8 @@ class Detector:
     A thin, Pythonic wrapper around the compiled FOCuS C++ detector. Use this
     class to run the online (sequential) detector: call ``update(y)`` for new
     observation(s) and ``get_statistics(...)`` to compute the current test
-    statistic and (optional) detection result.
+    statistic and (optional) detection result. The state of the detector can
+    be inspected with ``summary()``.
 
     Parameters
     ----------
@@ -140,6 +141,8 @@ class Detector:
             mu0_arp=mu0_arp,
         )
         self._type = type
+        self._side = side if type == "univariate_one_sided" else None
+        self._ar_order = rho.size if type == "arp" and rho is not None else None
 
     def update(self, y: Union[float, List[float], np.ndarray], lambda_: float = 1.0) -> None:
         """
@@ -262,8 +265,59 @@ class Detector:
         """Return the detector type."""
         return self._type
 
+    def summary(
+        self,
+        family: Optional[str] = None,
+        theta0: Optional[Union[float, List[float], np.ndarray]] = None,
+        shape: Optional[float] = None,
+    ) -> "DetectorSummary":
+        """Summarise the current state of the detector.
+
+        Parameters
+        ----------
+        family, theta0, shape : optional
+            If ``family`` is given, the summary includes the current statistics,
+            computed by :meth:`get_statistics` with these arguments.
+
+        Returns
+        -------
+        DetectorSummary
+            A dictionary with the detector type, the number of observations,
+            the cumulative sums (see :meth:`get_sn`), the number and locations
+            of the candidate changepoints and, if ``family`` is given, the
+            current statistics, printed as the ``summary`` method of the R class
+            ``focus_detector``.
+        """
+        return DetectorSummary({
+            "type": self._type,
+            "side": self._side,
+            "ar_order": self._ar_order,
+            "n": self.get_n(),
+            "sn": np.asarray(self.get_sn(), dtype=np.float64),
+            "n_candidates": self.get_n_candidates(),
+            "candidates": np.unique(self.get_candidates()["tau"]),
+            "statistics": None if family is None else self.get_statistics(family, theta0, shape),
+        })
+
     def __repr__(self) -> str:
         return f"Detector(type='{self._type}', n={self.get_n()}, n_candidates={self.get_n_candidates()})"
+
+
+def _import_pyplot(caller: str):
+    """Import matplotlib.pyplot, with an informative error if it is missing."""
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError as err:
+        raise ImportError(f"{caller} requires matplotlib (pip install matplotlib)") from err
+    return plt
+
+
+def _format_values(values, max_values: int = 8) -> str:
+    """Format a vector, printing at most ``max_values`` values."""
+    values = [_format_number(v) for v in np.ravel(values)]
+    if len(values) > max_values:
+        values = values[:max_values - 2] + ["...", values[-1]]
+    return ", ".join(values)
 
 
 def _format_number(x: Any, missing: str = "not available") -> str:
@@ -354,8 +408,8 @@ class OfflineResult(dict):
     ``'type'``, ``'family'`` and ``'shape'`` (see :func:`focus_offline`), whose
     values are also available as attributes. Printing the object describes the
     detection, :meth:`summary` summarises the test statistics and :meth:`plot`
-    draws their trace, as the ``print``, ``summary`` and ``plot`` methods of the
-    R class ``focus_offline``.
+    draws their trace (optionally below the data), as the ``print``,
+    ``summary`` and ``plot`` methods of the R class ``focus_offline``.
     """
 
     stat = _item("stat", "Test statistics over time, array of shape (n, n_stats).")
@@ -420,31 +474,60 @@ class OfflineResult(dict):
             "statistics": rows,
         })
 
-    def plot(self, ax=None, **kwargs):
+    def plot(self, ax=None, data=None, **kwargs):
         """Plot the trace of the test statistic(s) over time.
 
         Finite thresholds are drawn as dashed horizontal lines and, if a
         detection occurred, the detection time and the estimated changepoint as
-        dotted vertical lines. Requires ``matplotlib``.
+        dotted vertical lines. If ``data`` are given, they are drawn above the
+        trace, with one panel per dimension and the estimated changepoint.
+        Requires ``matplotlib``.
 
         Parameters
         ----------
         ax : matplotlib.axes.Axes, optional
-            Axes to draw on. By default, a new figure is created.
+            Axes to draw on (one per dimension of the data, followed by one for
+            the trace, if ``data`` are given). By default, a new figure is
+            created.
+        data : array-like, optional
+            The data passed to :func:`focus_offline` (1D, or 2D with one column
+            per dimension).
         **kwargs
             Passed to ``ax.plot`` for the statistic traces.
 
         Returns
         -------
-        matplotlib.axes.Axes
+        matplotlib.axes.Axes, or an array of axes if ``data`` are given.
         """
-        try:
-            import matplotlib.pyplot as plt
-        except ImportError as err:
-            raise ImportError("OfflineResult.plot() requires matplotlib "
-                              "(pip install matplotlib)") from err
+        plt = _import_pyplot("OfflineResult.plot()")
+        if data is not None:
+            data = np.asarray(data, dtype=np.float64)
+            if data.ndim == 1:
+                data = data[:, None]
+            n_dims = data.shape[1]
+            fig = None
+            if ax is None:
+                fig, ax = plt.subplots(n_dims + 1, 1, sharex=True)
+            ax = np.ravel(ax)
+            # One panel per dimension of the data, above the trace of the statistic(s)
+            labels = ["Data"] if n_dims == 1 else [f"Dimension {j + 1}" for j in range(n_dims)]
+            for j in range(n_dims):
+                ax[j].plot(np.arange(1, data.shape[0] + 1), data[:, j], color="0.2", linewidth=0.8)
+                if self.detected_changepoint is not None:
+                    ax[j].axvline(self.detected_changepoint, linestyle=":", color="grey")
+                ax[j].set_ylabel(labels[j], fontsize="small" if n_dims > 1 else None)
+            self._plot_trace(ax[n_dims], **kwargs)
+            if n_dims > 1:
+                ax[n_dims].yaxis.label.set_size("small")
+            if fig is not None:
+                fig.tight_layout()
+            return ax
         if ax is None:
             _, ax = plt.subplots()
+        self._plot_trace(ax, **kwargs)
+        return ax
+
+    def _plot_trace(self, ax, **kwargs):
         stat = np.asarray(self.stat, dtype=np.float64)
         if stat.ndim == 1:
             stat = stat[:, None]
@@ -467,7 +550,6 @@ class OfflineResult(dict):
             ax.legend(frameon=False)
         ax.set_xlabel("Time")
         ax.set_ylabel("Statistic")
-        return ax
 
 
 class OfflineSummary(dict):
@@ -497,7 +579,76 @@ class OfflineSummary(dict):
         return "\n".join(lines)
 
 
-def generate_projection_indexes(d: int, p: int) -> List[np.ndarray]:
+class DetectorSummary(dict):
+    """Summary of a :class:`Detector`, as returned by :meth:`Detector.summary`."""
+
+    def __repr__(self) -> str:
+        detector_type = self["type"]
+        if self["side"] is not None:
+            detector_type += f' (side = "{self["side"]}")'
+        lines = [
+            "focus detector: summary",
+            _field("type", detector_type),
+            _field("observations", _format_number(self["n"])),
+        ]
+        if self["ar_order"] is not None:
+            lines.append(_field("AR order", self["ar_order"]))
+        if self["sn"].size > 0:
+            label = "running sum" if self["sn"].size == 1 else "running sums"
+            lines.append(_field(label, _format_values(self["sn"])))
+        if self["n_candidates"] is not None:
+            lines.append(_field("candidates", self["n_candidates"]))
+            if len(self["candidates"]) > 0:
+                lines.append(_field("locations", _format_values(self["candidates"])))
+        if self["statistics"] is not None:
+            lines += ["", repr(self["statistics"])]
+        return "\n".join(lines)
+
+
+class ProjectionIndexes(list):
+    """Projection index sets, as returned by :func:`generate_projection_indexes`.
+
+    A list of arrays, each holding the 0-based indices of the dimensions of one
+    projection, that can be passed directly as the ``dim_indexes`` argument of
+    :class:`Detector` and :func:`focus_offline`. The number of dimensions and
+    the projection size are stored in ``d`` and ``p``. Printing the object
+    shows one projection per row, slicing keeps the class and
+    :meth:`to_array` returns the indices as a 2D array, as the methods of the R
+    class ``focus_projections``.
+    """
+
+    def __init__(self, indexes=(), d: Optional[int] = None, p: Optional[int] = None):
+        super().__init__(np.asarray(idx) for idx in indexes)
+        self.d = d
+        self.p = p
+
+    def __getitem__(self, key):
+        out = super().__getitem__(key)
+        if isinstance(key, slice):
+            return ProjectionIndexes(out, d=self.d, p=self.p)
+        return out
+
+    def to_array(self) -> np.ndarray:
+        """Return the indices as a 2D array, with one row per projection."""
+        if len(self) == 0:
+            return np.empty((0, self.p or 0), dtype=int)
+        return np.vstack(list(self))
+
+    def __repr__(self, max_rows: int = 10) -> str:
+        lines = [
+            "focus projection indexes (0-based)",
+            _field("dimensions", self.d),
+            _field("projections", f"{len(self)} of size {self.p}"),
+        ]
+        width = len(str(len(self))) + 2
+        for k, idx in enumerate(list(self)[:max_rows]):
+            lines.append("  " + f"[{k + 1}]".rjust(width) + " " + " ".join(str(i) for i in idx))
+        if len(self) > max_rows:
+            lines.append(f"  ... and {len(self) - max_rows} more")
+        return "\n".join(lines)
+
+
+def generate_projection_indexes(d: int, p: int) -> ProjectionIndexes:
     """
     Generate projection index sets for high-dimensional multivariate detectors.
 
@@ -510,16 +661,27 @@ def generate_projection_indexes(d: int, p: int) -> List[np.ndarray]:
 
     Returns
     -------
-    list of arrays
-        Circular combinations of indices.
-    
+    ProjectionIndexes
+        Circular combinations of indices: a list of arrays of 0-based indices,
+        one per projection, with a compact printed representation.
+
     Examples
     --------
     >>> # 2-dim projections from 5 dimensions
-    >>> generate_projection_indexes(d=5, p=2)
-    [array([0,1]), array([1,2]), array([2,3]), array([3,4]), array([4,0])]
+    >>> proj = generate_projection_indexes(d=5, p=2)
+    >>> proj
+    focus projection indexes (0-based)
+      dimensions:    5
+      projections:   5 of size 2
+      [1] 0 1
+      [2] 1 2
+      [3] 2 3
+      [4] 3 4
+      [5] 4 0
+    >>> proj.to_array().shape
+    (5, 2)
     """
-    return _focus.generate_projection_indexes(d, p)
+    return ProjectionIndexes(_focus.generate_projection_indexes(d, p), d=d, p=p)
 
 
 def focus_offline(
@@ -662,8 +824,10 @@ def focus_offline(
 __all__ = [
     "Detector",
     "DetectorStatistics",
+    "DetectorSummary",
     "OfflineResult",
     "OfflineSummary",
+    "ProjectionIndexes",
     "generate_projection_indexes",
     "focus_offline",
 ]

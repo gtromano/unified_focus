@@ -39,8 +39,9 @@ Description: Provides high-performance online changepoint detection in univariat
              The package bundles code from 'Qhull' <http://www.qhull.org/>, by C. B. Barber and
              The Geometry Center. See 'inst/COPYRIGHTS' for details.
 License: GPL (>= 3)
+Depends: R (>= 3.6.0)
 Imports: graphics, Rcpp (>= 1.1.0)
 LinkingTo: Rcpp
 Encoding: UTF-8
-Suggests: testthat (>= 3.0.0)
+Suggests: ggplot2, testthat (>= 3.0.0)
 Config/roxygen2/version: 8.1.0

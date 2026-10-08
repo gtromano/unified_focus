@@ -8,7 +8,13 @@
 \alias{summary.focus_offline}
 \alias{print.summary.focus_offline}
 \alias{plot.focus_offline}
-\title{Methods for Detector, Statistics and Offline Result Objects}
+\alias{summary.focus_detector}
+\alias{print.summary.focus_detector}
+\alias{print.focus_projections}
+\alias{[.focus_projections}
+\alias{as.matrix.focus_projections}
+\alias{autoplot.focus_offline}
+\title{Methods for Detector, Statistics, Offline Result and Projection Objects}
 \usage{
 \method{print}{focus_detector}(x, ...)
 
@@ -22,6 +28,7 @@
 
 \method{plot}{focus_offline}(
   x,
+  data = NULL,
   type = "l",
   lty = 1,
   col = NULL,
@@ -30,10 +37,23 @@
   main = NULL,
   ...
 )
+
+\method{summary}{focus_detector}(object, family = NULL, theta0 = NULL, shape = NULL, ...)
+
+\method{print}{summary.focus_detector}(x, digits = max(3L, getOption("digits") - 3L), ...)
+
+\method{print}{focus_projections}(x, n = 10L, ...)
+
+\method{[}{focus_projections}(x, i)
+
+\method{as.matrix}{focus_projections}(x, ...)
+
+\method{autoplot}{focus_offline}(object, data = NULL, ...)
 }
 \arguments{
 \item{x, object}{An object of class \code{"focus_detector"},
-\code{"focus_statistics"}, \code{"focus_offline"} or
+\code{"focus_statistics"}, \code{"focus_offline"},
+\code{"focus_projections"}, \code{"summary.focus_detector"} or
 \code{"summary.focus_offline"}, as appropriate.}
 
 \item{...}{Further arguments passed to or from other methods (for
@@ -41,32 +61,54 @@
 
 \item{digits}{Number of significant digits used to print the statistics.}
 
+\item{data}{Optionally, the data passed to \code{\link{focus_offline}()},
+drawn above the trace of the statistic(s).}
+
 \item{type, lty, col, xlab, ylab, main}{Graphical parameters passed to
 \code{\link[graphics]{matplot}()}. By default, one solid line is drawn
 per test statistic.}
+
+\item{family, theta0, shape}{Optional arguments passed to
+\code{\link{get_statistics}()}: if \code{family} is given, the summary of
+a detector includes its current statistics.}
+
+\item{n}{Maximum number of projections to print.}
+
+\item{i}{Indices of the projections to keep.}
 }
 \value{
 The \code{print} and \code{plot} methods return \code{x} invisibly.
-  The \code{summary} method returns an object of class
+  The \code{summary} method for detectors returns an object of class
+  \code{"summary.focus_detector"}, a list with the reported elements. The
+  \code{summary} method for offline results returns an object of class
   \code{"summary.focus_offline"}: a list with the elements \code{type},
   \code{family}, \code{shape}, \code{n}, \code{detection_time} and
   \code{detected_changepoint} of the offline result, the number of final
   candidates \code{n_candidates}, and \code{statistics}, a data frame with
-  one row per test statistic.
+  one row per test statistic. The \code{[} method returns a
+  \code{"focus_projections"} object and \code{as.matrix} an integer matrix.
 }
 \description{
-Print, summary and plot methods for the S3 classes returned by the main
-functions of the package: \code{"focus_detector"} objects, created by
-\code{\link{detector_create}()}; \code{"focus_statistics"} objects, returned
-by \code{\link{get_statistics}()}; and \code{"focus_offline"} objects,
-returned by \code{\link{focus_offline}()}.
+Methods for the S3 classes returned by the main functions of the package:
+\code{"focus_detector"} objects, created by \code{\link{detector_create}()};
+\code{"focus_statistics"} objects, returned by \code{\link{get_statistics}()};
+\code{"focus_offline"} objects, returned by \code{\link{focus_offline}()};
+and \code{"focus_projections"} objects, returned by
+\code{\link{generate_projection_indexes}()}.
 }
 \details{
 The \code{print} methods give a compact description of the object: for a
 detector, its type, the number of observations processed and the number of
 candidate changepoints currently stored; for the statistics, the current
 time, changepoint estimate and test statistic(s); for an offline result, the
-detector type and family, the threshold(s) and the detection, if any.
+detector type and family, the threshold(s) and the detection, if any; for
+projection index sets, the (0-based) indices of each projection, one
+projection per row.
+
+The \code{summary} method for \code{"focus_detector"} objects additionally
+reports the cumulative sums (see \code{\link{detector_info_sn}()}) and the
+locations of the candidate changepoints, at the time it is called, and, if a
+\code{family} is given, the current statistics.
 
 The \code{summary} method for \code{"focus_offline"} objects additionally
 reports, for each test statistic, its maximum over time, the time at which
@@ -75,8 +117,14 @@ threshold.
 
 The \code{plot} method for \code{"focus_offline"} objects draws the trace of
 the test statistic(s) over time, with the finite threshold(s) as dashed
-horizontal lines and, if a detection occurred, the detection time and the
-estimated changepoint as dotted vertical lines.
+horizontal lines and, if a detection occurred, the estimated changepoint as
+a dotted vertical line. If \code{data} are given, they are drawn above the
+trace, with one panel per dimension. If \pkg{ggplot2} is installed, \code{autoplot()} returns the same plot
+as a \code{"ggplot"} object.
+
+Projection index sets can be subset with \code{[} (e.g., with
+\code{head()}), keeping their class, and \code{as.matrix} returns them as a
+matrix with one row per projection.
 }
 \examples{
 set.seed(123)
@@ -86,6 +134,7 @@ Y <- c(rnorm(100, mean = 0), rnorm(100, mean = 2))
 det <- detector_create(type = "univariate")
 for (y in Y[1:120]) detector_update(det, y)
 det
+summary(det, family = "gaussian")
 get_statistics(det, family = "gaussian")
 
 # Offline interface
@@ -94,5 +143,15 @@ res <- focus_offline(Y, threshold = 20, type = "univariate",
 res
 summary(res)
 plot(res)
+plot(res, data = Y)
+if (requireNamespace("ggplot2", quietly = TRUE)) {
+  ggplot2::autoplot(res, data = Y)
+}
+
+# Projection index sets
+proj <- generate_projection_indexes(d = 6, p = 2)
+proj
+head(proj, 2)
+as.matrix(proj)
 
 }

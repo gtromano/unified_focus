@@ -950,7 +950,7 @@ coordT qh_matchnewfacets(qhT *qh /* qh.newfacet_list */) {
     numnew++;
     {  /* inline qh_setzero(qh, newfacet->neighbors, 1, qh->hull_dim); */
       neighbors= newfacet->neighbors;
-      neighbors->e[neighbors->maxsize].i= dim+1; /*may be overwritten*/
+      SETe_(neighbors)[neighbors->maxsize].i= dim+1; /*may be overwritten*/
       memset((char *)SETelemaddr_(neighbors, 1, void), 0, (size_t)(dim * SETelemsize));
     }
   }

@@ -43,10 +43,10 @@
 #' @return An object of class \code{"focus_detector"}: an external pointer to
 #'   the state of the C++ detector, which is updated in place. It should be
 #'   passed to the other detector functions, such as
-#'   \code{\link{detector_update}()} and \code{\link{get_statistics}()}. A
-#'   \code{print} method is available, see \code{\link{focus-methods}}. As
-#'   external pointers, detectors cannot be saved and restored across \R
-#'   sessions.
+#'   \code{\link{detector_update}()} and \code{\link{get_statistics}()}.
+#'   \code{print} and \code{summary} methods are available, see
+#'   \code{\link{focus-methods}}. As external pointers, detectors cannot be
+#'   saved and restored across \R sessions.
 #'
 #' @details
 #' The detector maintains sufficient statistics internally and uses pruning
@@ -292,80 +292,19 @@ get_statistics <- function(det_ptr, family, theta0 = NULL, shape = NULL) {
     .Call(`_focus_get_statistics`, det_ptr, family, theta0, shape)
 }
 
-#' Get the Number of Candidate Segments
-#'
-#' Returns the number of candidate changepoint segments currently tracked
-#' by the detector.
-#'
-#' @param det_ptr A \code{"focus_detector"} object created by
-#'   \code{\link{detector_create}()}.
-#'
-#' @return Integer. Number of candidate segments.
-#'
-#' @details
-#' The FOCuS algorithm maintains a set of candidate segments that could
-#' potentially contain changepoints. This number grows with time but is
-#' controlled by the pruning parameters.
-#'
-#' @export
-detector_cands_len <- function(det_ptr) {
+.detector_cands_len <- function(det_ptr) {
     .Call(`_focus_detector_cands_len`, det_ptr)
 }
 
-#' Get the Number of Observations Processed
-#'
-#' Returns the total number of observations processed by the detector.
-#'
-#' @param det_ptr A \code{"focus_detector"} object created by
-#'   \code{\link{detector_create}()}.
-#'
-#' @return Integer. Number of observations processed (current time index).
-#'
-#' @export
-detector_info_n <- function(det_ptr) {
+.detector_info_n <- function(det_ptr) {
     .Call(`_focus_detector_info_n`, det_ptr)
 }
 
-#' Get the Cumulative Sum Statistic
-#'
-#' Returns the current cumulative sum statistic maintained by the detector.
-#'
-#' @param det_ptr A \code{"focus_detector"} object created by
-#'   \code{\link{detector_create}()}.
-#'
-#' @return Numeric vector. Cumulative sum statistic. For univariate detectors,
-#'   a scalar (length-1 vector). For multivariate detectors, a vector of
-#'   length equal to the number of dimensions.
-#'
-#' @export
-detector_info_sn <- function(det_ptr) {
+.detector_info_sn <- function(det_ptr) {
     .Call(`_focus_detector_info_sn`, det_ptr)
 }
 
-#' Get the Candidate Segments
-#'
-#' Returns detailed information about all candidate changepoint segments
-#' currently tracked by the detector.
-#'
-#' @param det_ptr A \code{"focus_detector"} object created by
-#'   \code{\link{detector_create}()}.
-#'
-#' @return A data frame (tibble) with one row per candidate and columns:
-#'   \item{tau}{Numeric vector. Candidate changepoint locations, on the same
-#'     scale as the changepoint estimate returned by
-#'     \code{\link{get_statistics}()}.}
-#'   \item{st}{List of numeric vectors. Sufficient statistics for each
-#'     candidate segment (e.g., cumulative sums of the data).}
-#'   \item{side}{Character vector. Side indicator for each candidate
-#'     (relevant for one-sided detectors).}
-#'
-#' @details
-#' Each row represents a candidate segment from time \code{tau} to the current
-#' time. The sufficient statistics in \code{st} are used to efficiently compute
-#' test statistics without reprocessing the data.
-#'
-#' @export
-detector_candidates <- function(det_ptr) {
+.detector_candidates <- function(det_ptr) {
     .Call(`_focus_detector_candidates`, det_ptr)
 }
 
@@ -377,8 +316,15 @@ detector_candidates <- function(det_ptr) {
 #' @param d Integer. Total number of dimensions.
 #' @param p Integer. Projection subset size (number of dimensions per projection).
 #'
-#' @return A list of integer vectors. Each element is a vector of 0-based
-#'   column indices representing one projection.
+#' @return An object of class \code{"focus_projections"}: a list of integer
+#'   vectors, each holding the 0-based column indices of one projection, with
+#'   the number of dimensions and the projection size stored in the attributes
+#'   \code{"d"} and \code{"p"}. It can be passed directly as the
+#'   \code{dim_indexes} argument of \code{\link{detector_create}()} and
+#'   \code{\link{focus_offline}()}. A \code{print} method shows one projection
+#'   per row, subsetting with \code{[} (e.g., \code{head()}) keeps the class,
+#'   and \code{as.matrix()} returns the indices as a matrix with one row per
+#'   projection; see \code{\link{focus-methods}}.
 #'
 #' @details
 #' This function generates systematic projection sets for use with multivariate
@@ -386,15 +332,18 @@ detector_candidates <- function(det_ptr) {
 #' dimensional space while keeping the number of projections manageable.
 #'
 #' @examples
-#' \donttest{
 #' # Generate 2-dimensional projections from 5 dimensions
 #' proj <- generate_projection_indexes(d = 5, p = 2)
-#' print(proj)
+#' proj
+#' as.matrix(proj)
 #'
 #' # Use with multivariate detector
 #' det <- detector_create(type = "multivariate", dim_indexes = proj)
+#' detector_update(det, c(0.5, 1.2, -0.3, 0.8, 0.1))
+#'
+#' # Offline comparison of the full detector and approximation
 #' set.seed(42)
-#' d <- 5
+#' d <- 6
 #'
 #' # Create data: changepoint at t=1000
 #' Y_multi <- rbind(
@@ -409,7 +358,7 @@ detector_candidates <- function(det_ptr) {
 #' )
 #'
 #' # Low-dimensional projection approximation
-#' dim_indexes <- generate_projection_indexes(5, 2)
+#' dim_indexes <- generate_projection_indexes(6, 2)
 #' system.time(
 #' res_multi_approx <- focus_offline(Y_multi, threshold = Inf,
 #'                                   type = "multivariate", family = "gaussian",
@@ -418,7 +367,6 @@ detector_candidates <- function(det_ptr) {
 #'
 #' # Verify similarity
 #' all.equal(res_multi$stat, res_multi_approx$stat)
-#' }
 #'
 #' @export
 generate_projection_indexes <- function(d, p) {
@@ -506,6 +454,9 @@ generate_projection_indexes <- function(d, p) {
 #'
 #' # Plot the trace of the statistic, the threshold and the detection
 #' plot(result)
+#'
+#' # Plot the data above the trace of the statistic
+#' plot(result, data = Y)
 #'
 #' # Poisson detection
 #' Y_poisson <- c(rpois(100, lambda = 2), rpois(100, lambda = 5))

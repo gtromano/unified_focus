@@ -74,7 +74,7 @@ build.verbose = false
 wheel.packages = ["focus_cpt"]
 
 # Keep previously built distributions out of the source distribution
-sdist.exclude = ["dist/"]
+sdist.exclude = ["dist/", "generate_README_python.qmd", "generate_README_python_files/", ".pytest_cache/"]
 
 # Installation settings
 install.strip = false

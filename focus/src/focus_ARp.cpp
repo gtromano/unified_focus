@@ -27,14 +27,26 @@ namespace {
   At time n (Algorithm 1), the change at n - p - 1 joins both stacks, every coefficient is updated with y_n (D.3), and
   the statistic is the largest of the stacked quadratics and of the last p changes, from (D.2). Changes are counted
   on the whitened observations, from 1; CostsArp adds p.
+
+  Each of the last p changes keeps its sums over its transitional observations seen so far, which y_n extends by one
+  term, so that an observation costs O(p) besides the stacks (whitening it is O(p) too). The change at n - p - 1 joins
+  the stacks with its completed sums.
 */
 
 struct Quad {
   int tau;
   double W;                        // sum_m v_m y_(tau+m)
   double M;                        // M_(tau+p), the sum of y up to tau + p
+  double S;                        // M_tau, the sum of y up to tau
   double A, B, C, D, E, F;         // the coefficients of Cost_(tau,n)
   double l;                        // its Inter with the element below
+};
+
+// One of the last p changes, at tau = n - r: its sums over m = 1..r
+struct Pending {
+  double E;                        // sum_m v_m y_(tau+m)
+  double gy;                       // sum_m g_m y_(tau+m)
+  double window;                   // sum_m y_(tau+m)
 };
 
 struct ArpState {
@@ -54,7 +66,7 @@ struct ArpState {
       before += rho[m - 1];
     }
     x_last.reserve(p);
-    y_last.reserve(p + 1);
+    pending.assign(p, Pending{0.0, 0.0, 0.0});
   }
 
   int p;
@@ -64,23 +76,15 @@ struct ArpState {
   std::vector<double> v, g;        // v_m and g_m, m = 1..p
   std::vector<double> cv2, cg2, cgv;   // cumulative sums of v_m^2, g_m^2 and g_m v_m, c[r] = sum_(m<=r)
 
-  std::vector<double> x_last;      // last p observations, oldest first
-  std::vector<double> y_last;      // last min(n, p + 1) whitened observations, oldest first
+  std::vector<double> x_last;      // last p observations, a ring: x_head is the slot of the oldest
+  int x_head = 0;
+  std::vector<Pending> pending;    // the last p changes, the one at tau in slot tau mod p
   int n = 0;                       // whitened observations so far
   double M = 0.0;                  // their sum, M_n
   double sumsq = 0.0;              // and the sum of their squares
 
   std::vector<Quad> pos, neg;      // the stacks for mu1 > mu0 and mu1 < mu0
 };
-
-inline void push_last(std::vector<double>& buf, int cap, double value) {
-  if (static_cast<int>(buf.size()) < cap) {
-    buf.push_back(value);
-    return;
-  }
-  for (int k = 0; k + 1 < cap; ++k) buf[k] = buf[k + 1];
-  buf[cap - 1] = value;
-}
 
 // Inter: the non-zero mu1 where the curves of the change at Q.tau and of the later one at N.tau cross, for mu0 = 0
 inline double inter(const ArpState& st, const Quad& Q, const Quad& N) {
@@ -151,39 +155,40 @@ void arp_detector_update_impl(double obs,
     return;
   }
   double y = obs;
-  for (int j = 1; j <= p; ++j) y -= st->rho[j - 1] * st->x_last[p - j];
-  push_last(st->x_last, p, obs);
+  int k = st->x_head;                                // x_(t-j) is in slot x_head - j, mod p
+  for (int j = 1; j <= p; ++j) {
+    k = (k == 0 ? p : k) - 1;
+    y -= st->rho[j - 1] * st->x_last[k];
+  }
+  st->x_last[st->x_head] = obs;
+  st->x_head = (st->x_head + 1 == p) ? 0 : st->x_head + 1;
 
   const int n = ++st->n;
   st->M += y;
   st->sumsq += y * y;
-  push_last(st->y_last, p + 1, y);
 
-  // Algorithm 2, lines 1-10: the change at n - p - 1, whose p transitional observations end at n - 1, joins both stacks
+  // Algorithm 2, lines 1-10: the change at n - p - 1, whose p transitional observations end at n - 1, joins both stacks.
+  // It is in the slot that the change at n - 1 takes next.
+  Pending& slot = st->pending[(n - 1) % p];
   if (n - p - 1 >= 1) {
     Quad q;
     q.tau = n - p - 1;
-    q.W = 0.0;
-    double gy = 0.0, window = 0.0;
-    for (int m = 1; m <= p; ++m) {
-      const double ym = st->y_last[m - 1];          // y_(tau+m)
-      q.W += st->v[m - 1] * ym;
-      gy += st->g[m - 1] * ym;
-      window += ym;
-    }
+    q.W = slot.E;
     q.M = st->M - y;                                 // M_(tau+p) = M_(n-1)
-    const double M_tau = q.M - window;
+    const double M_tau = q.M - slot.window;
+    q.S = M_tau;
     // (D.2) at time tau + p
     q.A = -0.5 * (q.tau * st->Phi * st->Phi + st->cg2[p]);
     q.B = -0.5 * st->cv2[p];
     q.C = st->cgv[p];
-    q.D = st->Phi * M_tau - gy;
+    q.D = st->Phi * M_tau - slot.gy;
     q.E = q.W;
     q.F = -0.5 * (st->sumsq - y * y);
     insert(*st, st->pos, q, true);
     insert(*st, st->neg, q, false);
   }
   if (n < 2) return;
+  slot = Pending{0.0, 0.0, 0.0};                    // the change at n - 1
 
   double best = -1.0;
   int best_tau = -1;
@@ -200,20 +205,18 @@ void arp_detector_update_impl(double obs,
     }
   }
 
-  // Algorithm 1, line 4: the last p changes, at n - r for r = 1..p, from (D.2)
-  const int q = static_cast<int>(st->y_last.size());
+  // Algorithm 1, line 4: the last p changes, at n - r for r = 1..p, from (D.2), their sums extended with y_n = y_(tau+r)
+  int s = n % p;
   for (int r = 1; r <= std::min(p, n - 1); ++r) {
+    s = (s == 0 ? p : s) - 1;                        // the slot of n - r
+    Pending& c = st->pending[s];
+    c.E += st->v[r - 1] * y;
+    c.gy += st->g[r - 1] * y;
+    c.window += y;
     const int tau = n - r;
-    double E = 0.0, gy = 0.0, window = 0.0;
-    for (int m = 1; m <= r; ++m) {
-      const double ym = st->y_last[q - r + m - 1];  // y_(tau+m)
-      E += st->v[m - 1] * ym;
-      gy += st->g[m - 1] * ym;
-      window += ym;
-    }
     const double A = -0.5 * (tau * st->Phi * st->Phi + st->cg2[r]);
-    const double D = st->Phi * (st->M - window) - gy;
-    consider(lr(*st, null_max, A, -0.5 * st->cv2[r], st->cgv[r], D, E, -0.5 * st->sumsq), tau, best, best_tau);
+    const double D = st->Phi * (st->M - c.window) - c.gy;
+    consider(lr(*st, null_max, A, -0.5 * st->cv2[r], st->cgv[r], D, c.E, -0.5 * st->sumsq), tau, best, best_tau);
   }
 
   out_max_stat = best;
@@ -222,6 +225,17 @@ void arp_detector_update_impl(double obs,
 
 void cleanup_arp_states(void* opaque_states) {
   delete reinterpret_cast<ArpState*>(opaque_states);
+}
+
+// The changes in the stack for increases (side "right"), then in the one for decreases ("left"). tau is counted on
+// the original data, as the changepoint in CostsArp, and st is M_tau.
+void arp_detector_candidates(const void* opaque_states, std::vector<Candidate>& out) {
+  out.clear();
+  const ArpState* st = reinterpret_cast<const ArpState*>(opaque_states);
+  if (st == nullptr) return;
+  out.reserve(st->pos.size() + st->neg.size());
+  for (const Quad& q : st->pos) out.emplace_back(q.S, static_cast<double>(q.tau + st->p), "right");
+  for (const Quad& q : st->neg) out.emplace_back(q.S, static_cast<double>(q.tau + st->p), "left");
 }
 
 }  // namespace changepoint

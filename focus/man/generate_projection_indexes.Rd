@@ -12,8 +12,15 @@ generate_projection_indexes(d, p)
 \item{p}{Integer. Projection subset size (number of dimensions per projection).}
 }
 \value{
-A list of integer vectors. Each element is a vector of 0-based
-  column indices representing one projection.
+An object of class \code{"focus_projections"}: a list of integer
+  vectors, each holding the 0-based column indices of one projection, with
+  the number of dimensions and the projection size stored in the attributes
+  \code{"d"} and \code{"p"}. It can be passed directly as the
+  \code{dim_indexes} argument of \code{\link{detector_create}()} and
+  \code{\link{focus_offline}()}. A \code{print} method shows one projection
+  per row, subsetting with \code{[} (e.g., \code{head()}) keeps the class,
+  and \code{as.matrix()} returns the indices as a matrix with one row per
+  projection; see \code{\link{focus-methods}}.
 }
 \description{
 Generates projection index sets for high-dimensional multivariate detectors
@@ -25,15 +32,18 @@ detectors. The circular combination approach ensures good coverage of the
 dimensional space while keeping the number of projections manageable.
 }
 \examples{
-\donttest{
 # Generate 2-dimensional projections from 5 dimensions
 proj <- generate_projection_indexes(d = 5, p = 2)
-print(proj)
+proj
+as.matrix(proj)
 
 # Use with multivariate detector
 det <- detector_create(type = "multivariate", dim_indexes = proj)
+detector_update(det, c(0.5, 1.2, -0.3, 0.8, 0.1))
+
+# Offline comparison of the full detector and approximation
 set.seed(42)
-d <- 5
+d <- 6
 
 # Create data: changepoint at t=1000
 Y_multi <- rbind(
@@ -48,7 +58,7 @@ res_multi <- focus_offline(Y_multi, threshold = Inf,
 )
 
 # Low-dimensional projection approximation
-dim_indexes <- generate_projection_indexes(5, 2)
+dim_indexes <- generate_projection_indexes(6, 2)
 system.time(
 res_multi_approx <- focus_offline(Y_multi, threshold = Inf,
                                   type = "multivariate", family = "gaussian",
@@ -57,6 +67,5 @@ res_multi_approx <- focus_offline(Y_multi, threshold = Inf,
 
 # Verify similarity
 all.equal(res_multi$stat, res_multi_approx$stat)
-}
 
 }
