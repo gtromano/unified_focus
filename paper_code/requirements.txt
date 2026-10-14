@@ -1,0 +1,14 @@
+# Python packages needed by replication.py (Python >= 3.8), install with
+#   pip install -r requirements.txt
+# If focus-cpt 0.1.11 is not yet available from PyPI, install it first from the
+# submitted source package: pip install focus_cpt-0.1.11.tar.gz
+#
+# The results of the manuscript were obtained with Python 3.11.8 and
+# focus-cpt 0.1.11, numpy 2.4.2, pandas 3.0.1, scipy 1.17.1, plotnine 0.15.3
+# and astropy 7.2.0.
+focus-cpt>=0.1.11
+numpy
+pandas
+scipy
+plotnine
+astropy

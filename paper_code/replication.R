@@ -11,10 +11,10 @@
 ## (Section 3, Sections 5.2 and 5.3, and Appendix A) are reproduced by the
 ## companion script replication.py.
 ##
-## Requirements: R (>= 4.1.0) and the packages focus (>= 0.1.10), ggplot2,
+## Requirements: R (>= 4.1.0) and the packages focus (>= 0.1.11), ggplot2,
 ## furrr, purrr and dplyr, all available from CRAN. The focus package can also
 ## be installed from the source package submitted with the manuscript:
-##   R CMD INSTALL focus_0.1.10.tar.gz
+##   R CMD INSTALL focus_0.1.11.tar.gz
 ##
 ## Run the script from the folder containing it, as the data are read from
 ## paper_data/, e.g. with
@@ -59,7 +59,7 @@ get_statistics(det_uni, family = "gaussian")$stat
 
 get_statistics(det_uni, family = "gamma", shape = 2)$stat
 
-## ---- Extracting Informations from the Detector Object --------------------
+## ---- Extracting Information from the Detector Object ---------------------
 
 ## ---- Accessing Changepoint Candidates ------------------------------------
 
@@ -269,7 +269,7 @@ df_plot$statistic <- factor(df_plot$statistic, levels = c("Data", "Sum", "Max"))
 
 ggplot(df_plot) +
   aes(x = time, y = value) +
-  geom_line(size = 0.5) +
+  geom_line(linewidth = 0.5) +
   geom_vline(aes(xintercept = xint), data = data.frame(scenario = c("Location shift (t)", "Tail change (Normal)"), 
                                                          xint = c(change_point1, change_point2)), linetype = "dashed", linewidth = 1) +
   facet_grid(statistic ~ scenario, scales = "free_y") +

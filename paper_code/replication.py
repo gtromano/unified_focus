@@ -11,12 +11,14 @@ Section 5.2 (gamma-ray burst detection), Section 5.3 (constrained up-down model
 for spike inference) and Appendix A (the Python interface). The R results are
 reproduced by the companion script replication.R.
 
-Requirements: Python (>= 3.8) and the packages focus-cpt (>= 0.1.10), numpy,
-pandas, scipy, plotnine and astropy, all available from PyPI. The focus-cpt
-package can also be installed from the source package submitted with the
-manuscript (this requires a C++ compiler, CMake and the Qhull library, see its
-README):
-    pip install focus_cpt-0.1.10.tar.gz
+Requirements: Python (>= 3.8) and the packages focus-cpt (>= 0.1.11), numpy,
+pandas, scipy, plotnine and astropy, all available from PyPI and listed in
+requirements.txt:
+    pip install -r requirements.txt
+The focus-cpt package can also be installed from the source package submitted
+with the manuscript (this requires a C++ compiler, CMake and the Qhull library,
+see its README):
+    pip install focus_cpt-0.1.11.tar.gz
 
 Run the script from the folder containing it, as the data are read from
 paper_data/, e.g. with
