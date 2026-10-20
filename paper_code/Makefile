@@ -100,7 +100,7 @@ install-r-deps:
 install-python-deps:
 	@echo "$(YELLOW)Installing/updating Python packages...$(NC)"
 	@which python3 >/dev/null 2>&1 && PYTHON=python3 || PYTHON=python; \
-	INSTALL_OUT=$$($$PYTHON -m pip install focus-cpt pandas numpy scipy plotnine astropy 2>&1); \
+	INSTALL_OUT=$$($$PYTHON -m pip install -r requirements.txt 2>&1); \
 	INSTALL_RC=$$?; \
 	if [ $$INSTALL_RC -ne 0 ]; then \
 		echo "$(RED)✗ pip install failed. Checking which packages are missing...$(NC)"; \

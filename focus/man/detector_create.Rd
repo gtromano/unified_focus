@@ -61,10 +61,10 @@ Default is \code{NULL}.}
 An object of class \code{"focus_detector"}: an external pointer to
   the state of the C++ detector, which is updated in place. It should be
   passed to the other detector functions, such as
-  \code{\link{detector_update}()} and \code{\link{get_statistics}()}. A
-  \code{print} method is available, see \code{\link{focus-methods}}. As
-  external pointers, detectors cannot be saved and restored across \R
-  sessions.
+  \code{\link{detector_update}()} and \code{\link{get_statistics}()}.
+  \code{print} and \code{summary} methods are available, see
+  \code{\link{focus-methods}}. As external pointers, detectors cannot be
+  saved and restored across \R sessions.
 }
 \description{
 Creates an online (sequential) changepoint detector object that provides

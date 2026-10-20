@@ -61,10 +61,12 @@
       \code{detector_cands_len()}, \code{detector_candidates()}.
   }
 
-  The detector, the statistics and the offline results are S3 objects of
-  class \code{"focus_detector"}, \code{"focus_statistics"} and
-  \code{"focus_offline"}, respectively, with \code{print} methods and, for
-  offline results, \code{summary} and \code{plot} methods; see
+  The detector, the statistics, the offline results and the projection
+  index sets are S3 objects of class \code{"focus_detector"},
+  \code{"focus_statistics"}, \code{"focus_offline"} and
+  \code{"focus_projections"}, respectively, with \code{print} methods and,
+  for detectors and offline results, \code{summary} methods; offline results
+  also have a \code{plot} method. See
   \code{\link{focus-methods}}.
 
 }
@@ -108,39 +110,82 @@
   \code{\link{detector_candidates}}, \code{\link{generate_projection_indexes}}
 }
 \examples{
-  \donttest{
-    ## Offline (batch) example: univariate Gaussian change-in-mean
-    set.seed(123)
-    Y <- c(rnorm(500, mean = 0), rnorm(500, mean = 2))
+  ## Univariate Gaussian change in mean
+  set.seed(123)
+  Y <- c(rnorm(500, mean = 0), rnorm(500, mean = 2))
 
-    # Run offline detection (C++ loop). Use threshold=Inf to compute full trajectory.
-    res <- focus_offline(Y, threshold = 20, type = "univariate", family = "gaussian")
-    if (!is.null(res$detection_time)) {
-      cat("Detection at time:", res$detection_time, "\n")
+  ## Online (sequential) example
+  det <- detector_create(type = "univariate")
+  stat_trace <- numeric(length(Y))
+  threshold <- 20
+  for (i in seq_along(Y)) {
+    detector_update(det, Y[i])
+    r <- get_statistics(det, family = "gaussian")
+    stat_trace[i] <- r$stat
+    if (!is.null(r$stat) && r$stat > threshold) {
+      cat("Online detection at", i, "estimate tau =", r$changepoint, "\n")
+      break
     }
-
-    ## Online (sequential) example
-    det <- detector_create(type = "univariate")
-    stat_trace <- numeric(length(Y))
-    threshold <- 20
-    for (i in seq_along(Y)) {
-      detector_update(det, Y[i])
-      r <- get_statistics(det, family = "gaussian")
-      stat_trace[i] <- r$stat
-      if (!is.null(r$stat) && r$stat > threshold) {
-        cat("Online detection at", i, "estimate tau =", r$changepoint, "\n")
-        break
-      }
-    }
-
-    ## Multivariate offline example (p = 3)
-    set.seed(42)
-    p <- 3
-    Y_multi <- rbind(
-      matrix(rnorm(1000 * p, mean = 0), ncol = p),
-      matrix(rnorm(500 * p, mean = 1.2), ncol = p)
-    )
-    res_multi <- focus_offline(Y_multi, threshold = 30, type = "multivariate", family = "gaussian")
-    cat("Multivariate detection time:", res_multi$detection_time, "\n")
   }
+  summary(det, family = "gaussian")
+
+  ## Offline (batch) example on the same data
+  # Run offline detection (C++ loop). Use threshold=Inf to compute full trajectory.
+  res <- focus_offline(Y, threshold = 20, type = "univariate", family = "gaussian")
+  if (!is.null(res$detection_time)) {
+    cat("Detection at time:", res$detection_time, "\n")
+  }
+  summary(res)
+  plot(res, data = Y)
+
+  ## Multivariate detection
+  set.seed(123)
+  d <- 3
+  Y_multi <- rbind(
+    matrix(rnorm(300 * d, mean = 0), ncol = d),
+    matrix(rnorm(100 * d, mean = 1), ncol = d)
+  )
+  det_mv <- detector_create(type = "multivariate")
+  for (i in seq_len(nrow(Y_multi))) {
+    detector_update(det_mv, Y_multi[i, ])
+    r <- get_statistics(det_mv, family = "gaussian")
+    if (!is.null(r$stat) && r$stat > 30) {
+      cat("Multivariate detection at", i, "estimate tau =", r$changepoint, "\n")
+      break
+    }
+  }
+  summary(det_mv)
+
+  ## Non-parametric detection (NP-FOCuS)
+  # Heavy-tailed data with a change in location
+  set.seed(123)
+  Y_np <- c(rt(500, df = 2), rt(200, df = 2) + 1)
+  # Quantiles of the pre-change distribution
+  quants <- qt(c(0.1, 0.25, 0.5, 0.75, 0.9), df = 2)
+  det_np <- detector_create(type = "npfocus", quantiles = quants)
+  threshold_np <- c(50, 20)  # for the sum and the max statistics
+  for (i in seq_along(Y_np)) {
+    detector_update(det_np, Y_np[i])
+    r <- get_statistics(det_np, family = "npfocus")
+    if (!is.null(r$stat) && any(r$stat > threshold_np)) {
+      cat("Non-parametric detection at", i, "\n")
+      break
+    }
+  }
+  r
+
+  ## Autoregressive detection: AR(3) with a change in mean
+  set.seed(123)
+  rho <- c(0.5, -0.3, 0.2)  # AR coefficients
+  Y_ar <- arima.sim(list(ar = rho), n = 700) + rep(c(0, 1.5), c(500, 200))
+  det_ar <- detector_create(type = "arp", rho = rho, mu0_arp = 0)
+  for (i in seq_along(Y_ar)) {
+    detector_update(det_ar, Y_ar[i])
+    r <- get_statistics(det_ar, family = "arp")
+    if (!is.null(r$stat) && r$stat > 30) {
+      cat("AR(3) detection at", i, "estimate tau =", r$changepoint, "\n")
+      break
+    }
+  }
+  det_ar
 }

@@ -14,25 +14,28 @@ namespace changepoint {
 
   - Stores series data, ARP parameters (rho, p), and current statistics.
   - update(y): Takes a scalar observation and triggers an update via external function.
-  - Maintains the maximum test statistic and corresponding changepoint across all four
-    detection directions (right_pos, left_pos, right_neg, left_neg).
-  - candidates() returns a dummy/empty candidate list (the real computation happens in cost function).
+  - Maintains the maximum test statistic and corresponding changepoint over the candidate
+    changes, pruned as in Algorithm 2 of the AR(p)-focus paper, with one stack for increases
+    and one for decreases (see focus_ARp.cpp).
+  - candidates() returns the changes stored in the two stacks: those for increases (side "right"),
+    then those for decreases (side "left"), with tau on the original data and st the sum of the
+    whitened observations up to the change. It is built when called.
 */
 
 // Forward declaration from focus_ARp.cpp
 // This function will be implemented in focus_ARp.cpp and handles the actual state updates
 void arp_detector_update_impl(double obs,
                                const std::vector<double>& rho,
-                               int p,
-                               int buf_max,
                                bool known_prechange,
-                               double n,
-                               void*& opaque_states,  // Opaque pointer to hold the four State objects
+                               void*& opaque_states,  // Opaque pointer to hold the detector's state
                                double& out_max_stat,
                                int& out_cpt);
 
 // Cleanup helper for opaque states
 void cleanup_arp_states(void* opaque_states);
+
+// The changes stored in the two stacks, written to out (see focus_ARp.cpp)
+void arp_detector_candidates(const void* opaque_states, std::vector<Candidate>& out);
 
 class ARpInfo : public Info {
 public:
@@ -45,9 +48,6 @@ public:
       known_prechange_(known_prechange),
       mu0_(mu0),                         // <-- stored
       p_((int)rho_.size()),
-      // buffer of whitened observations: the last 2p are needed by the
-      // recursion, and its first step (at the (p + 2)-th one) needs p + 2
-      buf_max_(std::max(2 * p_, p_ + 2)),
       max_stat_(-1.0),
       cpt_(-1),
       cumsum_(0.0),
@@ -62,7 +62,7 @@ public:
     }
   }
 
-  // Forbid copy/move to avoid copying State objects
+  // Forbid copy/move to avoid copying the detector's state
   ARpInfo(const ARpInfo&) = delete;
   ARpInfo& operator=(const ARpInfo&) = delete;
 
@@ -78,8 +78,7 @@ public:
     cumsum_ += obs;
 
     // Call implementation for all observations starting from n==1
-    changepoint::arp_detector_update_impl(obs, rho_, p_, buf_max_,
-                                          known_prechange_, n_,
+    changepoint::arp_detector_update_impl(obs, rho_, known_prechange_,
                                           opaque_states_,
                                           max_stat_, cpt_);
 
@@ -87,9 +86,10 @@ public:
     sn_.assign(1, cumsum_);
   }
 
-  // candidates: Return dummy candidates (actual computation in cost function)
+  // candidates: the changes stored in the two stacks, built from the detector's state when called
   const std::vector<Candidate>& candidates() const override {
-    return dummy_candidates_;
+    changepoint::arp_detector_candidates(opaque_states_, candidates_);
+    return candidates_;
   }
 
   // Accessors for external cost function
@@ -114,19 +114,18 @@ private:
   bool known_prechange_;          // Whether pre-change mean is known
   double mu0_;                    // Known pre-change mean (if applicable)
   int p_;                         // AR order
-  int buf_max_;                   // Buffer size
 
   // Current statistics
-  double max_stat_;               // Maximum test statistic across all four states
+  double max_stat_;               // Maximum test statistic over the candidate changes
   int cpt_;                       // Corresponding changepoint
 
   // Data
   double cumsum_;                 // Cumulative sum of all observations
 
-  // Dummy candidates (required by interface but not used for ARP)
-  mutable std::vector<Candidate> dummy_candidates_;
+  // The stored changes, filled by candidates() (the stacks themselves live in focus_ARp.cpp)
+  mutable std::vector<Candidate> candidates_;
 
-  // Opaque pointer to hold the four State objects (implementation detail in focus_ARp.cpp)
+  // Opaque pointer to hold the detector's state (implementation detail in focus_ARp.cpp)
   void* opaque_states_;
 };
 

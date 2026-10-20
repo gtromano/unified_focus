@@ -101,7 +101,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // generate_projection_indexes
-std::vector<std::vector<int>> generate_projection_indexes(int d, int p);
+List generate_projection_indexes(int d, int p);
 RcppExport SEXP _focus_generate_projection_indexes(SEXP dSEXP, SEXP pSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;

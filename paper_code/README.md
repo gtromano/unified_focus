@@ -10,14 +10,15 @@ manuscript.
 |------|-------------|
 | `replication.R` | Plain R script reproducing all R results and figures (Sections 3, 4 and 5.1). |
 | `replication.py` | Plain Python script reproducing all Python results and figures (Section 3, Sections 5.2 and 5.3, Appendix A). |
+| `requirements.txt` | Python packages needed by `replication.py`. |
 | `paper_data/` | Data sets used in Section 5 (see [Data](#data)). |
 | `make_replication_scripts.py` | Generates the two replication scripts from the code chunks of `jss_paper.qmd` (not needed for replication). |
 | `jss_paper.qmd`, `bibliography.bib`, `Makefile` | Quarto source of the manuscript and build tools (not needed for replication). |
 
 The software is provided as source packages, submitted alongside the manuscript:
 
-- `focus_0.1.10.tar.gz`: the R package **focus** (also on CRAN);
-- `focus_cpt-0.1.10.tar.gz`: the Python package **focus-cpt** (also on PyPI).
+- `focus_0.1.11.tar.gz`: the R package **focus** (also on CRAN);
+- `focus_cpt-0.1.11.tar.gz`: the Python package **focus-cpt** (also on PyPI).
 
 ## Replicating the Results
 
@@ -40,7 +41,7 @@ dplyr. The Monte Carlo simulations of Sections 4.1 and 5.1 run in parallel,
 using 4 and 8 background R sessions respectively (via furrr).
 
 ```bash
-R CMD INSTALL focus_0.1.10.tar.gz      # or: Rscript -e "install.packages('focus')"
+R CMD INSTALL focus_0.1.11.tar.gz      # or: Rscript -e "install.packages('focus')"
 Rscript -e "install.packages(c('ggplot2', 'furrr', 'purrr', 'dplyr'))"
 Rscript replication.R
 ```
@@ -48,13 +49,14 @@ Rscript replication.R
 ### Python
 
 Requirements: Python (>= 3.8) and the PyPI packages numpy, pandas, scipy, plotnine
-and astropy. Installing focus-cpt from the source package requires a C++17
+and astropy, listed (with focus-cpt) in `requirements.txt`, together with the
+versions used for the manuscript. Installing focus-cpt from the source package requires a C++17
 compiler, CMake (>= 3.15) and the Qhull library (e.g., `libqhull-dev` on
 Debian/Ubuntu, `qhull-devel` on Fedora, `brew install qhull` on macOS).
 
 ```bash
-pip install focus_cpt-0.1.10.tar.gz    # or: pip install focus-cpt
-pip install numpy pandas scipy plotnine astropy
+pip install focus_cpt-0.1.11.tar.gz    # or: pip install focus-cpt
+pip install -r requirements.txt
 python replication.py
 ```
 
